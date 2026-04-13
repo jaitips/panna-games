@@ -1,0 +1,7 @@
+/*
+  Permissions-Policy: camera=(self), microphone=(self)
+  Access-Control-Allow-Origin: *
+
+/games/*
+  Permissions-Policy: camera=(self), microphone=(self)
+  Access-Control-Allow-Origin: *

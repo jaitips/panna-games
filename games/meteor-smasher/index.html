@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meteor Smasher Hero — Play Zone</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Fredoka', sans-serif;
+    background: #0f0a2e;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 40%, rgba(255,80,80,0.2) 0%, transparent 60%);
+    z-index: 0;
+  }
+  .content { position: relative; z-index: 1; }
+  .icon { font-size: 5rem; margin-bottom: 1rem; }
+  h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+  p { color: rgba(255,255,255,0.6); font-size: 1.1rem; margin-bottom: 2rem; max-width: 400px; }
+  .back {
+    display: inline-block;
+    padding: 0.8rem 2rem;
+    border-radius: 2rem;
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: background 0.2s;
+  }
+  .back:hover { background: rgba(255,255,255,0.2); }
+  .hint {
+    margin-top: 2rem;
+    padding: 1rem 1.5rem;
+    border-radius: 1rem;
+    background: rgba(255,200,50,0.1);
+    border: 1px solid rgba(255,200,50,0.2);
+    color: rgba(255,200,80,0.9);
+    font-size: 0.85rem;
+    max-width: 420px;
+  }
+</style>
+</head>
+<body>
+<div class="content">
+  <div class="icon">☄️</div>
+  <h1>Meteor Smasher Hero</h1>
+  <p>Punch meteors out of the sky!</p>
+  <a class="back" href="../../index.html">← Back to Play Zone</a>
+  <div class="hint">
+    📋 Placeholder — Replace this file with the actual game HTML to activate!
+  </div>
+</div>
+</body>
+</html>
