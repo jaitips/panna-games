@@ -2,67 +2,671 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Patan the Frog — Play Zone</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0a3d1e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Play Zone">
+<link rel="apple-touch-icon" href="/shared/apple-touch-icon.png">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Fredoka', sans-serif;
-    background: #0f0a2e;
-    color: #fff;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 2rem;
-  }
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(ellipse at 50% 40%, rgba(80,200,80,0.2) 0%, transparent 60%);
-    z-index: 0;
-  }
-  .content { position: relative; z-index: 1; }
-  .icon { font-size: 5rem; margin-bottom: 1rem; }
-  h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
-  p { color: rgba(255,255,255,0.6); font-size: 1.1rem; margin-bottom: 2rem; max-width: 400px; }
-  .back {
-    display: inline-block;
-    padding: 0.8rem 2rem;
-    border-radius: 2rem;
-    background: rgba(255,255,255,0.12);
-    color: #fff;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: background 0.2s;
-  }
-  .back:hover { background: rgba(255,255,255,0.2); }
-  .hint {
-    margin-top: 2rem;
-    padding: 1rem 1.5rem;
-    border-radius: 1rem;
-    background: rgba(255,200,50,0.1);
-    border: 1px solid rgba(255,200,50,0.2);
-    color: rgba(255,200,80,0.9);
-    font-size: 0.85rem;
-    max-width: 420px;
-  }
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#062013;font-family:'Fredoka',sans-serif;color:#fff;touch-action:none}
+#wrap{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+canvas{display:block;background:linear-gradient(180deg,#0a3d1e 0%,#0d5a2a 60%,#1f7a3d 100%)}
+#hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:8px 16px;z-index:10;background:linear-gradient(180deg,rgba(0,0,0,.55),transparent);pointer-events:none}
+#hud .score{font-size:1.25rem;font-weight:700;color:#ffe860;text-shadow:0 2px 6px rgba(0,0,0,.5)}
+#hud .title{font-size:1rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:2px;text-shadow:0 2px 6px rgba(0,0,0,.5)}
+#hud .timer{font-size:1.25rem;font-weight:700;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.5)}
+#cam{position:absolute;bottom:10px;left:10px;width:120px;height:90px;border-radius:10px;border:2px solid rgba(255,255,255,.25);z-index:20;transform:scaleX(-1);object-fit:cover;opacity:.75}
+#overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:30;background:rgba(6,32,19,.92);text-align:center;padding:2rem;transition:opacity .3s}
+#overlay.hidden{opacity:0;pointer-events:none}
+#overlay h1{font-size:2.8rem;margin-bottom:.4rem;color:#7eff8c;text-shadow:0 2px 12px rgba(0,255,80,.4)}
+#overlay h2{font-size:1.8rem;margin-bottom:.8rem;color:#ffe860}
+#overlay p{font-size:1.05rem;color:rgba(255,255,255,.75);margin-bottom:1.2rem;max-width:420px;line-height:1.6}
+.btn{display:inline-block;padding:.7rem 2.2rem;border-radius:2rem;background:#7eff8c;color:#062013;font-weight:700;font-size:1.1rem;border:none;cursor:pointer;font-family:inherit;margin:.4rem;text-decoration:none}
+.btn:hover{background:#5fdc6f}
+.btn-back{background:rgba(255,255,255,.13);color:#fff}
+.btn-back:hover{background:rgba(255,255,255,.22)}
+#calibBar{width:200px;height:8px;border-radius:4px;background:rgba(255,255,255,.15);margin:1rem auto;overflow:hidden}
+#calibFill{height:100%;background:#7eff8c;border-radius:4px;width:0%;transition:width .3s}
+.frogIcon{font-size:5rem;margin:.5rem 0;display:block}
+#__hubBack{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 8px);z-index:99999;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1;font-weight:700;text-decoration:none;border:2px solid rgba(255,255,255,.45);box-shadow:0 2px 8px rgba(0,0,0,.35);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+#__hubBack:active{background:rgba(0,0,0,.8);transform:scale(.92)}
 </style>
 </head>
 <body>
-<div class="content">
-  <div class="icon">🐸</div>
-  <h1>Patan the Frog</h1>
-  <p>Catch mosquitoes with your tongue!</p>
-  <a class="back" href="../../index.html">← Back to Play Zone</a>
-  <div class="hint">
-    📋 Placeholder — Replace this file with the actual game HTML to activate!
+<div id="wrap">
+  <div id="hud" style="display:none">
+    <div class="score" id="scoreEl">0</div>
+    <div class="title">Patan</div>
+    <div class="timer" id="timerEl">60</div>
+  </div>
+  <canvas id="game"></canvas>
+  <video id="cam" playsinline autoplay muted></video>
+  <div id="overlay">
+    <span class="frogIcon">🐸</span>
+    <h1>Patan the Frog</h1>
+    <p>Move your hand to aim Patan's tongue!<br>
+    Hover over a mosquito 🦟 to catch it.<br>
+    Don't catch the angry bees 🐝 — ouch!</p>
+    <button class="btn" id="btnStart">Camera Mode</button>
+    <button class="btn" id="btnTouch" style="background:#ff80ff;color:#062013">Touch Mode</button><br>
+    <a class="btn btn-back" href="../../index.html">← Back</a>
   </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* CONSTANTS */
+const GAME_TIME=60;
+const TONGUE_SPEED=2400;
+const TONGUE_HOLD=180;
+const HIT_RADIUS=42;
+const STING_RADIUS=44;
+const MOSQ_SPAWN_MIN=600, MOSQ_SPAWN_MAX=1200;
+const BEE_SPAWN_MIN=2200, BEE_SPAWN_MAX=4500;
+const POINTS_MOSQ=10;
+const STING_PENALTY=15;
+const LERP_A=0.45;
+
+/* DOM */
+const cvs=document.getElementById('game');
+const X=cvs.getContext('2d');
+const vid=document.getElementById('cam');
+const olay=document.getElementById('overlay');
+const hudEl=document.getElementById('hud');
+const scoreEl=document.getElementById('scoreEl');
+const timerEl=document.getElementById('timerEl');
+
+/* STATE */
+let W=0,H=0;
+let state='TITLE';
+let stT=0;
+let cdNum=3;
+let score=0, timeLeft=GAME_TIME*1000;
+let aimX=0, aimY=0, smX=0.5, smY=0.5;
+let bugs=[], particles=[], floats=[];
+let frog={x:0,y:0,blink:0,pose:0};
+let tongue={active:false,x:0,y:0,tx:0,ty:0,t:0,dur:0,hit:null,returning:false};
+let nextMosqT=0, nextBeeT=0;
+let stingT=0;
+
+/* AUDIO */
+let ac=null;
+function aInit(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)()}
+function tone(f,d,t,v){if(!ac)return;const o=ac.createOscillator(),g=ac.createGain();o.type=t||'square';o.frequency.value=f;g.gain.setValueAtTime(v||.1,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}
+function sCatch(){tone(560,.08,'square',.1);setTimeout(()=>tone(820,.12,'square',.08),60)}
+function sShoot(){tone(220,.07,'sine',.07)}
+function sSting(){tone(180,.18,'sawtooth',.12);setTimeout(()=>tone(120,.18,'sawtooth',.1),80)}
+function sCD(){tone(440,.12,'square',.08)}
+function sGo(){tone(523,.1);setTimeout(()=>tone(784,.16),110)}
+function sEnd(){[523,659,784,659,523].forEach((f,i)=>setTimeout(()=>tone(f,.16,'square',.1),i*120))}
+
+/* MEDIAPIPE HANDS */
+let handsModel=null, handsBusy=false, handsOK=false;
+async function setupCam(){
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:320},height:{ideal:240}}});
+    vid.srcObject=s;await new Promise(r=>vid.onloadedmetadata=r);vid.play();return true;
+  }catch(e){console.warn('No camera:',e);return false}
+}
+function setupHands(){
+  handsModel=new window.Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${f}`});
+  handsModel.setOptions({maxNumHands:1,modelComplexity:0,minDetectionConfidence:0.55,minTrackingConfidence:0.55});
+  handsModel.onResults(onHands);
+}
+function onHands(res){
+  if(!res.multiHandLandmarks||!res.multiHandLandmarks.length)return;
+  const lm=res.multiHandLandmarks[0];
+  const p=lm[9]||lm[0];if(!p)return;
+  handsOK=true;
+  // mirror x because video is flipped
+  const nx=1-p.x, ny=p.y;
+  smX+=LERP_A*(nx-smX);
+  smY+=LERP_A*(ny-smY);
+}
+async function sendFrame(){
+  if(!handsBusy&&handsModel&&vid.readyState>=2){
+    handsBusy=true;
+    try{await handsModel.send({image:vid})}catch(e){}
+    handsBusy=false;
+  }
+  requestAnimationFrame(sendFrame);
+}
+
+/* TOUCH/MOUSE FALLBACK */
+let touchMode=false;
+function bindPointer(){
+  function setFromClient(cx,cy){
+    const r=cvs.getBoundingClientRect();
+    smX=(cx-r.left)/r.width;
+    smY=(cy-r.top)/r.height;
+  }
+  cvs.addEventListener('mousemove',e=>setFromClient(e.clientX,e.clientY));
+  cvs.addEventListener('touchmove',e=>{
+    if(e.touches&&e.touches[0]){setFromClient(e.touches[0].clientX,e.touches[0].clientY)}
+  },{passive:true});
+  cvs.addEventListener('touchstart',e=>{
+    if(e.touches&&e.touches[0]){setFromClient(e.touches[0].clientX,e.touches[0].clientY)}
+  },{passive:true});
+}
+
+/* RESIZE */
+function resize(){
+  W=window.innerWidth;H=window.innerHeight;
+  cvs.width=W;cvs.height=H;
+  frog.x=W/2;frog.y=H-Math.min(110,H*0.14);
+}
+
+/* BUGS */
+function spawnMosquito(){
+  const side=Math.random()<0.5?-1:1;
+  const x=side<0?-30:W+30;
+  const y=H*0.15+Math.random()*H*0.55;
+  bugs.push({
+    type:'mosq',
+    x,y,
+    vx:(side<0?1:-1)*(60+Math.random()*70),
+    vy:(Math.random()-0.5)*40,
+    w:Math.random()*Math.PI*2,
+    wAmp:14+Math.random()*16,
+    age:0,life:18000,
+    wing:0
+  });
+}
+function spawnBee(){
+  const side=Math.random()<0.5?-1:1;
+  const x=side<0?-40:W+40;
+  const y=H*0.12+Math.random()*H*0.5;
+  bugs.push({
+    type:'bee',
+    x,y,
+    vx:(side<0?1:-1)*(80+Math.random()*70),
+    vy:(Math.random()-0.5)*30,
+    w:Math.random()*Math.PI*2,
+    wAmp:8+Math.random()*10,
+    age:0,life:14000,
+    wing:0
+  });
+}
+function updBugs(dt){
+  for(let i=bugs.length-1;i>=0;i--){
+    const b=bugs[i];
+    b.age+=dt*1000;
+    b.w+=dt*4;
+    b.wing+=dt*40;
+    b.x+=b.vx*dt;
+    b.y+=b.vy*dt+Math.sin(b.w)*b.wAmp*dt*2.4;
+    // gentle vy drift
+    b.vy+=(Math.random()-0.5)*8*dt*60;
+    if(b.vy>50)b.vy=50;
+    if(b.vy<-50)b.vy=-50;
+    // remove if out of range or expired
+    if(b.x<-80||b.x>W+80||b.age>b.life||b.y<-40||b.y>H-40){
+      bugs.splice(i,1);
+    }
+  }
+}
+
+/* PARTICLES */
+function burst(x,y,color,n){
+  n=n||10;
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2;
+    const sp=80+Math.random()*180;
+    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:600,age:0,color,size:3+Math.random()*4});
+  }
+}
+function updParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.age+=dt*1000;
+    p.x+=p.vx*dt;p.y+=p.vy*dt;
+    p.vy+=400*dt;
+    if(p.age>=p.life)particles.splice(i,1);
+  }
+}
+function popFloat(x,y,text,color){
+  floats.push({x,y,t:0,life:900,text,color});
+}
+function updFloats(dt){
+  for(let i=floats.length-1;i>=0;i--){
+    const f=floats[i];
+    f.t+=dt*1000;
+    f.y-=40*dt;
+    if(f.t>=f.life)floats.splice(i,1);
+  }
+}
+
+/* TONGUE */
+function fireTongue(tx,ty){
+  if(tongue.active)return;
+  const dx=tx-frog.x, dy=ty-(frog.y-30);
+  const dist=Math.hypot(dx,dy);
+  const dur=Math.max(120,Math.min(420,(dist/TONGUE_SPEED)*1000));
+  tongue.active=true;
+  tongue.x=frog.x;tongue.y=frog.y-30;
+  tongue.tx=tx;tongue.ty=ty;
+  tongue.t=0;tongue.dur=dur;tongue.hit=null;tongue.returning=false;
+  frog.pose=1;
+  sShoot();
+}
+function updTongue(dt){
+  if(!tongue.active)return;
+  tongue.t+=dt*1000;
+  const total=tongue.dur*2+TONGUE_HOLD;
+  if(tongue.t>=total){tongue.active=false;frog.pose=0;return}
+  let p;
+  if(tongue.t<tongue.dur){
+    p=tongue.t/tongue.dur;tongue.returning=false;
+  } else if(tongue.t<tongue.dur+TONGUE_HOLD){
+    p=1;tongue.returning=false;
+  } else {
+    p=1-(tongue.t-tongue.dur-TONGUE_HOLD)/tongue.dur;tongue.returning=true;
+  }
+  // current tip
+  const cx=frog.x+(tongue.tx-frog.x)*p;
+  const cy=(frog.y-30)+(tongue.ty-(frog.y-30))*p;
+  tongue.x=cx;tongue.y=cy;
+  // collide on extend phase only
+  if(!tongue.returning&&!tongue.hit){
+    for(let i=bugs.length-1;i>=0;i--){
+      const b=bugs[i];
+      const r=b.type==='bee'?STING_RADIUS:HIT_RADIUS;
+      if(Math.hypot(b.x-cx,b.y-cy)<r){
+        if(b.type==='mosq'){
+          score+=POINTS_MOSQ;
+          burst(b.x,b.y,'#ffe860',12);
+          popFloat(b.x,b.y-20,'+'+POINTS_MOSQ,'#ffe860');
+          sCatch();
+          tongue.hit=b;
+          // attach to tongue tip on return
+          bugs.splice(i,1);
+        } else {
+          // bee — sting!
+          score=Math.max(0,score-STING_PENALTY);
+          burst(b.x,b.y,'#ff5050',16);
+          popFloat(b.x,b.y-20,'-'+STING_PENALTY,'#ff7070');
+          sSting();
+          stingT=600;
+          tongue.hit=b;
+          bugs.splice(i,1);
+        }
+        break;
+      }
+    }
+  }
+}
+
+/* DRAW */
+function drawBackground(){
+  // pond/grass already via canvas bg gradient. Add lily pad shapes
+  X.save();
+  for(let i=0;i<5;i++){
+    const px=(W/5)*(i+0.5)+Math.sin(performance.now()*0.0004+i)*8;
+    const py=H*0.3+Math.cos(performance.now()*0.0006+i*1.7)*16+i*22;
+    X.globalAlpha=0.18;X.fillStyle='#4ad06b';
+    X.beginPath();X.ellipse(px,py,32,12,0,0,Math.PI*2);X.fill();
+  }
+  X.restore();
+  // bottom water reflections
+  X.save();
+  X.globalAlpha=0.18;X.fillStyle='#9bff9c';
+  for(let i=0;i<8;i++){
+    const px=(W/8)*(i+0.5);
+    const py=H-26+Math.sin(performance.now()*0.002+i)*4;
+    X.beginPath();X.ellipse(px,py,30,3,0,0,Math.PI*2);X.fill();
+  }
+  X.restore();
+}
+
+function drawFrog(){
+  const f=frog;
+  const wob=Math.sin(performance.now()*0.003)*1.5;
+  const cx=f.x, cy=f.y+wob;
+  // Body
+  X.save();X.translate(cx,cy);
+  // shadow
+  X.fillStyle='rgba(0,0,0,.35)';X.beginPath();X.ellipse(0,42,68,14,0,0,Math.PI*2);X.fill();
+  // body
+  const bodyG=X.createRadialGradient(0,-10,10,0,10,80);
+  bodyG.addColorStop(0,'#7eff8c');
+  bodyG.addColorStop(0.6,'#3acc56');
+  bodyG.addColorStop(1,'#1d8a35');
+  X.fillStyle=bodyG;
+  X.beginPath();X.ellipse(0,8,70,52,0,0,Math.PI*2);X.fill();
+  // belly
+  X.fillStyle='#d8ffd0';
+  X.beginPath();X.ellipse(0,28,38,22,0,0,Math.PI*2);X.fill();
+  // head
+  X.fillStyle=bodyG;
+  X.beginPath();X.ellipse(0,-22,52,38,0,0,Math.PI*2);X.fill();
+  // eye sockets
+  for(const sx of [-26,26]){
+    X.fillStyle='#7eff8c';
+    X.beginPath();X.arc(sx,-46,18,0,Math.PI*2);X.fill();
+  }
+  // eyes (white)
+  for(const sx of [-26,26]){
+    X.fillStyle='#fff';
+    X.beginPath();X.arc(sx,-46,13,0,Math.PI*2);X.fill();
+  }
+  // pupils — track aim
+  const aimDX=aimX-cx, aimDY=aimY-cy;
+  const aimDist=Math.hypot(aimDX,aimDY)||1;
+  const pxOff=(aimDX/aimDist)*4, pyOff=(aimDY/aimDist)*4;
+  for(const sx of [-26,26]){
+    X.fillStyle='#000';
+    if(f.blink>0){
+      X.fillRect(sx-10,-46-1,20,3);
+    } else {
+      X.beginPath();X.arc(sx+pxOff,-46+pyOff,7,0,Math.PI*2);X.fill();
+      X.fillStyle='#fff';
+      X.beginPath();X.arc(sx+pxOff-2,-46+pyOff-2,2.5,0,Math.PI*2);X.fill();
+    }
+  }
+  // mouth
+  X.strokeStyle='#0a3d1e';X.lineWidth=3;X.lineCap='round';
+  X.beginPath();
+  if(f.pose>0){
+    X.arc(0,-12,12,0,Math.PI);
+    X.fillStyle='#5a1a2c';X.fill();
+  } else {
+    X.moveTo(-14,-8);X.quadraticCurveTo(0,-2,14,-8);
+  }
+  X.stroke();
+  // cheeks
+  X.fillStyle='rgba(255,140,160,.5)';
+  X.beginPath();X.arc(-32,-14,5,0,Math.PI*2);X.fill();
+  X.beginPath();X.arc(32,-14,5,0,Math.PI*2);X.fill();
+  X.restore();
+}
+
+function drawTongue(){
+  if(!tongue.active)return;
+  X.save();
+  X.lineCap='round';X.lineJoin='round';
+  // shadow
+  X.strokeStyle='#7a1230';X.lineWidth=14;
+  X.beginPath();X.moveTo(frog.x,frog.y-30);
+  // slight wobble curve
+  const mx=(frog.x+tongue.x)/2;
+  const my=(frog.y-30+tongue.y)/2-8;
+  X.quadraticCurveTo(mx,my,tongue.x,tongue.y);X.stroke();
+  // pink tongue
+  X.strokeStyle='#ff6e9c';X.lineWidth=10;
+  X.beginPath();X.moveTo(frog.x,frog.y-30);
+  X.quadraticCurveTo(mx,my,tongue.x,tongue.y);X.stroke();
+  // tip
+  X.fillStyle='#ff6e9c';
+  X.beginPath();X.arc(tongue.x,tongue.y,9,0,Math.PI*2);X.fill();
+  X.fillStyle='#ff9bbb';
+  X.beginPath();X.arc(tongue.x-3,tongue.y-3,4,0,Math.PI*2);X.fill();
+  X.restore();
+}
+
+function drawBug(b){
+  X.save();X.translate(b.x,b.y);
+  // bee
+  if(b.type==='bee'){
+    // wings (flapping)
+    const wf=Math.sin(b.wing)*0.5+0.5;
+    X.fillStyle='rgba(220,240,255,.7)';
+    X.beginPath();X.ellipse(-7,-10,9,4+wf*2,-0.5,0,Math.PI*2);X.fill();
+    X.beginPath();X.ellipse(7,-10,9,4+wf*2,0.5,0,Math.PI*2);X.fill();
+    // body
+    X.fillStyle='#ffcc33';
+    X.beginPath();X.ellipse(0,0,16,12,0,0,Math.PI*2);X.fill();
+    // stripes
+    X.fillStyle='#1a1a1a';
+    X.beginPath();X.ellipse(-5,0,3,11,0,0,Math.PI*2);X.fill();
+    X.beginPath();X.ellipse(5,0,3,11,0,0,Math.PI*2);X.fill();
+    // angry eyes
+    X.fillStyle='#000';
+    X.beginPath();X.arc(-5,-3,2.2,0,Math.PI*2);X.fill();
+    X.beginPath();X.arc(5,-3,2.2,0,Math.PI*2);X.fill();
+    // angry brows
+    X.strokeStyle='#000';X.lineWidth=1.6;
+    X.beginPath();X.moveTo(-9,-7);X.lineTo(-3,-5);X.stroke();
+    X.beginPath();X.moveTo(9,-7);X.lineTo(3,-5);X.stroke();
+    // stinger
+    X.fillStyle='#1a1a1a';
+    X.beginPath();
+    if(b.vx<0){X.moveTo(14,0);X.lineTo(20,-2);X.lineTo(20,2)}
+    else{X.moveTo(-14,0);X.lineTo(-20,-2);X.lineTo(-20,2)}
+    X.closePath();X.fill();
+  } else {
+    // mosquito
+    const wf=Math.sin(b.wing)*0.5+0.5;
+    X.fillStyle='rgba(220,240,255,.6)';
+    X.beginPath();X.ellipse(-3,-7,7,3+wf*1.5,-0.4,0,Math.PI*2);X.fill();
+    X.beginPath();X.ellipse(3,-7,7,3+wf*1.5,0.4,0,Math.PI*2);X.fill();
+    // body
+    X.fillStyle='#5a4a3a';
+    X.beginPath();X.ellipse(0,0,9,6,0,0,Math.PI*2);X.fill();
+    // long thin proboscis
+    X.strokeStyle='#3a2a1a';X.lineWidth=1.6;
+    X.beginPath();
+    if(b.vx<0){X.moveTo(7,0);X.lineTo(15,1)}
+    else{X.moveTo(-7,0);X.lineTo(-15,1)}
+    X.stroke();
+    // legs
+    X.strokeStyle='#3a2a1a';X.lineWidth=1.2;
+    for(let i=-1;i<=1;i++){
+      X.beginPath();X.moveTo(0,1);X.lineTo(i*6,8+i*1.5);X.stroke();
+    }
+    // eyes
+    X.fillStyle='#ff4040';
+    X.beginPath();X.arc(-2.5,-2,1.5,0,Math.PI*2);X.fill();
+    X.beginPath();X.arc(2.5,-2,1.5,0,Math.PI*2);X.fill();
+  }
+  X.restore();
+}
+
+function drawAim(){
+  // small reticle so kids can see where the tongue will go
+  X.save();
+  const t=performance.now()*0.005;
+  X.strokeStyle='rgba(255,255,255,.85)';
+  X.lineWidth=2;
+  X.beginPath();X.arc(aimX,aimY,18+Math.sin(t)*2,0,Math.PI*2);X.stroke();
+  X.beginPath();X.arc(aimX,aimY,4,0,Math.PI*2);X.stroke();
+  X.restore();
+}
+
+function drawParticles(){
+  X.save();
+  for(const p of particles){
+    const a=1-p.age/p.life;
+    X.globalAlpha=a;
+    X.fillStyle=p.color;
+    X.beginPath();X.arc(p.x,p.y,p.size,0,Math.PI*2);X.fill();
+  }
+  X.restore();
+}
+function drawFloats(){
+  X.save();
+  X.font='bold 22px Fredoka, sans-serif';
+  X.textAlign='center';
+  for(const f of floats){
+    const a=1-f.t/f.life;
+    X.globalAlpha=a;
+    X.fillStyle=f.color;
+    X.strokeStyle='#000';X.lineWidth=4;
+    X.strokeText(f.text,f.x,f.y);X.fillText(f.text,f.x,f.y);
+  }
+  X.restore();
+}
+
+function drawStingFlash(){
+  if(stingT<=0)return;
+  X.save();
+  const a=Math.min(0.4,stingT/600*0.4);
+  X.fillStyle=`rgba(255,40,40,${a})`;
+  X.fillRect(0,0,W,H);
+  X.restore();
+}
+
+function render(){
+  X.clearRect(0,0,W,H);
+  drawBackground();
+  for(const b of bugs)drawBug(b);
+  drawTongue();
+  drawFrog();
+  if(state==='PLAYING'||state==='COUNTDOWN')drawAim();
+  drawParticles();
+  drawFloats();
+  drawStingFlash();
+}
+
+/* GAME STATES */
+function showOL(h){olay.innerHTML=h;olay.classList.remove('hidden')}
+function hideOL(){olay.classList.add('hidden')}
+
+function beginCalib(){
+  aInit();state='CALIBRATING';stT=2400;
+  vid.style.display='';
+  showOL(`<span class="frogIcon">👋</span>
+    <h2>Show your hand!</h2>
+    <p>Hold your hand up so the camera can see it.<br>Move it where you want Patan to look.</p>
+    <div id="calibBar"><div id="calibFill"></div></div>`);
+}
+function beginTouch(){
+  touchMode=true;aInit();
+  vid.style.display='none';
+  startCD();
+}
+function startCD(){
+  state='COUNTDOWN';cdNum=3;stT=3000;
+  score=0;timeLeft=GAME_TIME*1000;bugs=[];particles=[];floats=[];
+  tongue.active=false;tongue.hit=null;
+  nextMosqT=400;nextBeeT=2200;stingT=0;
+  hudEl.style.display='flex';
+  showOL(`<div id="cdTxt" style="font-size:6rem;font-weight:700;color:#7eff8c;text-shadow:0 0 30px rgba(0,255,80,.4)">3</div>`);
+  sCD();
+}
+function startPlay(){state='PLAYING';hideOL();sGo()}
+function gameOver(){
+  state='GAMEOVER';sEnd();
+  showOL(`<span class="frogIcon">🐸</span>
+    <h1>Time's Up!</h1><h2>Score: ${score}</h2>
+    <p>${score>=200?'Patan is super stuffed! 🎉':score>=100?'Yum yum, great catch!':'Try again — there are more bugs out there!'}</p>
+    <button class="btn" onclick="window._restart()">Camera Mode</button>
+    <button class="btn" style="background:#ff80ff;color:#062013" onclick="window._restartTouch()">Touch Mode</button><br>
+    <a class="btn btn-back" href="../../index.html">← Back</a>`);
+}
+window._restart=beginCalib;
+window._restartTouch=beginTouch;
+
+/* MAIN LOOP */
+let lastT=0;
+function loop(ts){
+  const dt=Math.min((ts-lastT)/1000,0.05);lastT=ts;
+
+  // aim follows smoothed pointer
+  const tx=smX*W, ty=smY*H;
+  aimX+=(tx-aimX)*0.4;
+  aimY+=(ty-aimY)*0.4;
+
+  if(stingT>0)stingT-=dt*1000;
+  // blink occasionally
+  frog.blink=Math.max(0,frog.blink-dt*1000);
+  if(Math.random()<0.003)frog.blink=160;
+
+  switch(state){
+  case'TITLE':
+    render();break;
+
+  case'CALIBRATING':
+    stT-=dt*1000;
+    const cf=document.getElementById('calibFill');
+    if(cf)cf.style.width=Math.min(100,((2400-stT)/2400)*100)+'%';
+    if(stT<=0)startCD();
+    render();break;
+
+  case'COUNTDOWN':
+    stT-=dt*1000;
+    const nn=Math.ceil(stT/1000);
+    if(nn!==cdNum&&nn>0){cdNum=nn;sCD()}
+    const cdE=document.getElementById('cdTxt');
+    if(cdE)cdE.textContent=stT<=0?'GO!':Math.ceil(stT/1000);
+    if(stT<=-400)startPlay();
+    updBugs(dt);updParticles(dt);updFloats(dt);
+    render();break;
+
+  case'PLAYING':{
+    timeLeft-=dt*1000;
+    timerEl.textContent=Math.max(0,Math.ceil(timeLeft/1000));
+    scoreEl.textContent=score;
+
+    nextMosqT-=dt*1000;
+    if(nextMosqT<=0){spawnMosquito();nextMosqT=MOSQ_SPAWN_MIN+Math.random()*(MOSQ_SPAWN_MAX-MOSQ_SPAWN_MIN)}
+    nextBeeT-=dt*1000;
+    if(nextBeeT<=0){spawnBee();nextBeeT=BEE_SPAWN_MIN+Math.random()*(BEE_SPAWN_MAX-BEE_SPAWN_MIN)}
+
+    updBugs(dt);
+    // auto-fire if hand hovers near a mosquito and tongue not active
+    if(!tongue.active){
+      let target=null,bestD=999;
+      for(const b of bugs){
+        const d=Math.hypot(b.x-aimX,b.y-aimY);
+        if(d<HIT_RADIUS+8&&d<bestD){bestD=d;target=b}
+      }
+      if(target)fireTongue(target.x,target.y);
+    }
+    updTongue(dt);
+    updParticles(dt);updFloats(dt);
+
+    if(timeLeft<=0)gameOver();
+    render();break;
+  }
+
+  case'GAMEOVER':
+    updBugs(dt);updParticles(dt);updFloats(dt);
+    render();break;
+  }
+  requestAnimationFrame(loop);
+}
+
+/* INIT */
+async function init(){
+  resize();window.addEventListener('resize',resize);
+  bindPointer();
+  render();
+
+  const hasCam=await setupCam();
+  if(hasCam){setupHands();sendFrame()}
+  else{vid.style.display='none'}
+
+  document.getElementById('btnStart').addEventListener('click',()=>{aInit();beginCalib()});
+  document.getElementById('btnTouch').addEventListener('click',()=>{aInit();beginTouch()});
+  // tap to fire (touch mode helper)
+  cvs.addEventListener('click',e=>{
+    if(state!=='PLAYING')return;
+    if(!tongue.active){
+      const r=cvs.getBoundingClientRect();
+      const tx=(e.clientX-r.left), ty=(e.clientY-r.top);
+      fireTongue(tx,ty);
+    }
+  });
+  requestAnimationFrame(loop);
+}
+init();
+
+/* Exit confirmation */
+document.addEventListener('click',function(e){
+  var a=e.target.closest('a[href*="index.html"]');
+  if(a&&!a.id){e.preventDefault();if(confirm('Leave game? Your progress will be lost!'))location.assign(a.href);}
+});
+
+})();
+</script>
+<a href="../../index.html" id="__hubBack" aria-label="Back to Play Zone">‹</a>
 </body>
 </html>
