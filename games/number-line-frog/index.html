@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Number Line Frog — Play Zone</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#5b4ab8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Play Zone">
+<link rel="apple-touch-icon" href="/shared/apple-touch-icon.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Fredoka',sans-serif;color:#fff;touch-action:none;user-select:none;-webkit-user-select:none}
+body{background:#1a5c2a}
+
+/* ── overlays ── */
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:30;text-align:center;padding:1.5rem;transition:opacity .3s}
+.overlay.hidden{opacity:0;pointer-events:none}
+.overlay-bg{background:rgba(0,0,0,.75)}
+.overlay h1{font-size:clamp(2rem,6vw,3.2rem);margin-bottom:.3rem;text-shadow:2px 2px 8px rgba(0,0,0,.3)}
+.overlay h2{font-size:clamp(1.3rem,4vw,2rem);margin-bottom:.6rem;color:#a8e6a0}
+.overlay p{font-size:clamp(.9rem,2.8vw,1.1rem);color:rgba(255,255,255,.75);margin-bottom:1rem;max-width:420px;line-height:1.6}
+.btn{display:inline-block;padding:.65rem 2rem;border-radius:2rem;background:#a8e6a0;color:#1a3a1a;font-weight:700;font-size:clamp(1rem,3vw,1.15rem);border:none;cursor:pointer;font-family:inherit;margin:.35rem;text-decoration:none;box-shadow:0 4px 12px rgba(0,0,0,.15);transition:transform .15s,background .15s}
+.btn:hover{transform:scale(1.05)}
+.btn:active{transform:scale(.97)}
+.btn-blue{background:#64b5f6;color:#fff}
+.btn-green{background:#66bb6a;color:#fff}
+.btn-pink{background:#f48fb1;color:#fff}
+.btn-back{background:rgba(255,255,255,.18);color:#fff;box-shadow:none}
+
+/* ── level select grid ── */
+.level-scroll{max-height:clamp(300px,55vh,520px);overflow-y:auto;width:100%;padding:0 1rem;-webkit-overflow-scrolling:touch}
+.level-scroll::-webkit-scrollbar{width:6px}
+.level-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.3);border-radius:3px}
+.level-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(.5rem,1.2vw,.9rem);max-width:clamp(380px,60vw,700px);margin:0 auto;width:100%;padding:.5rem 0}
+.level-card{background:rgba(255,255,255,.12);border-radius:1rem;padding:clamp(.6rem,1.2vw,1rem) .4rem;cursor:pointer;border:2px solid transparent;transition:all .2s;text-align:center}
+.level-card:hover{background:rgba(255,255,255,.22);transform:translateY(-2px)}
+.level-card.locked{opacity:.4;cursor:default;pointer-events:none}
+.level-card .lv-num{font-size:clamp(1.3rem,2.5vw,2rem);font-weight:700}
+.level-card .lv-name{font-size:clamp(.55rem,1.2vw,.8rem);color:rgba(255,255,255,.7);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.level-card .lv-stars{font-size:clamp(.7rem,1.2vw,1rem);margin-top:3px;color:#a8e6a0}
+.section-label{grid-column:1/-1;font-size:clamp(.75rem,1.8vw,1rem);color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.1em;padding:.3rem 0 0;text-align:left;border-top:1px solid rgba(255,255,255,.12);margin-top:.3rem}
+
+/* ── game area ── */
+#gameWrap{position:absolute;inset:0;display:none;flex-direction:column;z-index:10}
+#hud{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;z-index:15;background:rgba(0,0,0,.3)}
+#hud .score{font-size:clamp(1.1rem,2.5vw,1.6rem);font-weight:700;text-shadow:1px 1px 4px rgba(0,0,0,.4)}
+#hud .progress{font-size:clamp(.9rem,2vw,1.3rem);color:rgba(255,255,255,.7)}
+#qArea{flex:0 0 auto;text-align:center;padding:clamp(8px,2vh,20px) 16px}
+#qArea .q-text{font-size:clamp(1.8rem,5.5vw,3rem);font-weight:700;text-shadow:2px 2px 6px rgba(0,0,0,.4)}
+#qArea .q-hint{font-size:clamp(.7rem,1.8vw,.85rem);color:#a8e6a0;margin-top:4px;font-style:italic}
+#scene{flex:1;position:relative;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+
+/* ── feedback ── */
+#feedback{position:absolute;top:35%;left:50%;transform:translate(-50%,-50%);z-index:20;font-size:clamp(2rem,8vw,4rem);font-weight:700;pointer-events:none;opacity:0;text-shadow:3px 3px 10px rgba(0,0,0,.3)}
+#feedback.show{opacity:1;animation:fbPop .6s ease-out forwards}
+@keyframes fbPop{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}30%{transform:translate(-50%,-50%) scale(1.2);opacity:1}100%{transform:translate(-50%,-80%) scale(1);opacity:0}}
+</style>
+</head>
+<body>
+<div id="wrap" style="width:100%;height:100%;position:relative;overflow:hidden">
+  <!-- GAME AREA -->
+  <div id="gameWrap">
+    <div id="hud">
+      <div class="score" id="hudScore">Score: 0</div>
+      <div class="progress" id="hudProg">1 / 10</div>
+    </div>
+    <div id="qArea">
+      <div class="q-text" id="qText"></div>
+      <div class="q-hint" id="qHint"></div>
+    </div>
+    <div id="scene"><canvas id="cv"></canvas></div>
+  </div>
+  <div id="feedback"></div>
+
+  <!-- TITLE -->
+  <div class="overlay overlay-bg" id="scrTitle">
+    <div style="font-size:4.5rem;margin-bottom:.3rem">🐸</div>
+    <h1>Number Line Frog</h1>
+    <p>Help Froggy hop to the right answer on the number line!</p>
+    <button class="btn" id="btnPlay">Play</button><br>
+    <a class="btn btn-back" href="../../index.html">&larr; Back</a>
+  </div>
+
+  <!-- LEVEL SELECT -->
+  <div class="overlay overlay-bg hidden" id="scrLevels">
+    <h2>Choose a Level</h2>
+    <div class="level-scroll"><div class="level-grid" id="levelGrid"></div></div>
+    <button class="btn btn-back" id="btnBackTitle">&larr; Back</button>
+  </div>
+
+  <!-- LEVEL INTRO -->
+  <div class="overlay overlay-bg hidden" id="scrIntro">
+    <div style="font-size:3.5rem;margin-bottom:.3rem" id="introIcon">🐸</div>
+    <h2 id="introTitle"></h2>
+    <p id="introDesc"></p>
+    <button class="btn" id="btnStartLevel">Let's Go!</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="overlay overlay-bg hidden" id="scrResults">
+    <h1 id="resTitle">Great Job!</h1>
+    <div id="resStars" style="font-size:3rem;margin:.5rem 0"></div>
+    <h2 id="resScore"></h2>
+    <p id="resMsg"></p>
+    <div id="resBtns"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ══════════════════════════════════════════
+   LEVEL DEFINITIONS — same 20-level curriculum
+   ══════════════════════════════════════════ */
+const LEVELS=[
+  {id:1,name:'Count Stars',icon:'⭐',section:'Counting',
+   desc:'Count the items and hop to that number!',
+   type:'count',range:[1,5],showDots:true,questions:8},
+  {id:2,name:'Count More',icon:'🌟',section:null,
+   desc:'Count up to 10! Hop Froggy to the right spot.',
+   type:'count',range:[1,10],showDots:true,questions:8},
+
+  {id:3,name:'Plus 1',icon:'1️⃣',section:'Addition Patterns',
+   desc:'Add 1 — the answer is always the next number on the line!',
+   type:'addN',n:1,aRange:[1,9],questions:10,
+   hint:'Adding 1 = the next number!'},
+  {id:4,name:'Plus 2',icon:'2️⃣',section:null,
+   desc:'Add 2 — hop 2 spaces forward!',
+   type:'addN',n:2,aRange:[1,8],questions:10,
+   hint:'Hold the big number, count 2 more!'},
+  {id:5,name:'Plus 3',icon:'3️⃣',section:null,
+   desc:'Add 3 — three hops forward!',
+   type:'addN',n:3,aRange:[1,7],questions:10,
+   hint:'Hold the number, count up 3!'},
+  {id:6,name:'Plus 4',icon:'4️⃣',section:null,
+   desc:'Add 4 to any number.',
+   type:'addN',n:4,aRange:[1,6],questions:10,
+   hint:'Think: what is 4 more?'},
+  {id:7,name:'Plus 5',icon:'5️⃣',section:null,
+   desc:'Add 5 — half of 10!',
+   type:'addN',n:5,aRange:[1,5],questions:10,
+   hint:'5 is half of 10!'},
+
+  {id:8,name:'Friends of 10',icon:'🤝',section:'Building Fluency',
+   desc:'Find pairs that add up to 10!',
+   type:'friends10',questions:10,
+   hint:'1+9, 2+8, 3+7, 4+6, 5+5'},
+  {id:9,name:'Plus 6-9',icon:'💪',section:null,
+   desc:'Add bigger numbers! Make 10 first.',
+   type:'add',range:[2,9],minB:6,maxSum:18,questions:10,
+   hint:'Make 10 first, then add the rest!'},
+  {id:10,name:'Sums to 20',icon:'🧠',section:null,
+   desc:'Any addition up to 20!',
+   type:'add',range:[1,15],maxSum:20,questions:10},
+
+  {id:11,name:'2-Digit + 1-Digit',icon:'📐',section:'Bigger Numbers',
+   desc:'Add a small number to a bigger number.',
+   type:'add2d1d',carry:false,questions:10,
+   hint:'Just add the ones digits!'},
+  {id:12,name:'2-Digit + 2-Digit',icon:'📏',section:null,
+   desc:'Add two bigger numbers together.',
+   type:'add2d2d',carry:false,questions:10,
+   hint:'Add tens first, then ones!'},
+  {id:13,name:'Carry to 20',icon:'🔥',section:null,
+   desc:'When ones add up past 10, carry!',
+   type:'add',range:[2,9],maxSum:20,minSum:11,questions:10,
+   hint:'Make 10, carry the rest!'},
+  {id:14,name:'2-Digit + Carry',icon:'🏆',section:null,
+   desc:'Two-digit addition with carrying.',
+   type:'add2d1d',carry:true,questions:10,
+   hint:'When ones go over 9, carry 1 to tens!'},
+  {id:15,name:'Speed Addition',icon:'⚡',section:null,
+   desc:'Mix of all addition types!',
+   type:'mixedAdd',questions:12},
+
+  {id:16,name:'Minus 1',icon:'👇',section:'Subtraction',
+   desc:'Take away 1 — hop backwards one!',
+   type:'subN',n:1,aRange:[2,10],questions:10,
+   hint:'Minus 1 = the number before!'},
+  {id:17,name:'Minus 2-3',icon:'✌️',section:null,
+   desc:'Take away 2 or 3 — hop backwards!',
+   type:'sub',range:[2,3],aRange:[4,10],questions:10,
+   hint:'Count backwards!'},
+  {id:18,name:'From 10',icon:'🔟',section:null,
+   desc:'10 minus something.',
+   type:'subFrom10',questions:10,
+   hint:'10 - 3 = 7 because 3 + 7 = 10!'},
+  {id:19,name:'Subtract to 20',icon:'🎯',section:null,
+   desc:'Subtraction with numbers up to 20.',
+   type:'sub',range:[1,9],aRange:[5,20],questions:10,
+   hint:'Think: what + ? = the big number?'},
+  {id:20,name:'Speed Mix!',icon:'🚀',section:null,
+   desc:'Addition AND subtraction mixed!',
+   type:'mixedAll',questions:12}
+];
+
+const PRAISE=['Great!','Awesome!','Yes!','Perfect!','Super!','Wow!','Nice!','Cool!','Correct!','Bravo!'];
+const ENCOURAGE=['Try again!','Almost!','Not quite!','Keep going!','You can do it!','Oops!'];
+
+/* ══════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════ */
+const cvs=document.getElementById('cv');
+const C=cvs.getContext('2d');
+let W=0,H=0;
+
+let gameScreen='title'; // title, levels, intro, playing, results
+let curLevel=null;
+let questions=[];
+let qIdx=0;
+let score=0;
+let firstTries=0;
+let triedThisQ=false;
+let answered=false;
+let answerCooldown=0;
+let correctAnswer=0;
+
+// number line state
+let nlMin=0,nlMax=10; // visible range on number line
+let nlNumbers=[]; // clickable positions
+let frogX=0,frogTargetX=0,frogY=0;
+let frogAnim=0; // 0=idle, >0 = hopping anim progress
+let frogLanded=false;
+let frogStartNum=0; // where frog starts (for addN: the first operand)
+let hopArcs=[]; // visual arcs showing hops
+let countItems=[]; // visual items to count for count-type questions
+let countIcon='⭐';
+
+// decorations
+let lilypads=[];
+let ripples=[];
+let flies=[];
+let clouds=[];
+
+// progress
+let progress={unlocked:1,stars:{}};
+function loadProgress(){try{const d=JSON.parse(localStorage.getItem('nlfrog_progress'));if(d){progress=d}}catch(e){}}
+function saveProgress(){try{localStorage.setItem('nlfrog_progress',JSON.stringify(progress))}catch(e){}}
+
+// audio
+let ac=null;
+function aInit(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)()}
+function tone(f,dur,type,vol){if(!ac)return;const o=ac.createOscillator(),g=ac.createGain();o.type=type||'sine';o.frequency.value=f;g.gain.setValueAtTime(vol||.12,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+dur);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+dur)}
+function sHop(){tone(500,.06,'square',.08);setTimeout(()=>tone(700,.05,'square',.06),50)}
+function sCorrect(){tone(600,.08,'square',.1);setTimeout(()=>tone(900,.08,'square',.08),80)}
+function sWrong(){tone(200,.15,'triangle',.08);setTimeout(()=>tone(160,.15,'triangle',.06),100)}
+function sWin(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.12,'square',.08),i*100))}
+function sStar(){tone(880,.1,'sine',.08);setTimeout(()=>tone(1100,.15,'sine',.1),80)}
+function sSplash(){tone(300,.1,'triangle',.06);setTimeout(()=>tone(200,.08,'triangle',.04),60)}
+
+/* ══════════════════════════════════════════
+   RESIZE
+   ══════════════════════════════════════════ */
+function resize(){
+  const scene=document.getElementById('scene');
+  W=scene.clientWidth;H=scene.clientHeight;
+  if(W===0||H===0){W=window.innerWidth;H=Math.round(window.innerHeight*0.55)}
+  cvs.width=W*devicePixelRatio;cvs.height=H*devicePixelRatio;
+  cvs.style.width=W+'px';cvs.style.height=H+'px';
+  C.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  initDecorations();
+}
+window.addEventListener('resize',resize);
+
+/* ══════════════════════════════════════════
+   DECORATIONS
+   ══════════════════════════════════════════ */
+function initDecorations(){
+  clouds=[];
+  for(let i=0;i<5;i++){
+    clouds.push({x:Math.random()*W,y:H*0.02+Math.random()*H*0.15,w:W*0.06+Math.random()*W*0.08,h:H*0.04+Math.random()*H*0.04,spd:0.1+Math.random()*0.2,a:0.25+Math.random()*0.2});
+  }
+  flies=[];
+  for(let i=0;i<4;i++){
+    flies.push({x:W*0.1+Math.random()*W*0.8,y:H*0.1+Math.random()*H*0.3,phase:Math.random()*Math.PI*2,spd:0.5+Math.random()});
+  }
+}
+
+/* ══════════════════════════════════════════
+   QUESTION GENERATION (shared curriculum)
+   ══════════════════════════════════════════ */
+function randInt(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
+
+function generateQuestions(lv){
+  const qs=[];const used=new Set();
+  for(let i=0;i<lv.questions;i++){
+    let q,attempts=0;
+    do{q=makeQuestion(lv);attempts++}while(used.has(q.key)&&attempts<80);
+    used.add(q.key);qs.push(q);
+  }
+  return qs;
+}
+
+function makeQuestion(lv){
+  const t=lv.type;
+
+  if(t==='count'){
+    const n=randInt(lv.range[0],lv.range[1]);
+    return{type:'count',answer:n,text:'How many? Count and hop!',dotCount:n,startAt:0,
+      nlRange:[0,Math.max(10,n+3)],key:'c'+n+'_'+Math.random()};
+  }
+  if(t==='addN'){
+    const a=randInt(lv.aRange[0],lv.aRange[1]);const ans=a+lv.n;
+    return{type:'add',a,b:lv.n,answer:ans,text:`${a} + ${lv.n} = ?`,startAt:a,
+      nlRange:[0,Math.max(12,ans+3)],key:'an'+a+'_'+lv.n,hint:lv.hint};
+  }
+  if(t==='friends10'){
+    const a=randInt(1,9);const b=10-a;
+    return{type:'add',a,b,answer:10,text:`${a} + ? = 10`,startAt:a,
+      nlRange:[0,12],key:'f10_'+a,hint:lv.hint};
+  }
+  if(t==='add'){
+    let a,b;
+    do{a=randInt(lv.range[0],lv.range[1]);b=randInt(lv.minB||lv.range[0],lv.range[1])}
+    while(a+b>(lv.maxSum||20)||a+b<(lv.minSum||2));
+    const ans=a+b;
+    return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,startAt:a,
+      nlRange:[0,Math.max(20,ans+2)],key:'a'+a+'_'+b,hint:lv.hint};
+  }
+  if(t==='add2d1d'){
+    let a,b,ans;
+    do{a=randInt(11,89);b=randInt(2,9);ans=a+b;
+      const onesSum=(a%10)+b;
+      if(lv.carry&&onesSum<10)continue;
+      if(!lv.carry&&onesSum>=10)continue;
+      break;
+    }while(true);
+    return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,startAt:a,
+      nlRange:[Math.max(0,a-3),ans+4],key:'2d1d'+a+'_'+b,hint:lv.hint};
+  }
+  if(t==='add2d2d'){
+    let a,b;
+    do{a=randInt(10,49);b=randInt(10,49)}while((a%10)+(b%10)>=10||a+b>99);
+    const ans=a+b;
+    return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,startAt:a,
+      nlRange:[Math.max(0,a-3),Math.min(99,ans+4)],key:'2d2d'+a+'_'+b,hint:lv.hint};
+  }
+  if(t==='subN'){
+    const a=randInt(lv.aRange[0],lv.aRange[1]);const ans=a-lv.n;
+    return{type:'sub',a,b:lv.n,answer:ans,text:`${a} - ${lv.n} = ?`,startAt:a,
+      nlRange:[0,Math.max(12,a+2)],key:'sn'+a+'_'+lv.n,hint:lv.hint};
+  }
+  if(t==='subFrom10'){
+    const b=randInt(1,9);const ans=10-b;
+    return{type:'sub',a:10,b,answer:ans,text:`10 - ${b} = ?`,startAt:10,
+      nlRange:[0,12],key:'sf10_'+b,hint:lv.hint};
+  }
+  if(t==='sub'){
+    let a,b;
+    do{a=randInt(lv.aRange[0],lv.aRange[1]);b=randInt(lv.range[0],lv.range[1])}while(a-b<0||a===b);
+    const ans=a-b;
+    return{type:'sub',a,b,answer:ans,text:`${a} - ${b} = ?`,startAt:a,
+      nlRange:[Math.max(0,ans-2),Math.max(20,a+2)],key:'s'+a+'_'+b,hint:lv.hint};
+  }
+  if(t==='mixedAdd'){
+    const types=['add','addN','add2d1d','friends10'];
+    const pick=types[randInt(0,types.length-1)];
+    if(pick==='addN'){const n=randInt(1,5),a=randInt(1,10-n),ans=a+n;
+      return{type:'add',a,b:n,answer:ans,text:`${a} + ${n} = ?`,startAt:a,nlRange:[0,Math.max(12,ans+3)],key:'ma'+a+'_'+n};}
+    if(pick==='friends10'){const a=randInt(1,9),b=10-a;
+      return{type:'add',a,b,answer:10,text:`${a} + ${b} = ?`,startAt:a,nlRange:[0,12],key:'mf'+a};}
+    if(pick==='add2d1d'){const a=randInt(11,49),b=randInt(2,9);
+      if((a%10)+b<10){const ans=a+b;
+        return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,startAt:a,nlRange:[Math.max(0,a-3),ans+4],key:'m2d'+a+'_'+b};}}
+    const a=randInt(2,12),b=randInt(2,8),ans=a+b;
+    return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,startAt:a,nlRange:[0,Math.max(20,ans+2)],key:'mx'+a+'_'+b};
+  }
+  if(t==='mixedAll'){
+    if(Math.random()<0.5){const a=randInt(2,15),b=randInt(1,9),ans=a+b;
+      return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,startAt:a,nlRange:[0,Math.max(20,ans+2)],key:'xa'+a+'_'+b};}
+    else{const a=randInt(5,20),b=randInt(1,Math.min(9,a-1)),ans=a-b;
+      return{type:'sub',a,b,answer:ans,text:`${a} - ${b} = ?`,startAt:a,nlRange:[Math.max(0,ans-2),Math.max(20,a+2)],key:'xs'+a+'_'+b};}
+  }
+  const a=randInt(1,5),b=randInt(1,5),ans=a+b;
+  return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,startAt:a,nlRange:[0,12],key:'fb'+a+'_'+b};
+}
+
+/* ══════════════════════════════════════════
+   NUMBER LINE SETUP
+   ══════════════════════════════════════════ */
+function setupNumberLine(q){
+  nlMin=q.nlRange[0];nlMax=q.nlRange[1];
+  // For large ranges, only show a window around the answer
+  const span=nlMax-nlMin;
+  if(span>25){
+    const center=Math.round((q.startAt+q.answer)/2);
+    nlMin=Math.max(0,center-10);
+    nlMax=center+10;
+  }
+  nlNumbers=[];
+  for(let i=nlMin;i<=nlMax;i++)nlNumbers.push(i);
+
+  frogStartNum=q.startAt||0;
+  frogTargetX=numToX(frogStartNum);
+  frogX=frogTargetX;
+  frogY=getLineY()-40;
+  frogAnim=0;
+  frogLanded=true;
+  hopArcs=[];
+  lilypads=[];
+  // lilypads at each number position
+  for(let i=nlMin;i<=nlMax;i++){
+    lilypads.push({x:numToX(i),n:i});
+  }
+
+  // items to count for count-type questions
+  countItems=[];
+  if(q.type==='count'&&q.dotCount){
+    countIcon=curLevel&&curLevel.icon?curLevel.icon:'⭐';
+    const n=q.dotCount;
+    const areaTop=H*0.18, areaBot=H*0.55;
+    const areaLeft=W*0.12, areaRight=W*0.88;
+    const cols=Math.min(n,5);
+    const rows=Math.ceil(n/cols);
+    const cellW=(areaRight-areaLeft)/cols;
+    const cellH=(areaBot-areaTop)/Math.max(rows,1);
+    for(let i=0;i<n;i++){
+      const r=Math.floor(i/cols),c=i%cols;
+      const itemsInRow=(r===rows-1)?(n-r*cols):cols;
+      const rowW=itemsInRow*cellW;
+      const rowStart=(W-rowW)/2+cellW/2;
+      countItems.push({
+        x:rowStart+c*cellW,
+        y:areaTop+cellH*(r+0.5),
+        phase:Math.random()*Math.PI*2
+      });
+    }
+  }
+}
+
+function numToX(n){
+  if(nlNumbers.length<=1)return W/2;
+  const margin=W*0.08;
+  const usable=W-margin*2;
+  const frac=(n-nlMin)/(nlMax-nlMin);
+  return margin+frac*usable;
+}
+
+function getLineY(){return H*0.72}
+
+function xToNum(px){
+  // find nearest number
+  let best=-1,bestDist=Infinity;
+  for(const n of nlNumbers){
+    const d=Math.abs(numToX(n)-px);
+    if(d<bestDist){bestDist=d;best=n}
+  }
+  return best;
+}
+
+/* ══════════════════════════════════════════
+   DRAWING
+   ══════════════════════════════════════════ */
+function render(){
+  // sky gradient
+  const sky=C.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,'#87CEEB');sky.addColorStop(0.45,'#b5e8ff');sky.addColorStop(0.65,'#d4f5d4');sky.addColorStop(1,'#2d6b3a');
+  C.fillStyle=sky;C.fillRect(0,0,W,H);
+
+  // clouds
+  for(const c of clouds){
+    C.globalAlpha=c.a;C.fillStyle='#fff';
+    C.beginPath();C.ellipse(c.x,c.y,c.w*.5,c.h*.5,0,0,Math.PI*2);C.fill();
+    C.beginPath();C.ellipse(c.x-c.w*.25,c.y+c.h*.1,c.w*.3,c.h*.35,0,0,Math.PI*2);C.fill();
+    C.beginPath();C.ellipse(c.x+c.w*.25,c.y+c.h*.05,c.w*.35,c.h*.4,0,0,Math.PI*2);C.fill();
+    C.globalAlpha=1;
+  }
+
+  // flies
+  const t=Date.now()/1000;
+  for(const f of flies){
+    const fx=f.x+Math.sin(t*f.spd+f.phase)*30;
+    const fy=f.y+Math.cos(t*f.spd*1.3+f.phase)*15;
+    C.fillStyle='#333';C.beginPath();C.arc(fx,fy,2.5,0,Math.PI*2);C.fill();
+    // wings
+    C.globalAlpha=0.4;C.fillStyle='#fff';
+    C.beginPath();C.ellipse(fx-3,fy-2,4,2,-.3,0,Math.PI*2);C.fill();
+    C.beginPath();C.ellipse(fx+3,fy-2,4,2,.3,0,Math.PI*2);C.fill();
+    C.globalAlpha=1;
+  }
+
+  if(gameScreen!=='playing')return;
+
+  // items to count (for count-type questions)
+  if(countItems.length){
+    const iconSize=Math.min(56,Math.max(32,W*0.055));
+    C.font=`${iconSize}px Fredoka,sans-serif`;
+    C.textAlign='center';C.textBaseline='middle';
+    const tNow=Date.now()/1000;
+    for(let i=0;i<countItems.length;i++){
+      const it=countItems[i];
+      const bob=Math.sin(tNow*1.5+it.phase)*4;
+      // subtle glow halo
+      C.globalAlpha=0.25;
+      C.fillStyle='#fff';
+      C.beginPath();C.arc(it.x,it.y+bob,iconSize*0.55,0,Math.PI*2);C.fill();
+      C.globalAlpha=1;
+      C.fillText(countIcon,it.x,it.y+bob);
+    }
+  }
+
+  const ly=getLineY();
+
+  // water/pond area
+  C.fillStyle='#3a8f5c';C.fillRect(0,ly+25,W,H-ly-25);
+  // water ripple lines
+  C.strokeStyle='rgba(255,255,255,.12)';C.lineWidth=1;
+  for(let i=0;i<4;i++){
+    const wy=ly+35+i*12;
+    C.beginPath();
+    for(let x=0;x<W;x+=5)C.lineTo(x,wy+Math.sin((x+t*40+i*50)*0.03)*3);
+    C.stroke();
+  }
+
+  // number line
+  const lineLeft=numToX(nlMin);const lineRight=numToX(nlMax);
+  C.strokeStyle='#5d4037';C.lineWidth=4;
+  C.beginPath();C.moveTo(lineLeft-10,ly);C.lineTo(lineRight+10,ly);C.stroke();
+
+  // tick marks and numbers
+  const tickH=12;
+  const fontSize=Math.min(16,W/(nlNumbers.length*2.5));
+  C.font=`700 ${Math.max(10,fontSize)}px Fredoka,sans-serif`;
+  C.textAlign='center';C.textBaseline='top';
+  for(const n of nlNumbers){
+    const nx=numToX(n);
+    // lilypad
+    C.fillStyle='#4caf50';C.globalAlpha=0.6;
+    C.beginPath();C.ellipse(nx,ly,Math.min(18,W/(nlNumbers.length*1.2)),8,0,0,Math.PI*2);C.fill();
+    C.globalAlpha=1;
+    // tick
+    C.strokeStyle='#5d4037';C.lineWidth=2;
+    C.beginPath();C.moveTo(nx,ly-tickH/2);C.lineTo(nx,ly+tickH/2);C.stroke();
+    // number label
+    C.fillStyle=n===correctAnswer?'#fff':'rgba(255,255,255,.85)';
+    C.fillText(n,nx,ly+tickH/2+4);
+  }
+
+  // frog starting position marker (filled circle)
+  if(frogStartNum>=nlMin&&frogStartNum<=nlMax){
+    const sx=numToX(frogStartNum);
+    C.fillStyle='rgba(76,175,80,.3)';
+    C.beginPath();C.arc(sx,ly,14,0,Math.PI*2);C.fill();
+  }
+
+  // hop arcs
+  C.strokeStyle='rgba(76,175,80,.5)';C.lineWidth=2;C.setLineDash([4,4]);
+  for(const arc of hopArcs){
+    const sx=numToX(arc.from),ex=numToX(arc.to);
+    const mx=(sx+ex)/2,my=ly-Math.abs(ex-sx)*0.4-20;
+    C.beginPath();C.moveTo(sx,ly-10);C.quadraticCurveTo(mx,my,ex,ly-10);C.stroke();
+  }
+  C.setLineDash([]);
+
+  // ripples
+  for(const r of ripples){
+    C.globalAlpha=r.life;C.strokeStyle='rgba(255,255,255,.4)';C.lineWidth=1.5;
+    C.beginPath();C.ellipse(r.x,r.y,r.radius,r.radius*0.4,0,0,Math.PI*2);C.stroke();
+    C.globalAlpha=1;
+  }
+
+  // frog
+  drawFrog(frogX,frogY);
+}
+
+function drawFrog(x,y){
+  const s=Math.min(32,W*0.035);
+  C.save();C.translate(x,y);
+
+  // body shadow
+  C.globalAlpha=0.15;C.fillStyle='#000';
+  C.beginPath();C.ellipse(3,s*0.8,s*0.7,s*0.25,0,0,Math.PI*2);C.fill();
+  C.globalAlpha=1;
+
+  // back legs
+  C.fillStyle='#2e7d32';
+  C.beginPath();C.ellipse(-s*0.6,s*0.3,s*0.4,s*0.15,-0.3,0,Math.PI*2);C.fill();
+  C.beginPath();C.ellipse(s*0.6,s*0.3,s*0.4,s*0.15,0.3,0,Math.PI*2);C.fill();
+
+  // body
+  const grad=C.createRadialGradient(0,-s*0.1,s*0.1,0,0,s*0.8);
+  grad.addColorStop(0,'#66bb6a');grad.addColorStop(0.7,'#43a047');grad.addColorStop(1,'#2e7d32');
+  C.fillStyle=grad;
+  C.beginPath();C.ellipse(0,0,s*0.65,s*0.55,0,0,Math.PI*2);C.fill();
+
+  // belly
+  C.fillStyle='#a5d6a7';
+  C.beginPath();C.ellipse(0,s*0.1,s*0.4,s*0.3,0,0,Math.PI*2);C.fill();
+
+  // eyes
+  const eyeOff=s*0.28;
+  // white
+  C.fillStyle='#fff';
+  C.beginPath();C.arc(-eyeOff,-s*0.3,s*0.2,0,Math.PI*2);C.fill();
+  C.beginPath();C.arc(eyeOff,-s*0.3,s*0.2,0,Math.PI*2);C.fill();
+  // pupil
+  C.fillStyle='#1b5e20';
+  C.beginPath();C.arc(-eyeOff,-s*0.3,s*0.1,0,Math.PI*2);C.fill();
+  C.beginPath();C.arc(eyeOff,-s*0.3,s*0.1,0,Math.PI*2);C.fill();
+  // shine
+  C.fillStyle='#fff';
+  C.beginPath();C.arc(-eyeOff-s*0.04,-s*0.34,s*0.04,0,Math.PI*2);C.fill();
+  C.beginPath();C.arc(eyeOff-s*0.04,-s*0.34,s*0.04,0,Math.PI*2);C.fill();
+
+  // mouth (smile)
+  C.strokeStyle='#2e7d32';C.lineWidth=1.5;
+  C.beginPath();C.arc(0,-s*0.05,s*0.2,0.2,Math.PI-0.2);C.stroke();
+
+  // front legs (little feet)
+  C.fillStyle='#2e7d32';
+  C.beginPath();C.ellipse(-s*0.45,s*0.35,s*0.12,s*0.08,0,0,Math.PI*2);C.fill();
+  C.beginPath();C.ellipse(s*0.45,s*0.35,s*0.12,s*0.08,0,0,Math.PI*2);C.fill();
+
+  C.restore();
+}
+
+/* ══════════════════════════════════════════
+   UPDATE LOOP
+   ══════════════════════════════════════════ */
+let lastT=0;
+function loop(ts){
+  const dt=Math.min((ts-lastT)/1000,0.05);lastT=ts;
+
+  // clouds
+  for(const c of clouds){c.x+=c.spd*dt*30;if(c.x>W+c.w)c.x=-c.w}
+
+  // ripples
+  for(let i=ripples.length-1;i>=0;i--){
+    const r=ripples[i];r.radius+=dt*30;r.life-=dt*1.5;
+    if(r.life<=0)ripples.splice(i,1);
+  }
+
+  // frog animation
+  if(frogAnim>0&&frogAnim<=1){
+    frogAnim+=dt*2.5; // speed of hop
+    if(frogAnim>1)frogAnim=1;
+    const t=frogAnim;
+    const startX=numToX(frogStartNum);
+    const endX=frogTargetX;
+    frogX=startX+(endX-startX)*t;
+    // parabolic arc
+    const arcH=Math.min(80,Math.abs(endX-startX)*0.5);
+    frogY=getLineY()-40-arcH*4*t*(1-t);
+
+    if(frogAnim>=1){
+      frogAnim=0;frogLanded=true;
+      frogX=endX;frogY=getLineY()-40;
+      // splash ripple
+      ripples.push({x:frogX,y:getLineY()+5,radius:5,life:1});
+      sSplash();
+    }
+  }
+
+  // answer cooldown
+  if(gameScreen==='playing'&&answerCooldown>0){
+    answerCooldown-=dt;
+    if(answerCooldown<=0&&answered){qIdx++;nextQuestion()}
+  }
+
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* ══════════════════════════════════════════
+   GAME FLOW
+   ══════════════════════════════════════════ */
+function showScreen(id){
+  document.querySelectorAll('.overlay').forEach(el=>el.classList.add('hidden'));
+  if(id)document.getElementById(id).classList.remove('hidden');
+  document.getElementById('gameWrap').style.display=gameScreen==='playing'?'flex':'none';
+}
+
+function goTitle(){gameScreen='title';showScreen('scrTitle')}
+function goLevels(){gameScreen='levels';buildLevelGrid();showScreen('scrLevels')}
+function goIntro(lv){
+  curLevel=lv;
+  document.getElementById('introIcon').textContent=lv.icon;
+  document.getElementById('introTitle').textContent='Level '+lv.id+': '+lv.name;
+  document.getElementById('introDesc').textContent=lv.desc;
+  showScreen('scrIntro');
+}
+function startLevel(){
+  gameScreen='playing';showScreen(null);
+  document.getElementById('gameWrap').style.display='flex';
+  setTimeout(()=>{resize();
+    questions=generateQuestions(curLevel);
+    qIdx=0;score=0;firstTries=0;
+    nextQuestion();
+  },50);
+}
+function nextQuestion(){
+  if(qIdx>=questions.length){finishLevel();return}
+  const q=questions[qIdx];
+  correctAnswer=q.answer;triedThisQ=false;answered=false;answerCooldown=0;
+  setupNumberLine(q);
+  document.getElementById('qText').textContent=q.text;
+  document.getElementById('qHint').textContent=q.hint||'';
+  updateHUD();
+}
+function finishLevel(){
+  gameScreen='results';
+  document.getElementById('gameWrap').style.display='none';
+  const total=questions.length,pct=firstTries/total;
+  let stars=1;if(pct>=7/8)stars=3;else if(pct>=5/8)stars=2;
+
+  const prev=progress.stars[curLevel.id]||0;
+  if(stars>prev)progress.stars[curLevel.id]=stars;
+  if(curLevel.id>=progress.unlocked&&stars>=1)progress.unlocked=Math.min(LEVELS.length,curLevel.id+1);
+  saveProgress();
+
+  document.getElementById('resStars').textContent='\u2B50'.repeat(stars)+'\u2606'.repeat(3-stars);
+  document.getElementById('resScore').textContent=`${firstTries} / ${total} first try!`;
+  const msgs=['Keep practicing!','Good job!','Amazing work!'];
+  document.getElementById('resMsg').textContent=msgs[stars-1];
+
+  let btns='';
+  if(stars<3)btns+=`<button class="btn btn-pink" onclick="window._retry()">Try Again</button>`;
+  if(curLevel.id<LEVELS.length&&progress.unlocked>curLevel.id)
+    btns+=`<button class="btn btn-green" onclick="window._nextLv()">Next Level</button>`;
+  btns+=`<button class="btn btn-blue" onclick="window._goLevels()">Level Select</button>`;
+  document.getElementById('resBtns').innerHTML=btns;
+  showScreen('scrResults');sWin();
+  for(let i=0;i<stars;i++)setTimeout(()=>sStar(),400+i*300);
+}
+function updateHUD(){
+  document.getElementById('hudScore').textContent='Score: '+score;
+  document.getElementById('hudProg').textContent=(qIdx+1)+' / '+questions.length;
+}
+
+/* ══════════════════════════════════════════
+   LEVEL GRID
+   ══════════════════════════════════════════ */
+function buildLevelGrid(){
+  const grid=document.getElementById('levelGrid');grid.innerHTML='';
+  for(const lv of LEVELS){
+    if(lv.section){
+      const label=document.createElement('div');label.className='section-label';label.textContent=lv.section;
+      grid.appendChild(label);
+    }
+    const card=document.createElement('div');
+    card.className='level-card'+(lv.id>progress.unlocked?' locked':'');
+    const st=progress.stars[lv.id]||0;
+    card.innerHTML=`
+      <div class="lv-num">${lv.icon}</div>
+      <div class="lv-name">${lv.name}</div>
+      <div class="lv-stars">${st>0?'\u2B50'.repeat(st)+'\u2606'.repeat(3-st):(lv.id<=progress.unlocked?'\u2606\u2606\u2606':'\uD83D\uDD12')}</div>
+    `;
+    if(lv.id<=progress.unlocked)card.addEventListener('click',()=>{aInit();goIntro(lv)});
+    grid.appendChild(card);
+  }
+}
+
+/* ══════════════════════════════════════════
+   INPUT — tap on number line
+   ══════════════════════════════════════════ */
+function handleTap(px,py){
+  if(gameScreen!=='playing'||answered||answerCooldown>0||!frogLanded)return;
+  aInit();
+  // get canvas-relative coords
+  const rect=cvs.getBoundingClientRect();
+  const cx=px-rect.left;
+  const cy=py-rect.top;
+
+  // check if tap is near the number line area
+  const ly=getLineY();
+  if(cy<ly-60||cy>ly+50)return; // too far from number line
+
+  const tapped=xToNum(cx);
+  if(tapped<0)return;
+
+  // hop frog to tapped position
+  frogTargetX=numToX(tapped);
+  frogLanded=false;
+  frogAnim=0.001;
+  sHop();
+
+  // add hop arc
+  hopArcs.push({from:frogStartNum,to:tapped});
+
+  // check after hop lands
+  setTimeout(()=>{
+    if(tapped===correctAnswer){
+      answered=true;answerCooldown=1.5;score++;
+      if(!triedThisQ)firstTries++;
+      sCorrect();
+      showFeedback(PRAISE[Math.floor(Math.random()*PRAISE.length)],'#a8e6a0');
+      updateHUD();
+    }else{
+      triedThisQ=true;sWrong();
+      showFeedback(ENCOURAGE[Math.floor(Math.random()*ENCOURAGE.length)],'#ff9999');
+      answerCooldown=0.6;
+      // hop back to start
+      setTimeout(()=>{
+        frogStartNum=tapped; // update start position for visual
+        // Actually hop back to original start
+        const origStart=questions[qIdx].startAt||0;
+        frogTargetX=numToX(origStart);
+        frogStartNum=tapped;
+        frogLanded=false;
+        frogAnim=0.001;
+        hopArcs=[];
+        setTimeout(()=>{frogStartNum=origStart},500);
+      },400);
+    }
+  },450);
+}
+
+cvs.addEventListener('click',e=>handleTap(e.clientX,e.clientY));
+cvs.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];handleTap(t.clientX,t.clientY)},{passive:false});
+
+/* ══════════════════════════════════════════
+   FEEDBACK
+   ══════════════════════════════════════════ */
+const fbEl=document.getElementById('feedback');
+function showFeedback(text,color){
+  fbEl.textContent=text;fbEl.style.color=color||'#fff';
+  fbEl.classList.remove('show');void fbEl.offsetWidth;fbEl.classList.add('show');
+}
+
+/* ══════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════ */
+document.getElementById('btnPlay').addEventListener('click',()=>{aInit();goLevels()});
+document.getElementById('btnBackTitle').addEventListener('click',()=>goTitle());
+document.getElementById('btnStartLevel').addEventListener('click',()=>{aInit();startLevel()});
+window._retry=()=>{aInit();startLevel()};
+window._nextLv=()=>{aInit();const nxt=LEVELS.find(l=>l.id===curLevel.id+1);if(nxt)goIntro(nxt)};
+window._goLevels=()=>goLevels();
+
+loadProgress();
+resize();
+initDecorations();
+requestAnimationFrame(loop);
+
+/* ── Exit confirmation ── */
+document.addEventListener('click',function(e){
+  var a=e.target.closest('a[href*="index.html"]');
+  if(a){e.preventDefault();if(confirm('Leave game? Your progress will be lost!'))location.assign(a.href);}
+});
+
+})();
+</script>
+<a href="../../index.html" id="__hubBack" aria-label="Back to Play Zone">‹</a>
+<style>#__hubBack{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 8px);z-index:99999;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1;font-weight:700;text-decoration:none;border:2px solid rgba(255,255,255,.45);box-shadow:0 2px 8px rgba(0,0,0,.35);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation}#__hubBack:active{background:rgba(0,0,0,.8);transform:scale(.92)}</style>
+</body>
+</html>

@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>🎮 Play Zone</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#5b4ab8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Play Zone">
+<link rel="apple-touch-icon" href="/shared/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/shared/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="/shared/icon-512.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Lilita+One&display=swap');
 
@@ -102,6 +110,36 @@
     font-weight: 400;
   }
 
+  /* Category sections */
+  .category {
+    margin-bottom: 2.5rem;
+  }
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .category-icon {
+    font-size: 1.6rem;
+  }
+  .category-title {
+    font-family: 'Lilita One', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.02em;
+    color: rgba(255,255,255,0.85);
+  }
+  .category-count {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.06);
+    padding: 0.15rem 0.55rem;
+    border-radius: 1rem;
+  }
+
   /* Game Grid */
   .game-grid {
     display: grid;
@@ -183,40 +221,15 @@
     align-self: flex-start;
   }
 
-  /* Color accents per card */
-  .game-card:nth-child(1) { --glow-color: rgba(255,100,150,0.2); }
-  .game-card:nth-child(2) { --glow-color: rgba(100,180,255,0.2); }
-  .game-card:nth-child(3) { --glow-color: rgba(255,180,50,0.2); }
-  .game-card:nth-child(4) { --glow-color: rgba(255,80,80,0.2); }
-  .game-card:nth-child(5) { --glow-color: rgba(80,230,180,0.2); }
-  .game-card:nth-child(6) { --glow-color: rgba(255,150,200,0.2); }
-  .game-card:nth-child(7) { --glow-color: rgba(100,150,255,0.2); }
-  .game-card:nth-child(8) { --glow-color: rgba(200,130,255,0.2); }
-  .game-card:nth-child(9) { --glow-color: rgba(80,200,120,0.2); }
-  .game-card:nth-child(10) { --glow-color: rgba(255,120,80,0.2); }
-  .game-card:nth-child(11) { --glow-color: rgba(120,255,200,0.2); }
-  .game-card:nth-child(12) { --glow-color: rgba(160,120,255,0.2); }
+  /* Glow colors set via inline --glow-color on each card */
 
-  /* Staggered entrance */
+  /* Staggered entrance — uses inline --d for per-card delay */
   .game-card {
     opacity: 0;
     transform: translateY(30px);
     animation: cardIn 0.5s ease forwards;
+    animation-delay: var(--d, 0s);
   }
-  .game-card:nth-child(1) { animation-delay: 0.05s; }
-  .game-card:nth-child(2) { animation-delay: 0.1s; }
-  .game-card:nth-child(3) { animation-delay: 0.15s; }
-  .game-card:nth-child(4) { animation-delay: 0.2s; }
-  .game-card:nth-child(5) { animation-delay: 0.25s; }
-  .game-card:nth-child(6) { animation-delay: 0.3s; }
-  .game-card:nth-child(7) { animation-delay: 0.35s; }
-  .game-card:nth-child(8) { animation-delay: 0.4s; }
-  .game-card:nth-child(9) { animation-delay: 0.45s; }
-  .game-card:nth-child(10) { animation-delay: 0.5s; }
-  .game-card:nth-child(11) { animation-delay: 0.55s; }
-  .game-card:nth-child(12) { animation-delay: 0.6s; }
-  .game-card:nth-child(13) { animation-delay: 0.65s; --glow-color: rgba(255,215,0,0.2); }
-  .game-card:nth-child(14) { animation-delay: 0.7s; --glow-color: rgba(80,200,80,0.2); }
 
   @keyframes cardIn {
     to { opacity: 1; transform: translateY(0); }
@@ -263,107 +276,151 @@
     <p class="subtitle">Move your body to play! 🕺💃</p>
   </header>
 
-  <div class="game-grid">
+  <!-- ═══ MATH & LEARNING ═══ -->
+  <section class="category">
+    <div class="category-header">
+      <span class="category-icon">🧮</span>
+      <span class="category-title">Math & Learning</span>
+      <span class="category-count">3 games</span>
+    </div>
+    <div class="game-grid">
+      <a class="game-card" href="games/balloon-math/index.html" style="--d:.05s;--glow-color:rgba(80,230,180,0.2)">
+        <span class="game-icon">🎈</span>
+        <div class="game-title">Balloon Math</div>
+        <div class="game-desc">Pop the balloon with the right answer — 20 levels of addition &amp; subtraction!</div>
+        <span class="game-tag">🧮 math + touch</span>
+      </a>
+      <a class="game-card" href="games/number-line-frog/index.html" style="--d:.1s;--glow-color:rgba(80,200,80,0.2)">
+        <span class="game-icon">🐸</span>
+        <div class="game-title">Number Line Frog</div>
+        <div class="game-desc">Help Froggy hop to the right answer on the number line!</div>
+        <span class="game-tag">🧮 math + touch</span>
+      </a>
+      <a class="game-card" href="games/math-monster/index.html" style="--d:.15s;--glow-color:rgba(160,120,255,0.2)">
+        <span class="game-icon">👾</span>
+        <div class="game-title">Math Monster</div>
+        <div class="game-desc">Feed the hungry monster the correct answer — wrong food makes him sick!</div>
+        <span class="game-tag">🧮 math + touch</span>
+      </a>
+    </div>
+  </section>
 
-    <a class="game-card" href="games/dance-party/index.html">
-      <span class="game-icon">💃</span>
-      <div class="game-title">Dance Party</div>
-      <div class="game-desc">Dance along and hit the moves with your whole body!</div>
-      <span class="game-tag">🎥 body tracking</span>
-    </a>
+  <!-- ═══ ACTION & ARCADE ═══ -->
+  <section class="category">
+    <div class="category-header">
+      <span class="category-icon">🕹️</span>
+      <span class="category-title">Action & Arcade</span>
+      <span class="category-count">8 games</span>
+    </div>
+    <div class="game-grid">
+      <a class="game-card" href="games/angry-birds/index.html" style="--d:.05s;--glow-color:rgba(255,180,50,0.2)">
+        <span class="game-icon">🐦</span>
+        <div class="game-title">Angry Birds</div>
+        <div class="game-desc">You ARE the bird! Launch yourself at the targets with your photo.</div>
+        <span class="game-tag">🎥 body tracking</span>
+      </a>
+      <a class="game-card" href="games/meteor-smasher/index.html" style="--d:.1s;--glow-color:rgba(255,80,80,0.2)">
+        <span class="game-icon">☄️</span>
+        <div class="game-title">Meteor Smasher Hero</div>
+        <div class="game-desc">Punch and smash meteors before they reach the ground!</div>
+        <span class="game-tag">🎥 hand tracking</span>
+      </a>
+      <a class="game-card" href="games/pacman-virus/index.html" style="--d:.15s;--glow-color:rgba(255,215,0,0.2)">
+        <span class="game-icon">🟡</span>
+        <div class="game-title">Pac-Chomp</div>
+        <div class="game-desc">Chomp viruses in a classic maze — chop like Baby Shark to move!</div>
+        <span class="game-tag">🎥 hand chop + keyboard</span>
+      </a>
+      <a class="game-card" href="games/lightsaber-fruit/index.html" style="--d:.2s;--glow-color:rgba(120,255,200,0.2)">
+        <span class="game-icon">⚔️</span>
+        <div class="game-title">Lightsaber Fruit</div>
+        <div class="game-desc">Slice flying fruit with your lightsaber hands — whoosh!</div>
+        <span class="game-tag">🎥 hand tracking</span>
+      </a>
+      <a class="game-card" href="games/balloon-pop/index.html" style="--d:.25s;--glow-color:rgba(255,150,200,0.2)">
+        <span class="game-icon">🎉</span>
+        <div class="game-title">Balloon Pop Party</div>
+        <div class="game-desc">Pop as many colorful balloons as you can — go wild!</div>
+        <span class="game-tag">🎥 hand tracking</span>
+      </a>
+      <a class="game-card" href="games/jump-ball/index.html" style="--d:.3s;--glow-color:rgba(100,150,255,0.2)">
+        <span class="game-icon">🏓</span>
+        <div class="game-title">Jump Ball</div>
+        <div class="game-desc">Play ping-pong with your body against a robot drone!</div>
+        <span class="game-tag">🎥 body tracking</span>
+      </a>
+      <a class="game-card" href="games/meccha-chameleon/index.html" style="--d:.35s;--glow-color:rgba(140,240,110,0.2)">
+        <span class="game-icon">🦎</span>
+        <div class="game-title">Meccha Chameleon</div>
+        <div class="game-desc">Hide and seek! Spot the camouflaged chameleons, or paint yourself to hide from the hunter.</div>
+        <span class="game-tag">👆 tap + colors</span>
+      </a>
+      <a class="game-card" href="games/suika/index.html" style="--d:.4s;--glow-color:rgba(255,120,80,0.2)">
+        <span class="game-icon">🍉</span>
+        <div class="game-title">Watermelon Chop!</div>
+        <div class="game-desc">Swing your arms like blades and slice the flying watermelons!</div>
+        <span class="game-tag">🎥 body tracking</span>
+      </a>
+    </div>
+  </section>
 
-    <a class="game-card" href="games/shape-draw-party/index.html">
-      <span class="game-icon">🖐️</span>
-      <div class="game-title">Shape Draw Party</div>
-      <div class="game-desc">Draw shapes in the air with your hands and watch them come to life.</div>
-      <span class="game-tag">🎥 hand tracking</span>
-    </a>
+  <!-- ═══ ADVENTURE ═══ -->
+  <section class="category">
+    <div class="category-header">
+      <span class="category-icon">🗺️</span>
+      <span class="category-title">Adventure</span>
+      <span class="category-count">3 games</span>
+    </div>
+    <div class="game-grid">
+      <a class="game-card" href="games/jet-wing-adventure/index.html" style="--d:.05s;--glow-color:rgba(100,180,255,0.2)">
+        <span class="game-icon">✈️</span>
+        <div class="game-title">Jet Wing Adventure</div>
+        <div class="game-desc">Spread your arms like wings and fly through the sky!</div>
+        <span class="game-tag">🎥 body tracking</span>
+      </a>
+      <a class="game-card" href="games/steves-adventure/index.html" style="--d:.1s;--glow-color:rgba(200,130,255,0.2)">
+        <span class="game-icon">🧱</span>
+        <div class="game-title">Steve's Adventure</div>
+        <div class="game-desc">Jump and run through a blocky side-scrolling world.</div>
+        <span class="game-tag">🎥 body tracking</span>
+      </a>
+      <a class="game-card" href="games/patan-frog/index.html" style="--d:.15s;--glow-color:rgba(80,200,80,0.2)">
+        <span class="game-icon">🐸</span>
+        <div class="game-title">Patan the Frog</div>
+        <div class="game-desc">Guide Patan's tongue to catch buzzing mosquitoes before time runs out!</div>
+        <span class="game-tag">🎥 hand tracking</span>
+      </a>
+    </div>
+  </section>
 
-    <a class="game-card" href="games/angry-birds/index.html">
-      <span class="game-icon">🐦</span>
-      <div class="game-title">Angry Birds</div>
-      <div class="game-desc">You ARE the bird! Launch yourself at the targets with your photo.</div>
-      <span class="game-tag">🎥 body tracking</span>
-    </a>
-
-    <a class="game-card" href="games/meteor-smasher/index.html">
-      <span class="game-icon">☄️</span>
-      <div class="game-title">Meteor Smasher Hero</div>
-      <div class="game-desc">Punch and smash meteors before they reach the ground!</div>
-      <span class="game-tag">🎥 hand tracking</span>
-    </a>
-
-    <a class="game-card" href="games/balloon-math/index.html">
-      <span class="game-icon">🎈</span>
-      <div class="game-title">Balloon Math</div>
-      <div class="game-desc">Pop the balloon with the right answer to solve math puzzles.</div>
-      <span class="game-tag">🎥 hand tracking</span>
-    </a>
-
-    <a class="game-card" href="games/balloon-pop/index.html">
-      <span class="game-icon">🎉</span>
-      <div class="game-title">Balloon Pop Party</div>
-      <div class="game-desc">Pop as many colorful balloons as you can — go wild!</div>
-      <span class="game-tag">🎥 hand tracking</span>
-    </a>
-
-    <a class="game-card" href="games/jet-wing-adventure/index.html">
-      <span class="game-icon">✈️</span>
-      <div class="game-title">Jet Wing Adventure</div>
-      <div class="game-desc">Spread your arms like wings and fly through the sky!</div>
-      <span class="game-tag">🎥 body tracking</span>
-    </a>
-
-    <a class="game-card" href="games/steves-adventure/index.html">
-      <span class="game-icon">🧱</span>
-      <div class="game-title">Steve's Adventure</div>
-      <div class="game-desc">Jump and run through a blocky side-scrolling world.</div>
-      <span class="game-tag">🎥 body tracking</span>
-    </a>
-
-    <a class="game-card" href="games/flower-farm/index.html">
-      <span class="game-icon">🌻</span>
-      <div class="game-title">Flower Farm</div>
-      <div class="game-desc">Plant, water, and grow a beautiful garden with your hands.</div>
-      <span class="game-tag">🎥 hand tracking</span>
-    </a>
-
-    <a class="game-card" href="games/suika/index.html">
-      <span class="game-icon">🍉</span>
-      <div class="game-title">Suika Game</div>
-      <div class="game-desc">Drop and merge fruits to make a giant watermelon!</div>
-      <span class="game-tag">🎥 hand gestures + touch</span>
-    </a>
-
-    <a class="game-card" href="games/lightsaber-fruit/index.html">
-      <span class="game-icon">⚔️</span>
-      <div class="game-title">Lightsaber Fruit</div>
-      <div class="game-desc">Slice flying fruit with your lightsaber hands — whoosh!</div>
-      <span class="game-tag">🎥 hand tracking</span>
-    </a>
-
-    <a class="game-card" href="games/jump-ball/index.html">
-      <span class="game-icon">🏓</span>
-      <div class="game-title">Jump Ball</div>
-      <div class="game-desc">Play ping-pong with your body against a robot drone!</div>
-      <span class="game-tag">🎥 body tracking</span>
-    </a>
-
-    <a class="game-card" href="games/pacman-virus/index.html">
-      <span class="game-icon">🟡</span>
-      <div class="game-title">Pac-Chomp</div>
-      <div class="game-desc">Chomp viruses in a classic maze — chop like Baby Shark to move!</div>
-      <span class="game-tag">🎥 hand chop + keyboard</span>
-    </a>
-
-    <a class="game-card" href="games/patan-frog/index.html">
-      <span class="game-icon">🐸</span>
-      <div class="game-title">Patan the Frog</div>
-      <div class="game-desc">Guide Patan's tongue to catch buzzing mosquitoes before time runs out!</div>
-      <span class="game-tag">🎥 hand tracking</span>
-    </a>
-
-  </div>
+  <!-- ═══ CREATIVE & MUSIC ═══ -->
+  <section class="category">
+    <div class="category-header">
+      <span class="category-icon">🎨</span>
+      <span class="category-title">Creative & Music</span>
+      <span class="category-count">3 games</span>
+    </div>
+    <div class="game-grid">
+      <a class="game-card" href="games/dance-party/index.html" style="--d:.05s;--glow-color:rgba(255,100,150,0.2)">
+        <span class="game-icon">💃</span>
+        <div class="game-title">Dance Party</div>
+        <div class="game-desc">Dance along and hit the moves with your whole body!</div>
+        <span class="game-tag">🎥 body tracking</span>
+      </a>
+      <a class="game-card" href="games/shape-draw-party/index.html" style="--d:.1s;--glow-color:rgba(100,180,255,0.2)">
+        <span class="game-icon">🖐️</span>
+        <div class="game-title">Shape Draw Party</div>
+        <div class="game-desc">Draw shapes in the air with your hands and watch them come to life.</div>
+        <span class="game-tag">🎥 hand tracking</span>
+      </a>
+      <a class="game-card" href="games/flower-farm/index.html" style="--d:.15s;--glow-color:rgba(80,200,120,0.2)">
+        <span class="game-icon">🌻</span>
+        <div class="game-title">Flower Farm</div>
+        <div class="game-desc">Plant, water, and grow a beautiful garden with your hands.</div>
+        <span class="game-tag">🎥 hand tracking</span>
+      </a>
+    </div>
+  </section>
 
   <div class="footer">
     Play Zone — Move your body, play the game! 🎮
@@ -396,6 +453,12 @@
     p.style.animationDuration = (Math.random() * 15 + 10) + 's';
     p.style.animationDelay = (Math.random() * 10) + 's';
     particlesContainer.appendChild(p);
+  }
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
   }
 </script>
 </body>

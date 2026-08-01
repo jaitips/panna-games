@@ -1,68 +1,1335 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Angry Birds — Play Zone</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#5b4ab8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Play Zone">
+<link rel="apple-touch-icon" href="/shared/apple-touch-icon.png">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Fredoka', sans-serif;
-    background: #0f0a2e;
-    color: #fff;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 2rem;
-  }
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(ellipse at 50% 40%, rgba(255,180,50,0.2) 0%, transparent 60%);
-    z-index: 0;
-  }
-  .content { position: relative; z-index: 1; }
-  .icon { font-size: 5rem; margin-bottom: 1rem; }
-  h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
-  p { color: rgba(255,255,255,0.6); font-size: 1.1rem; margin-bottom: 2rem; max-width: 400px; }
-  .back {
-    display: inline-block;
-    padding: 0.8rem 2rem;
-    border-radius: 2rem;
-    background: rgba(255,255,255,0.12);
-    color: #fff;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: background 0.2s;
-  }
-  .back:hover { background: rgba(255,255,255,0.2); }
-  .hint {
-    margin-top: 2rem;
-    padding: 1rem 1.5rem;
-    border-radius: 1rem;
-    background: rgba(255,200,50,0.1);
-    border: 1px solid rgba(255,200,50,0.2);
-    color: rgba(255,200,80,0.9);
-    font-size: 0.85rem;
-    max-width: 420px;
-  }
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Segoe UI',sans-serif;touch-action:none;user-select:none}
+canvas#gc{position:absolute;top:0;left:0;width:100%;height:100%}
+video#cam{display:none}
+
+/* ── overlays ── */
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;transition:opacity .3s}
+.overlay.hidden{opacity:0;pointer-events:none}
+
+/* photo screen */
+#photoScreen{background:linear-gradient(135deg,#1a1a3e,#0d0d26)}
+#photoFrame{position:relative;width:min(70vw,320px);height:min(70vw,320px);border-radius:50%;overflow:hidden;border:6px solid #fff;box-shadow:0 0 40px rgba(255,200,50,.3)}
+#photoFrame video,#photoFrame canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#photoFrame canvas{display:none}
+.photo-title{font-size:clamp(1.4rem,5vw,2.4rem);color:#fff;font-weight:700;margin-bottom:1rem;text-shadow:0 2px 10px rgba(0,0,0,.5)}
+.photo-sub{color:rgba(255,255,255,.6);margin-bottom:1.5rem;font-size:clamp(.9rem,3vw,1.1rem)}
+.btn{padding:.8rem 2rem;border:none;border-radius:2rem;font-size:clamp(1rem,3.5vw,1.3rem);font-weight:700;cursor:pointer;margin:.4rem;transition:transform .15s,box-shadow .15s}
+.btn:active{transform:scale(.95)}
+.btn-primary{background:linear-gradient(135deg,#ff6b35,#ff3333);color:#fff;box-shadow:0 4px 15px rgba(255,50,50,.4)}
+.btn-secondary{background:rgba(255,255,255,.15);color:#fff;backdrop-filter:blur(4px)}
+.btn-green{background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;box-shadow:0 4px 15px rgba(46,204,113,.4)}
+#countdown{position:absolute;font-size:5rem;font-weight:700;color:#fff;text-shadow:0 0 30px rgba(255,200,50,.8);z-index:5;display:none}
+.btn-row{display:flex;gap:.5rem;margin-top:1rem;flex-wrap:wrap;justify-content:center}
+
+/* menu */
+#menuScreen{background:linear-gradient(180deg,#87ceeb 0%,#4a90d9 40%,#2d6b2d 60%,#1a4a1a 100%)}
+.menu-title{font-size:clamp(2rem,7vw,3.5rem);color:#fff;font-weight:700;text-shadow:3px 3px 0 #c0392b,-1px -1px 0 #e74c3c;margin-bottom:.3rem}
+.menu-sub{color:rgba(255,255,255,.8);margin-bottom:1.5rem;font-size:clamp(.8rem,3vw,1rem)}
+#levelGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:clamp(.5rem,2vw,1rem);margin-bottom:1.5rem}
+.lvl-card{width:clamp(48px,14vw,80px);height:clamp(48px,14vw,80px);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-weight:700;font-size:clamp(1.2rem,4vw,1.8rem);color:#fff;transition:transform .15s;border:3px solid rgba(255,255,255,.3)}
+.lvl-card.unlocked{background:linear-gradient(135deg,#e74c3c,#c0392b);box-shadow:0 4px 15px rgba(231,76,60,.4)}
+.lvl-card.unlocked:active{transform:scale(.9)}
+.lvl-card.locked{background:rgba(0,0,0,.3);color:rgba(255,255,255,.4);cursor:default}
+.lvl-stars{font-size:clamp(.5rem,1.5vw,.75rem);margin-top:2px}
+.mode-row{display:flex;gap:.5rem}
+.mode-btn{padding:.5rem 1.2rem;border:2px solid rgba(255,255,255,.3);border-radius:2rem;background:rgba(0,0,0,.2);color:#fff;font-size:clamp(.8rem,2.5vw,1rem);font-weight:600;cursor:pointer}
+.mode-btn.active{background:rgba(255,255,255,.25);border-color:#fff}
+
+/* result screens */
+#completeScreen,#failScreen{background:rgba(0,0,0,.7);backdrop-filter:blur(8px)}
+.result-title{font-size:clamp(2rem,7vw,3rem);font-weight:700;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.5)}
+.result-stars{font-size:clamp(2rem,8vw,4rem);margin:.5rem 0}
+.result-score{font-size:clamp(1rem,4vw,1.5rem);color:rgba(255,255,255,.8);margin-bottom:1rem}
+
+/* HUD */
+#hud{position:absolute;top:0;left:0;right:0;padding:clamp(8px,2vw,16px);display:flex;justify-content:space-between;align-items:center;z-index:5;pointer-events:none}
+#hud.hidden{display:none}
+#hud>*{pointer-events:auto}
+.hud-text{color:#fff;font-weight:700;font-size:clamp(.9rem,3vw,1.3rem);text-shadow:1px 1px 3px rgba(0,0,0,.5)}
+.hud-btn{background:rgba(0,0,0,.3);border:none;color:#fff;font-size:clamp(1rem,3vw,1.4rem);padding:.4rem .8rem;border-radius:1rem;cursor:pointer;backdrop-filter:blur(2px)}
+
+/* camera overlay */
+#camOverlay{position:absolute;bottom:8px;right:8px;width:clamp(80px,15vw,160px);height:clamp(60px,11vw,120px);border-radius:10px;overflow:hidden;border:2px solid rgba(255,255,255,.4);z-index:4;display:none}
+#camOverlay video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
 </style>
 </head>
 <body>
-<div class="content">
-  <div class="icon">🐦</div>
-  <h1>Angry Birds</h1>
-  <p>Launch yourself at targets!</p>
-  <a class="back" href="../../index.html">← Back to Play Zone</a>
-  <div class="hint">
-    📋 Placeholder — Replace this file with the actual game HTML to activate!
+<canvas id="gc"></canvas>
+<video id="cam" playsinline autoplay muted></video>
+
+<!-- Photo capture -->
+<div id="photoScreen" class="overlay">
+  <div class="photo-title">You ARE the bird!</div>
+  <div class="photo-sub">Take a selfie to become the Angry Bird</div>
+  <div id="photoFrame"><video id="pVid" playsinline autoplay muted></video><canvas id="pSnap"></canvas></div>
+  <div id="countdown"></div>
+  <div class="btn-row" id="photoButtons">
+    <button class="btn btn-primary" id="btnSnap">📸 Take Photo!</button>
+  </div>
+  <div class="btn-row" id="photoConfirm" style="display:none">
+    <button class="btn btn-green" id="btnUse">Use This!</button>
+    <button class="btn btn-secondary" id="btnRetake">Retake</button>
   </div>
 </div>
+
+<!-- Level select -->
+<div id="menuScreen" class="overlay hidden">
+  <div class="menu-title">Angry Birds</div>
+  <div class="menu-sub">Tap a level to play!</div>
+  <div id="levelGrid"></div>
+  <div class="mode-row">
+    <button class="mode-btn active" id="btnModeTouch">👆 Touch</button>
+    <button class="mode-btn" id="btnModeCam">📷 Camera</button>
+  </div>
+  <div style="margin-top:1rem"><a href="../../index.html" style="color:rgba(255,255,255,.6);text-decoration:none;font-size:.9rem">← Back to Play Zone</a></div>
+</div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <button class="hud-btn" id="btnHudBack">⬅</button>
+  <span class="hud-text" id="hudScore">0</span>
+  <span class="hud-text" id="hudBirds">🐦 x3</span>
+</div>
+
+<!-- Level Complete -->
+<div id="completeScreen" class="overlay hidden">
+  <div class="result-title">Level Complete!</div>
+  <div class="result-stars" id="rStars"></div>
+  <div class="result-score" id="rScore"></div>
+  <div class="btn-row">
+    <button class="btn btn-green" id="btnNext">Next ➡</button>
+    <button class="btn btn-secondary" id="btnReplay">Replay</button>
+    <button class="btn btn-secondary" id="btnLevels">Levels</button>
+  </div>
+</div>
+
+<!-- Fail -->
+<div id="failScreen" class="overlay hidden">
+  <div class="result-title">No birds left!</div>
+  <div class="result-score" id="fScore"></div>
+  <div class="btn-row">
+    <button class="btn btn-primary" id="btnRetry">Retry 🔄</button>
+    <button class="btn btn-secondary" id="btnFailLevels">Levels</button>
+  </div>
+</div>
+
+<!-- Camera pip -->
+<div id="camOverlay"><video id="camPip" playsinline autoplay muted></video></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   ANGRY BIRDS — Play Zone
+   Single-file HTML game. Child's photo = the bird!
+   ═══════════════════════════════════════════════════════════════ */
+
+// ── Canvas ──
+const cv=document.getElementById('gc'), C=cv.getContext('2d');
+let W=1280,H=720,scaleX=1,scaleY=1,offX=0,offY=0;
+function resize(){
+  cv.width=innerWidth*devicePixelRatio;
+  cv.height=innerHeight*devicePixelRatio;
+  const ar=W/H, sar=cv.width/cv.height;
+  if(sar>ar){scaleY=cv.height/H;scaleX=scaleY;offX=(cv.width-W*scaleX)/2;offY=0}
+  else{scaleX=cv.width/W;scaleY=scaleX;offX=0;offY=(cv.height-H*scaleY)/2}
+}
+addEventListener('resize',resize); resize();
+
+function toWorld(sx,sy){
+  const r=cv.getBoundingClientRect();
+  const px=(sx-r.left)*devicePixelRatio, py=(sy-r.top)*devicePixelRatio;
+  return{x:(px-offX)/scaleX, y:(py-offY)/scaleY};
+}
+
+// ── Audio ──
+const actx=new(window.AudioContext||window.webkitAudioContext)();
+function resumeAudio(){if(actx.state==='suspended')actx.resume()}
+function playTone(freq,dur,type='sine',vol=.15){
+  resumeAudio();
+  const o=actx.createOscillator(),g=actx.createGain();
+  o.type=type;o.frequency.value=freq;
+  g.gain.setValueAtTime(vol,actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+dur);
+  o.connect(g);g.connect(actx.destination);
+  o.start();o.stop(actx.currentTime+dur);
+}
+function sndLaunch(){playTone(300,.3,'sawtooth',.12);playTone(500,.2,'sine',.08)}
+function sndHitWood(){playTone(150,.15,'triangle',.1);playTone(200,.1,'square',.06)}
+function sndHitStone(){playTone(80,.2,'square',.1);playTone(120,.12,'triangle',.06)}
+function sndHitIce(){playTone(800,.15,'sine',.08);playTone(1200,.1,'sine',.05)}
+function sndPigPop(){playTone(400,.1,'square',.12);playTone(600,.15,'sine',.1);playTone(250,.2,'sawtooth',.08)}
+function sndWin(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>playTone(f,.3,'sine',.12),i*120))}
+function sndFail(){playTone(200,.4,'sawtooth',.1);setTimeout(()=>playTone(150,.5,'sawtooth',.1),200)}
+
+// ── Constants ──
+const GRAVITY=420, GROUND_Y=590, SLING={x:190,y:470};
+const MAX_PULL=130, LAUNCH_MULT=8;
+const BIRD_R=22, PIG_R=28; // generous pig radius for kid-friendly hits
+const SETTLE_TIME=2.0; // seconds to wait after bird stops
+const BLOCK_W=40, BLOCK_H=40, PLANK_W=90, PLANK_H=16;
+
+const MAT={
+  wood:{hp:50,color:'#b87333',dark:'#8B5A2B',score:50,snd:sndHitWood},
+  stone:{hp:120,color:'#8a8a8a',dark:'#5a5a5a',score:100,snd:sndHitStone},
+  ice:{hp:30,color:'#a8d8ea',dark:'#6bb3cc',score:30,snd:sndHitIce}
+};
+
+// ── Levels ──
+// Design: pigs sit ON structures, protected by wall blocks that overlap
+// past the platform edges. Bird must break through walls to hit the pig.
+// B=BLOCK_W(40), H=BLOCK_H(40), P=PLANK_H(16), PR=PIG_R(28)
+const LEVELS=[
+  { // L1: Simple Perch — pig on a block with wall blocks extending up on sides
+    birds:3, starScores:[1000,4000,7000],
+    blocks:[
+      // base block
+      {x:860,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      // plank platform (wider than base so pig sits on it)
+      {x:830,y:GROUND_Y-BLOCK_H-PLANK_H,w:100,h:PLANK_H,mat:'wood'},
+      // side wall blocks on the plank — overlapping the edges to shield the pig
+      {x:830,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:890,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+    ],
+    // pig on plank between the two wall blocks
+    pigs:[{x:880,y:GROUND_Y-BLOCK_H-PLANK_H-PIG_R-2}]
+  },
+  { // L2: Wood Shelter — pig elevated inside a roofed box
+    birds:3, starScores:[2000,5000,9000],
+    blocks:[
+      // two base columns
+      {x:840,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:920,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      // plank floor
+      {x:835,y:GROUND_Y-BLOCK_H-PLANK_H,w:130,h:PLANK_H,mat:'wood'},
+      // side walls on floor (overlapping edges)
+      {x:835,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:925,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      // roof plank on top of walls
+      {x:830,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H-PLANK_H,w:140,h:PLANK_H,mat:'wood'},
+    ],
+    pigs:[{x:880,y:GROUND_Y-BLOCK_H-PLANK_H-PIG_R-2}]
+  },
+  { // L3: Double Perch — two pigs on separate platforms with walls
+    birds:4, starScores:[3000,7000,12000],
+    blocks:[
+      // platform 1 (lower, wood)
+      {x:720,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:690,y:GROUND_Y-BLOCK_H-PLANK_H,w:100,h:PLANK_H,mat:'wood'},
+      {x:690,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:750,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      // platform 2 (higher, wood — 2 blocks tall base)
+      {x:960,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:960,y:GROUND_Y-BLOCK_H*2,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:930,y:GROUND_Y-BLOCK_H*2-PLANK_H,w:100,h:PLANK_H,mat:'wood'},
+      {x:930,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:990,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+    ],
+    pigs:[
+      {x:740,y:GROUND_Y-BLOCK_H-PLANK_H-PIG_R-2},
+      {x:980,y:GROUND_Y-BLOCK_H*2-PLANK_H-PIG_R-2},
+    ]
+  },
+  { // L4: Ice Box — pig on elevated ice platform, ice walls (easy to smash)
+    birds:3, starScores:[3000,6000,10000],
+    blocks:[
+      // base column (2 ice blocks)
+      {x:870,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'ice'},
+      {x:870,y:GROUND_Y-BLOCK_H*2,w:BLOCK_W,h:BLOCK_H,mat:'ice'},
+      // platform
+      {x:840,y:GROUND_Y-BLOCK_H*2-PLANK_H,w:100,h:PLANK_H,mat:'ice'},
+      // wall blocks overlapping sides
+      {x:840,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'ice'},
+      {x:900,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'ice'},
+      // roof
+      {x:835,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H-PLANK_H,w:110,h:PLANK_H,mat:'ice'},
+    ],
+    pigs:[{x:880,y:GROUND_Y-BLOCK_H*2-PLANK_H-PIG_R-2}]
+  },
+  { // L5: Stone Perch — pig on stone base, wood walls (hit the weak walls!)
+    birds:3, starScores:[4000,8000,13000],
+    blocks:[
+      // stone base (sturdy, can't easily break)
+      {x:860,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      // platform
+      {x:830,y:GROUND_Y-BLOCK_H-PLANK_H,w:100,h:PLANK_H,mat:'stone'},
+      // wood side walls (the weak point!)
+      {x:830,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:890,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      // wood roof
+      {x:825,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H-PLANK_H,w:110,h:PLANK_H,mat:'wood'},
+    ],
+    pigs:[{x:880,y:GROUND_Y-BLOCK_H-PLANK_H-PIG_R-2}]
+  },
+  { // L6: Tower Nest — pig on top of tall tower with walls
+    birds:3, starScores:[4000,8000,14000],
+    blocks:[
+      // tall column (3 blocks)
+      {x:870,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:870,y:GROUND_Y-BLOCK_H*2,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:870,y:GROUND_Y-BLOCK_H*3,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      // platform
+      {x:840,y:GROUND_Y-BLOCK_H*3-PLANK_H,w:100,h:PLANK_H,mat:'wood'},
+      // side walls overlapping edges
+      {x:840,y:GROUND_Y-BLOCK_H*3-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:900,y:GROUND_Y-BLOCK_H*3-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      // roof
+      {x:835,y:GROUND_Y-BLOCK_H*3-PLANK_H-BLOCK_H-PLANK_H,w:110,h:PLANK_H,mat:'wood'},
+    ],
+    pigs:[{x:880,y:GROUND_Y-BLOCK_H*3-PLANK_H-PIG_R-2}]
+  },
+  { // L7: Stone Fortress — pig inside stone walls with wood roof (weak roof!)
+    birds:4, starScores:[5000,10000,16000],
+    blocks:[
+      // stone base columns
+      {x:840,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      {x:920,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      // platform
+      {x:835,y:GROUND_Y-BLOCK_H-PLANK_H,w:130,h:PLANK_H,mat:'stone'},
+      // stone side walls (very tough)
+      {x:835,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      {x:925,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      // wood roof (the weak point!)
+      {x:830,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H-PLANK_H,w:140,h:PLANK_H,mat:'wood'},
+    ],
+    pigs:[{x:880,y:GROUND_Y-BLOCK_H-PLANK_H-PIG_R-2}]
+  },
+  { // L8: Twin Nests — two pigs on separate towers with walls
+    birds:4, starScores:[6000,12000,18000],
+    blocks:[
+      // tower 1 (wood, 2 high)
+      {x:720,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:720,y:GROUND_Y-BLOCK_H*2,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:690,y:GROUND_Y-BLOCK_H*2-PLANK_H,w:100,h:PLANK_H,mat:'wood'},
+      {x:690,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:750,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:685,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H-PLANK_H,w:110,h:PLANK_H,mat:'wood'},
+      // tower 2 (stone walls, 2 high)
+      {x:960,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      {x:960,y:GROUND_Y-BLOCK_H*2,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      {x:930,y:GROUND_Y-BLOCK_H*2-PLANK_H,w:100,h:PLANK_H,mat:'stone'},
+      {x:930,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      {x:990,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      {x:925,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H-PLANK_H,w:110,h:PLANK_H,mat:'wood'},
+    ],
+    pigs:[
+      {x:740,y:GROUND_Y-BLOCK_H*2-PLANK_H-PIG_R-2},
+      {x:980,y:GROUND_Y-BLOCK_H*2-PLANK_H-PIG_R-2},
+    ]
+  },
+  { // L9: The Castle — 2 pigs on 2 floors, stone/wood mix
+    birds:4, starScores:[8000,14000,22000],
+    blocks:[
+      // ground floor enclosure
+      {x:830,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      {x:930,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      {x:825,y:GROUND_Y-BLOCK_H-PLANK_H,w:150,h:PLANK_H,mat:'wood'},
+      // ground floor walls
+      {x:825,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      {x:935,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      // second floor plank (pig 1 sits here)
+      {x:820,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H-PLANK_H,w:160,h:PLANK_H,mat:'wood'},
+      // second floor walls
+      {x:820,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:940,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      // roof
+      {x:815,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H-PLANK_H-BLOCK_H-PLANK_H,w:170,h:PLANK_H,mat:'wood'},
+    ],
+    pigs:[
+      // pig on ground floor
+      {x:880,y:GROUND_Y-BLOCK_H-PLANK_H-PIG_R-2},
+      // pig on second floor
+      {x:880,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H-PLANK_H-PIG_R-2},
+    ]
+  },
+  { // L10: King's Keep — 3 pigs, multi-tower fortress with mixed materials
+    birds:5, starScores:[12000,20000,30000],
+    blocks:[
+      // LEFT tower (ice — easy)
+      {x:680,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'ice'},
+      {x:650,y:GROUND_Y-BLOCK_H-PLANK_H,w:100,h:PLANK_H,mat:'ice'},
+      {x:650,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'ice'},
+      {x:710,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'ice'},
+      {x:645,y:GROUND_Y-BLOCK_H-PLANK_H-BLOCK_H-PLANK_H,w:110,h:PLANK_H,mat:'ice'},
+      // CENTER tower (wood, 2 blocks tall)
+      {x:850,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:850,y:GROUND_Y-BLOCK_H*2,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:820,y:GROUND_Y-BLOCK_H*2-PLANK_H,w:100,h:PLANK_H,mat:'wood'},
+      {x:820,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:880,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'wood'},
+      {x:815,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H-PLANK_H,w:110,h:PLANK_H,mat:'wood'},
+      // RIGHT tower (stone — tough)
+      {x:1020,y:GROUND_Y-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      {x:1020,y:GROUND_Y-BLOCK_H*2,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      {x:990,y:GROUND_Y-BLOCK_H*2-PLANK_H,w:100,h:PLANK_H,mat:'stone'},
+      {x:990,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      {x:1050,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H,w:BLOCK_W,h:BLOCK_H,mat:'stone'},
+      {x:985,y:GROUND_Y-BLOCK_H*2-PLANK_H-BLOCK_H-PLANK_H,w:110,h:PLANK_H,mat:'wood'},
+    ],
+    pigs:[
+      {x:700,y:GROUND_Y-BLOCK_H-PLANK_H-PIG_R-2},
+      {x:870,y:GROUND_Y-BLOCK_H*2-PLANK_H-PIG_R-2},
+      {x:1040,y:GROUND_Y-BLOCK_H*2-PLANK_H-PIG_R-2},
+    ]
+  }
+];
+
+// ── State ──
+let state='photo'; // photo, menu, aim, flying, settle, complete, fail
+let curLevel=0, score=0, birdsLeft=0, birdIndex=0;
+let blocks=[], pigs=[], bird=null, particles=[], scorePopups=[];
+let aiming=false, pullX=0, pullY=0;
+let settleTimer=0, birdStopped=false;
+let controlMode='touch'; // touch | camera
+let photoImg=null; // captured photo as canvas
+let progress=JSON.parse(localStorage.getItem('ab_progress')||'{"unlocked":1,"stars":[0,0,0,0,0,0,0,0,0,0]}');
+// migrate old 5-level progress to 10 levels
+if(progress.stars.length<LEVELS.length){while(progress.stars.length<LEVELS.length)progress.stars.push(0)}
+function saveProgress(){localStorage.setItem('ab_progress',JSON.stringify(progress))}
+
+// Camera tracking state
+let camStream=null, poseModel=null, poseBusy=false;
+let bodyX=0.5, bodyY=0.5, prevShoulderY=0, jumpCooldown=0;
+let camAimAngle=Math.PI*0.25; // default aim up-right
+
+// ── Photo Capture ──
+const pVid=document.getElementById('pVid');
+const pSnap=document.getElementById('pSnap');
+const pCtx=pSnap.getContext('2d');
+pSnap.width=200;pSnap.height=200;
+
+async function startPhotoCamera(){
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:320,height:320}});
+    pVid.srcObject=s;
+    document.getElementById('camPip').srcObject=s;
+    camStream=s;
+  }catch(e){
+    // fallback: use a default bird face
+    pCtx.fillStyle='#e74c3c';
+    pCtx.fillRect(0,0,200,200);
+    pCtx.fillStyle='#fff';pCtx.font='80px sans-serif';pCtx.textAlign='center';pCtx.textBaseline='middle';
+    pCtx.fillText('🐦',100,100);
+    photoImg=pSnap;
+    showMenu();
+  }
+}
+
+document.getElementById('btnSnap').onclick=async function(){
+  resumeAudio();
+  const cd=document.getElementById('countdown');
+  cd.style.display='block';
+  for(let i=3;i>=1;i--){
+    cd.textContent=i;
+    playTone(600,.1,'sine',.1);
+    await new Promise(r=>setTimeout(r,700));
+  }
+  cd.textContent='📸';
+  playTone(1000,.15,'sine',.15);
+  // flash
+  document.getElementById('photoScreen').style.background='#fff';
+  setTimeout(()=>document.getElementById('photoScreen').style.background='',150);
+  // capture
+  const vw=pVid.videoWidth||320, vh=pVid.videoHeight||320;
+  const sz=Math.min(vw,vh);
+  pCtx.save();
+  pCtx.translate(200,0);pCtx.scale(-1,1); // mirror
+  pCtx.drawImage(pVid,(vw-sz)/2,(vh-sz)/2,sz,sz,0,0,200,200);
+  pCtx.restore();
+  pSnap.style.display='block';
+  pVid.style.display='none';
+  cd.style.display='none';
+  document.getElementById('photoButtons').style.display='none';
+  document.getElementById('photoConfirm').style.display='flex';
+  photoImg=pSnap;
+};
+
+document.getElementById('btnRetake').onclick=function(){
+  pSnap.style.display='none';
+  pVid.style.display='block';
+  document.getElementById('photoButtons').style.display='flex';
+  document.getElementById('photoConfirm').style.display='none';
+};
+
+document.getElementById('btnUse').onclick=function(){
+  showMenu();
+};
+
+function showScreen(id){
+  document.querySelectorAll('.overlay').forEach(o=>o.classList.add('hidden'));
+  if(id)document.getElementById(id).classList.remove('hidden');
+}
+
+// ── Menu ──
+function showMenu(){
+  showScreen('menuScreen');
+  document.getElementById('hud').classList.add('hidden');
+  state='menu';
+  buildLevelGrid();
+}
+
+function buildLevelGrid(){
+  const g=document.getElementById('levelGrid');
+  g.innerHTML='';
+  for(let i=0;i<LEVELS.length;i++){
+    const card=document.createElement('div');
+    card.className='lvl-card '+(i<progress.unlocked?'unlocked':'locked');
+    card.innerHTML=`${i+1}<div class="lvl-stars">${'⭐'.repeat(progress.stars[i])+'☆'.repeat(3-progress.stars[i])}</div>`;
+    if(i<progress.unlocked){
+      card.onclick=()=>{curLevel=i;startLevel()};
+    }
+    g.appendChild(card);
+  }
+}
+
+// Mode buttons
+document.getElementById('btnModeTouch').onclick=function(){
+  controlMode='touch';
+  this.classList.add('active');
+  document.getElementById('btnModeCam').classList.remove('active');
+};
+document.getElementById('btnModeCam').onclick=function(){
+  controlMode='camera';
+  this.classList.add('active');
+  document.getElementById('btnModeTouch').classList.remove('active');
+  initPose();
+};
+
+// ── Level Setup ──
+function startLevel(){
+  showScreen(null);
+  document.getElementById('hud').classList.remove('hidden');
+  const lv=LEVELS[curLevel];
+  score=0; birdsLeft=lv.birds; birdIndex=0;
+  blocks=[]; pigs=[]; particles=[]; scorePopups=[];
+  // create blocks
+  for(const b of lv.blocks){
+    blocks.push({x:b.x,y:b.y,w:b.w,h:b.h,mat:b.mat,hp:MAT[b.mat].hp,maxHp:MAT[b.mat].hp,vx:0,vy:0,alive:true});
+  }
+  // create pigs
+  for(const p of lv.pigs){
+    pigs.push({x:p.x,y:p.y,r:PIG_R,hp:50,maxHp:50,vx:0,vy:0,alive:true});
+  }
+  bird=null; aiming=false; settleTimer=0; birdStopped=false;
+  state='aim';
+  readyBird();
+  updateHUD();
+  if(controlMode==='camera'){
+    document.getElementById('camOverlay').style.display='block';
+    initPose();
+  } else {
+    document.getElementById('camOverlay').style.display='none';
+  }
+}
+
+function readyBird(){
+  bird={x:SLING.x,y:SLING.y,vx:0,vy:0,r:BIRD_R,launched:false,active:true,trail:[]};
+}
+
+function updateHUD(){
+  document.getElementById('hudScore').textContent='Score: '+score;
+  document.getElementById('hudBirds').textContent='🐦 x'+birdsLeft;
+}
+
+// ── Result Screens ──
+document.getElementById('btnHudBack').onclick=showMenu;
+document.getElementById('btnNext').onclick=function(){
+  if(curLevel<LEVELS.length-1){curLevel++;startLevel()}
+  else showMenu();
+};
+document.getElementById('btnReplay').onclick=function(){startLevel()};
+document.getElementById('btnLevels').onclick=showMenu;
+document.getElementById('btnRetry').onclick=function(){startLevel()};
+document.getElementById('btnFailLevels').onclick=showMenu;
+
+function showComplete(){
+  state='complete';
+  document.getElementById('hud').classList.add('hidden');
+  // calc stars
+  const lv=LEVELS[curLevel];
+  // bonus for remaining birds
+  const birdBonus=birdsLeft*3000;
+  score+=birdBonus;
+  let stars=0;
+  if(score>=lv.starScores[0])stars=1;
+  if(score>=lv.starScores[1])stars=2;
+  if(score>=lv.starScores[2])stars=3;
+  document.getElementById('rStars').textContent='⭐'.repeat(stars)+'☆'.repeat(3-stars);
+  document.getElementById('rScore').textContent='Score: '+score+(birdBonus>0?' (+'+birdBonus+' bird bonus)':'');
+  if(stars>progress.stars[curLevel])progress.stars[curLevel]=stars;
+  if(curLevel+1<LEVELS.length && curLevel+1>=progress.unlocked)progress.unlocked=curLevel+2;
+  saveProgress();
+  showScreen('completeScreen');
+  sndWin();
+}
+
+function showFail(){
+  state='fail';
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('fScore').textContent='Score: '+score;
+  showScreen('failScreen');
+  sndFail();
+}
+
+// ── Input ──
+let touchId=null;
+cv.addEventListener('pointerdown',function(e){
+  if(state!=='aim'||bird.launched)return;
+  resumeAudio();
+  const p=toWorld(e.clientX,e.clientY);
+  const dx=p.x-SLING.x, dy=p.y-SLING.y;
+  if(Math.sqrt(dx*dx+dy*dy)<80){
+    aiming=true; touchId=e.pointerId;
+    cv.setPointerCapture(e.pointerId);
+    pullX=p.x; pullY=p.y;
+  }
+});
+
+cv.addEventListener('pointermove',function(e){
+  if(!aiming||e.pointerId!==touchId)return;
+  const p=toWorld(e.clientX,e.clientY);
+  // clamp pull distance
+  let dx=p.x-SLING.x, dy=p.y-SLING.y;
+  const dist=Math.sqrt(dx*dx+dy*dy);
+  if(dist>MAX_PULL){dx=dx/dist*MAX_PULL;dy=dy/dist*MAX_PULL}
+  pullX=SLING.x+dx; pullY=SLING.y+dy;
+  bird.x=pullX; bird.y=pullY;
+});
+
+cv.addEventListener('pointerup',function(e){
+  if(!aiming||e.pointerId!==touchId)return;
+  aiming=false; touchId=null;
+  launchBird();
+});
+
+function launchBird(){
+  if(!bird||bird.launched)return;
+  const dx=SLING.x-bird.x, dy=SLING.y-bird.y;
+  const dist=Math.sqrt(dx*dx+dy*dy);
+  if(dist<15){bird.x=SLING.x;bird.y=SLING.y;return} // too small, don't launch
+  bird.vx=dx*LAUNCH_MULT;
+  bird.vy=dy*LAUNCH_MULT;
+  bird.launched=true;
+  birdsLeft--;
+  birdIndex++;
+  updateHUD();
+  state='flying';
+  settleTimer=0;
+  birdStopped=false;
+  sndLaunch();
+}
+
+// ── Camera / Pose Control ──
+async function initPose(){
+  if(poseModel)return;
+  if(!camStream){
+    try{
+      camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:320,height:240}});
+      pVid.srcObject=camStream;
+      document.getElementById('camPip').srcObject=camStream;
+    }catch(e){return}
+  }
+  if(!window.Pose){
+    // load MediaPipe Pose
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js';
+    s.onload=()=>setupPose();
+    document.head.appendChild(s);
+  } else setupPose();
+}
+
+function setupPose(){
+  if(poseModel)return;
+  const pose=new window.Pose({locateFile:f=>'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/'+f});
+  pose.setOptions({modelComplexity:0,smoothLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
+  pose.onResults(onPoseResults);
+  poseModel=pose;
+  poseLoop();
+}
+
+async function poseLoop(){
+  const vid=pVid;
+  if(!poseBusy&&vid.readyState>=2&&poseModel){
+    poseBusy=true;
+    try{await poseModel.send({image:vid})}catch(e){}
+    poseBusy=false;
+  }
+  requestAnimationFrame(poseLoop);
+}
+
+function onPoseResults(results){
+  if(!results.poseLandmarks)return;
+  const lm=results.poseLandmarks;
+  const ls=lm[11],rs=lm[12]; // shoulders
+  const mx=(ls.x+rs.x)/2, my=(ls.y+rs.y)/2;
+  // EMA smooth
+  bodyX=bodyX*0.55+mx*0.45;
+  bodyY=bodyY*0.55+my*0.45;
+
+  // Aim: body lean maps to angle (mirrored: lean right in camera = aim left = higher angle)
+  // bodyX 0.3-0.7 maps to angle range
+  const normX=Math.max(0,Math.min(1,(bodyX-0.2)/0.6)); // 0=far right in cam, 1=far left
+  camAimAngle=normX*Math.PI*0.4 + Math.PI*0.05; // range ~5° to ~77°
+
+  // Jump detection: shoulder Y drops quickly
+  const dy=my-prevShoulderY;
+  if(dy<-0.04 && jumpCooldown<=0 && state==='aim' && bird && !bird.launched){
+    // JUMP detected → launch!
+    const power=MAX_PULL*0.85;
+    bird.x=SLING.x-Math.cos(camAimAngle)*power;
+    bird.y=SLING.y-Math.sin(camAimAngle)*power;
+    launchBird();
+    jumpCooldown=1.5;
+  }
+  prevShoulderY=my;
+}
+
+// ── Particles ──
+function addParticles(x,y,color,count,speed){
+  for(let i=0;i<count;i++){
+    const a=Math.random()*Math.PI*2;
+    const v=speed*(0.5+Math.random());
+    particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-100,life:1,maxLife:1,color,r:2+Math.random()*4});
+  }
+}
+
+function addScorePopup(x,y,val){
+  scorePopups.push({x,y,val,life:1.2});
+}
+
+// ── Physics & Collisions ──
+function circRectOverlap(cx,cy,cr,rx,ry,rw,rh){
+  const closestX=Math.max(rx,Math.min(cx,rx+rw));
+  const closestY=Math.max(ry,Math.min(cy,ry+rh));
+  const dx=cx-closestX,dy=cy-closestY;
+  return dx*dx+dy*dy<cr*cr;
+}
+
+function circCircOverlap(ax,ay,ar,bx,by,br){
+  const dx=ax-bx,dy=ay-by;
+  return dx*dx+dy*dy<(ar+br)*(ar+br);
+}
+
+function updatePhysics(dt){
+  if(!bird||!bird.active)return;
+
+  if(bird.launched){
+    // gravity
+    bird.vy+=GRAVITY*dt;
+    bird.x+=bird.vx*dt;
+    bird.y+=bird.vy*dt;
+
+    // trail
+    bird.trail.push({x:bird.x,y:bird.y,life:0.5});
+
+    // ground collision
+    if(bird.y+bird.r>GROUND_Y){
+      bird.y=GROUND_Y-bird.r;
+      bird.vy*=-0.3;
+      bird.vx*=0.7;
+      if(Math.abs(bird.vy)<20)bird.vy=0;
+    }
+
+    // walls
+    if(bird.x<bird.r){bird.x=bird.r;bird.vx*=-0.5}
+    if(bird.x>W-bird.r){bird.x=W-bird.r;bird.vx*=-0.5}
+    if(bird.y<bird.r){bird.y=bird.r;bird.vy*=-0.5}
+
+    // hit blocks
+    const birdSpeed=Math.sqrt(bird.vx*bird.vx+bird.vy*bird.vy);
+    for(const bl of blocks){
+      if(!bl.alive)continue;
+      if(circRectOverlap(bird.x,bird.y,bird.r,bl.x,bl.y,bl.w,bl.h)){
+        const dmg=birdSpeed*0.5;
+        bl.hp-=dmg;
+        if(bl.hp<=0){
+          bl.alive=false;
+          score+=MAT[bl.mat].score;
+          addParticles(bl.x+bl.w/2,bl.y+bl.h/2,MAT[bl.mat].color,8,120);
+          addScorePopup(bl.x+bl.w/2,bl.y,MAT[bl.mat].score);
+          MAT[bl.mat].snd();
+          // splash damage — generous radius for chain reactions
+          splashDamage(bl.x+bl.w/2,bl.y+bl.h/2,50,100);
+        } else {
+          MAT[bl.mat].snd();
+        }
+        // bounce bird
+        const bcx=bl.x+bl.w/2, bcy=bl.y+bl.h/2;
+        const nx=bird.x-bcx, ny=bird.y-bcy;
+        const nl=Math.sqrt(nx*nx+ny*ny)||1;
+        bird.vx=nx/nl*birdSpeed*0.3;
+        bird.vy=ny/nl*birdSpeed*0.3;
+      }
+    }
+
+    // hit pigs
+    for(const p of pigs){
+      if(!p.alive)continue;
+      if(circCircOverlap(bird.x,bird.y,bird.r,p.x,p.y,p.r)){
+        const dmg=birdSpeed*0.7;
+        p.hp-=dmg;
+        if(p.hp<=0){
+          p.alive=false;
+          score+=5000;
+          addParticles(p.x,p.y,'#2ecc71',15,150);
+          addScorePopup(p.x,p.y-10,5000);
+          sndPigPop();
+        }
+        // bounce
+        const dx=bird.x-p.x,dy=bird.y-p.y;
+        const d=Math.sqrt(dx*dx+dy*dy)||1;
+        bird.vx=dx/d*birdSpeed*0.25;
+        bird.vy=dy/d*birdSpeed*0.25;
+      }
+    }
+
+    // check if bird stopped
+    if(birdSpeed<15 && bird.y+bird.r>=GROUND_Y-2){
+      if(!birdStopped){birdStopped=true;settleTimer=0}
+    }
+
+    // off screen check
+    if(bird.x>W+100||bird.y>H+100){
+      birdStopped=true;settleTimer=SETTLE_TIME;
+    }
+
+    updateHUD();
+  }
+
+  // unsupported blocks fall
+  for(const bl of blocks){
+    if(!bl.alive)continue;
+    const bottom=bl.y+bl.h;
+    if(bottom<GROUND_Y){
+      // check if supported
+      let supported=false;
+      for(const other of blocks){
+        if(other===bl||!other.alive)continue;
+        if(bl.x+bl.w>other.x && bl.x<other.x+other.w && Math.abs(bottom-other.y)<3){
+          supported=true;break;
+        }
+      }
+      if(!supported){
+        bl.vy+=GRAVITY*dt;
+        bl.y+=bl.vy*dt;
+        if(bl.y+bl.h>GROUND_Y){
+          bl.y=GROUND_Y-bl.h;
+          // impact damage on landing
+          if(bl.vy>200){
+            bl.hp-=bl.vy*0.1;
+            if(bl.hp<=0){
+              bl.alive=false;
+              score+=MAT[bl.mat].score;
+              addParticles(bl.x+bl.w/2,bl.y+bl.h/2,MAT[bl.mat].color,6,80);
+              addScorePopup(bl.x+bl.w/2,bl.y,MAT[bl.mat].score);
+            }
+          }
+          bl.vy=0;
+        }
+        // land on another block
+        for(const other of blocks){
+          if(other===bl||!other.alive)continue;
+          if(bl.x+bl.w>other.x && bl.x<other.x+other.w && bl.y+bl.h>other.y && bl.y<other.y){
+            bl.y=other.y-bl.h;
+            if(bl.vy>200){
+              bl.hp-=bl.vy*0.08;
+              other.hp-=bl.vy*0.08;
+              if(bl.hp<=0){bl.alive=false;score+=MAT[bl.mat].score;addParticles(bl.x+bl.w/2,bl.y+bl.h/2,MAT[bl.mat].color,6,80)}
+              if(other.hp<=0){other.alive=false;score+=MAT[other.mat].score;addParticles(other.x+other.w/2,other.y+other.h/2,MAT[other.mat].color,6,80)}
+            }
+            bl.vy=0;
+          }
+        }
+      }
+    }
+  }
+
+  // unsupported pigs fall
+  for(const p of pigs){
+    if(!p.alive)continue;
+    const bottom=p.y+p.r;
+    if(bottom<GROUND_Y){
+      let supported=false;
+      for(const bl of blocks){
+        if(!bl.alive)continue;
+        if(p.x+p.r>bl.x && p.x-p.r<bl.x+bl.w && Math.abs(bottom-bl.y)<5){
+          supported=true;break;
+        }
+      }
+      if(!supported){
+        p.vy=(p.vy||0)+GRAVITY*dt;
+        p.y+=p.vy*dt;
+        if(p.y+p.r>GROUND_Y){
+          p.y=GROUND_Y-p.r;
+          if(p.vy>150){p.hp-=p.vy*0.2;if(p.hp<=0){p.alive=false;score+=5000;addParticles(p.x,p.y,'#2ecc71',12,120);sndPigPop()}}
+          p.vy=0;
+        }
+      }
+    }
+  }
+
+  // falling blocks crush pigs underneath
+  for(const bl of blocks){
+    if(!bl.alive)continue;
+    if(bl.vy>50){ // block is falling
+      for(const p of pigs){
+        if(!p.alive)continue;
+        if(circRectOverlap(p.x,p.y,p.r,bl.x,bl.y,bl.w,bl.h)){
+          p.hp-=bl.vy*0.25;
+          if(p.hp<=0){p.alive=false;score+=5000;addParticles(p.x,p.y,'#2ecc71',12,120);addScorePopup(p.x,p.y-10,5000);sndPigPop()}
+        }
+      }
+    }
+  }
+
+  // update particles
+  for(const pt of particles){
+    pt.vy+=300*dt;
+    pt.x+=pt.vx*dt;
+    pt.y+=pt.vy*dt;
+    pt.life-=dt;
+  }
+  particles=particles.filter(p=>p.life>0);
+
+  // update trail
+  if(bird.trail){
+    for(const t of bird.trail)t.life-=dt;
+    bird.trail=bird.trail.filter(t=>t.life>0);
+  }
+
+  // score popups
+  for(const sp of scorePopups){sp.y-=60*dt;sp.life-=dt}
+  scorePopups=scorePopups.filter(s=>s.life>0);
+}
+
+function splashDamage(cx,cy,dmg,radius){
+  for(const bl of blocks){
+    if(!bl.alive)continue;
+    const bx=bl.x+bl.w/2,by=bl.y+bl.h/2;
+    const d=Math.sqrt((cx-bx)**2+(cy-by)**2);
+    if(d<radius){
+      bl.hp-=dmg*(1-d/radius);
+      if(bl.hp<=0){
+        bl.alive=false;score+=MAT[bl.mat].score;
+        addParticles(bx,by,MAT[bl.mat].color,5,80);
+      }
+    }
+  }
+  for(const p of pigs){
+    if(!p.alive)continue;
+    const d=Math.sqrt((cx-p.x)**2+(cy-p.y)**2);
+    if(d<radius){
+      p.hp-=dmg*(1-d/radius);
+      if(p.hp<=0){
+        p.alive=false;score+=5000;
+        addParticles(p.x,p.y,'#2ecc71',10,120);
+        sndPigPop();
+      }
+    }
+  }
+}
+
+// ── State Logic ──
+function updateState(dt){
+  if(jumpCooldown>0)jumpCooldown-=dt;
+
+  if(state==='aim' && controlMode==='camera' && bird && !bird.launched){
+    // update bird position on sling based on body aim
+    const power=MAX_PULL*0.6;
+    bird.x=SLING.x-Math.cos(camAimAngle)*power;
+    bird.y=SLING.y-Math.sin(camAimAngle)*power;
+  }
+
+  if(state==='flying'){
+    updatePhysics(dt);
+    // check if all pigs dead
+    if(pigs.every(p=>!p.alive)){
+      state='settle';settleTimer=0.5;
+    }
+    // check if bird stopped
+    if(birdStopped){
+      settleTimer+=dt;
+      if(settleTimer>=SETTLE_TIME){
+        if(pigs.every(p=>!p.alive)){
+          showComplete();
+        } else if(birdsLeft>0){
+          state='aim';
+          readyBird();
+          birdStopped=false;settleTimer=0;
+        } else {
+          showFail();
+        }
+      }
+    }
+  }
+
+  if(state==='settle'){
+    updatePhysics(dt);
+    settleTimer-=dt;
+    if(settleTimer<=0)showComplete();
+  }
+}
+
+// ── Rendering ──
+function drawSky(){
+  const grad=C.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'#87CEEB');
+  grad.addColorStop(0.6,'#B0E0E6');
+  grad.addColorStop(0.75,'#4a8a3a');
+  grad.addColorStop(1,'#2d5a1a');
+  C.fillStyle=grad;
+  C.fillRect(0,0,W,H);
+}
+
+let cloudOffset=0;
+function drawClouds(dt){
+  cloudOffset+=dt*8;
+  C.fillStyle='rgba(255,255,255,0.8)';
+  const clouds=[[100,80,90],[350,50,70],[600,90,60],[850,40,80],[1100,70,65]];
+  for(const[bx,by,bw]of clouds){
+    const cx=((bx+cloudOffset)%(W+200))-100;
+    C.beginPath();
+    C.ellipse(cx,by,bw,bw*0.5,0,0,Math.PI*2);
+    C.fill();
+    C.beginPath();
+    C.ellipse(cx-bw*0.4,by+5,bw*0.6,bw*0.35,0,0,Math.PI*2);
+    C.fill();
+    C.beginPath();
+    C.ellipse(cx+bw*0.4,by+5,bw*0.5,bw*0.3,0,0,Math.PI*2);
+    C.fill();
+  }
+}
+
+function drawGround(){
+  // grass top edge
+  C.fillStyle='#5cb85c';
+  C.fillRect(0,GROUND_Y-4,W,8);
+  C.fillStyle='#4a8a3a';
+  C.fillRect(0,GROUND_Y+4,W,H-GROUND_Y);
+  // grass tufts
+  C.fillStyle='#6dd06d';
+  for(let x=0;x<W;x+=30){
+    C.beginPath();
+    C.moveTo(x,GROUND_Y-4);
+    C.lineTo(x+6,GROUND_Y-12);
+    C.lineTo(x+12,GROUND_Y-4);
+    C.fill();
+  }
+}
+
+function drawSlingshot(){
+  C.fillStyle='#5C3317';
+  // left fork
+  C.save();
+  C.translate(SLING.x-18,SLING.y-50);
+  C.fillRect(0,0,10,70);
+  C.fillRect(-4,-10,14,15);
+  C.restore();
+  // right fork
+  C.save();
+  C.translate(SLING.x+8,SLING.y-50);
+  C.fillRect(0,0,10,70);
+  C.fillRect(-2,-10,14,15);
+  C.restore();
+  // base
+  C.fillStyle='#4a2a0a';
+  C.fillRect(SLING.x-22,SLING.y+15,44,12);
+}
+
+function drawElastic(){
+  if(!bird)return;
+  C.strokeStyle='#8B0000';
+  C.lineWidth=4;
+  // left band
+  C.beginPath();
+  C.moveTo(SLING.x-14,SLING.y-55);
+  C.lineTo(bird.x,bird.y);
+  C.stroke();
+  // right band
+  C.beginPath();
+  C.moveTo(SLING.x+14,SLING.y-55);
+  C.lineTo(bird.x,bird.y);
+  C.stroke();
+}
+
+function drawBird(){
+  if(!bird||!bird.active)return;
+  C.save();
+  // rotation based on velocity
+  if(bird.launched){
+    const ang=Math.atan2(bird.vy,bird.vx);
+    C.translate(bird.x,bird.y);
+    C.rotate(ang);
+    C.translate(-bird.x,-bird.y);
+  }
+  // circle clip for photo
+  C.save();
+  C.beginPath();
+  C.arc(bird.x,bird.y,bird.r,0,Math.PI*2);
+  C.clip();
+  if(photoImg){
+    C.drawImage(photoImg,bird.x-bird.r,bird.y-bird.r,bird.r*2,bird.r*2);
+  } else {
+    C.fillStyle='#e74c3c';
+    C.fill();
+  }
+  C.restore();
+  // outline
+  C.beginPath();
+  C.arc(bird.x,bird.y,bird.r,0,Math.PI*2);
+  C.strokeStyle='#fff';
+  C.lineWidth=3;
+  C.stroke();
+  // angry eyebrows
+  C.strokeStyle='#000';
+  C.lineWidth=3;
+  C.beginPath();
+  C.moveTo(bird.x-10,bird.y-8);
+  C.lineTo(bird.x-3,bird.y-5);
+  C.stroke();
+  C.beginPath();
+  C.moveTo(bird.x+10,bird.y-8);
+  C.lineTo(bird.x+3,bird.y-5);
+  C.stroke();
+  C.restore();
+}
+
+function drawTrail(){
+  if(!bird||!bird.trail)return;
+  for(const t of bird.trail){
+    C.globalAlpha=t.life*0.5;
+    C.fillStyle='#fff';
+    C.beginPath();
+    C.arc(t.x,t.y,3,0,Math.PI*2);
+    C.fill();
+  }
+  C.globalAlpha=1;
+}
+
+function drawTrajectory(){
+  if(!aiming&&controlMode!=='camera')return;
+  if(!bird||bird.launched)return;
+  const dx=SLING.x-bird.x, dy=SLING.y-bird.y;
+  const vx=dx*LAUNCH_MULT, vy=dy*LAUNCH_MULT;
+  let px=bird.x, py=bird.y, pvx=vx, pvy=vy;
+  C.fillStyle='rgba(255,255,255,0.5)';
+  for(let i=0;i<25;i++){
+    const step=0.03;
+    pvx=pvx; pvy+=GRAVITY*step;
+    px+=pvx*step; py+=pvy*step;
+    if(py>GROUND_Y)break;
+    if(i%2===0){
+      C.beginPath();
+      C.arc(px,py,2.5-i*0.08,0,Math.PI*2);
+      C.fill();
+    }
+  }
+}
+
+function drawBlocks(){
+  for(const bl of blocks){
+    if(!bl.alive)continue;
+    const m=MAT[bl.mat];
+    // main color
+    C.fillStyle=m.color;
+    C.fillRect(bl.x,bl.y,bl.w,bl.h);
+    // dark edge
+    C.fillStyle=m.dark;
+    C.fillRect(bl.x,bl.y+bl.h-3,bl.w,3);
+    C.fillRect(bl.x+bl.w-3,bl.y,3,bl.h);
+    // damage cracks
+    const dmgRatio=1-bl.hp/bl.maxHp;
+    if(dmgRatio>0.3){
+      C.strokeStyle='rgba(0,0,0,0.3)';
+      C.lineWidth=1.5;
+      C.beginPath();
+      C.moveTo(bl.x+bl.w*0.3,bl.y);
+      C.lineTo(bl.x+bl.w*0.5,bl.y+bl.h*0.5);
+      C.lineTo(bl.x+bl.w*0.7,bl.y+bl.h);
+      C.stroke();
+    }
+    // outline
+    C.strokeStyle='rgba(0,0,0,0.2)';
+    C.lineWidth=1;
+    C.strokeRect(bl.x,bl.y,bl.w,bl.h);
+  }
+}
+
+function drawPigs(){
+  for(const p of pigs){
+    if(!p.alive)continue;
+    // body
+    C.fillStyle='#5cb85c';
+    C.beginPath();
+    C.arc(p.x,p.y,p.r,0,Math.PI*2);
+    C.fill();
+    C.strokeStyle='#3d8b3d';
+    C.lineWidth=2;
+    C.stroke();
+    // snout
+    C.fillStyle='#4a9a4a';
+    C.beginPath();
+    C.ellipse(p.x,p.y+3,p.r*0.45,p.r*0.35,0,0,Math.PI*2);
+    C.fill();
+    // nostrils
+    C.fillStyle='#3a7a3a';
+    C.beginPath();
+    C.arc(p.x-4,p.y+3,2.5,0,Math.PI*2);
+    C.fill();
+    C.beginPath();
+    C.arc(p.x+4,p.y+3,2.5,0,Math.PI*2);
+    C.fill();
+    // eyes
+    C.fillStyle='#fff';
+    C.beginPath();
+    C.arc(p.x-7,p.y-6,5,0,Math.PI*2);
+    C.fill();
+    C.beginPath();
+    C.arc(p.x+7,p.y-6,5,0,Math.PI*2);
+    C.fill();
+    C.fillStyle='#222';
+    C.beginPath();
+    C.arc(p.x-6,p.y-6,2.5,0,Math.PI*2);
+    C.fill();
+    C.beginPath();
+    C.arc(p.x+8,p.y-6,2.5,0,Math.PI*2);
+    C.fill();
+    // damage indicator
+    const dmgRatio=1-p.hp/p.maxHp;
+    if(dmgRatio>0.3){
+      C.strokeStyle='rgba(0,0,0,0.3)';
+      C.lineWidth=1;
+      C.beginPath();
+      C.arc(p.x+p.r*0.3,p.y-p.r*0.2,p.r*0.15,0,Math.PI*2);
+      C.stroke();
+    }
+  }
+}
+
+function drawParticles(){
+  for(const p of particles){
+    C.globalAlpha=p.life/p.maxLife;
+    C.fillStyle=p.color;
+    C.beginPath();
+    C.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);
+    C.fill();
+  }
+  C.globalAlpha=1;
+}
+
+function drawScorePopups(){
+  for(const s of scorePopups){
+    C.globalAlpha=Math.min(1,s.life*2);
+    C.fillStyle='#fff';
+    C.font='bold 22px sans-serif';
+    C.textAlign='center';
+    C.textBaseline='middle';
+    C.fillText('+'+s.val,s.x,s.y);
+  }
+  C.globalAlpha=1;
+}
+
+function drawBirdQueue(){
+  // draw waiting birds at bottom-left
+  for(let i=0;i<birdsLeft;i++){
+    const bx=40+i*30, by=GROUND_Y+25;
+    C.save();
+    C.beginPath();
+    C.arc(bx,by,12,0,Math.PI*2);
+    C.clip();
+    if(photoImg) C.drawImage(photoImg,bx-12,by-12,24,24);
+    else{C.fillStyle='#e74c3c';C.fill()}
+    C.restore();
+    C.beginPath();
+    C.arc(bx,by,12,0,Math.PI*2);
+    C.strokeStyle='#fff';
+    C.lineWidth=2;
+    C.stroke();
+  }
+}
+
+function drawCamAimGuide(){
+  if(controlMode!=='camera'||state!=='aim'||!bird||bird.launched)return;
+  // draw aim arc guide
+  C.strokeStyle='rgba(255,255,0,0.5)';
+  C.lineWidth=3;
+  C.setLineDash([8,6]);
+  const len=100;
+  C.beginPath();
+  C.moveTo(SLING.x,SLING.y);
+  C.lineTo(SLING.x+Math.cos(camAimAngle)*len,SLING.y-Math.sin(camAimAngle)*len);
+  C.stroke();
+  C.setLineDash([]);
+  // label
+  C.fillStyle='rgba(255,255,0,0.8)';
+  C.font='bold 16px sans-serif';
+  C.textAlign='center';
+  C.fillText('JUMP to launch!',SLING.x,SLING.y+50);
+}
+
+// ── Main Render ──
+function render(dt){
+  C.save();
+  C.setTransform(scaleX,0,0,scaleY,offX,offY);
+
+  drawSky();
+  drawClouds(dt);
+  drawGround();
+
+  if(state==='aim'||state==='flying'||state==='settle'){
+    drawBlocks();
+    drawPigs();
+    drawTrail();
+    // draw elastic behind bird when aiming
+    if(state==='aim'&&bird&&!bird.launched){
+      drawElastic();
+    }
+    drawTrajectory();
+    drawBird();
+    drawSlingshot(); // slingshot in front
+    drawParticles();
+    drawScorePopups();
+    drawBirdQueue();
+    drawCamAimGuide();
+  }
+
+  C.restore();
+}
+
+// ── Game Loop ──
+let lastT=0;
+function loop(ts){
+  const dt=Math.min((ts-lastT)/1000,0.05);
+  lastT=ts;
+  resize();
+  if(state==='aim'||state==='flying'||state==='settle'){
+    updateState(dt);
+  }
+  render(dt);
+  requestAnimationFrame(loop);
+}
+
+// ── Init ──
+startPhotoCamera();
+requestAnimationFrame(loop);
+
+/* ── Exit confirmation ── */
+document.addEventListener('click',function(e){
+  var a=e.target.closest('a[href*="index.html"]');
+  if(a){e.preventDefault();if(confirm('Leave game? Your progress will be lost!'))location.assign(a.href);}
+});
+</script>
+<a href="../../index.html" id="__hubBack" aria-label="Back to Play Zone">‹</a>
+<style>#__hubBack{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 8px);z-index:99999;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1;font-weight:700;text-decoration:none;border:2px solid rgba(255,255,255,.45);box-shadow:0 2px 8px rgba(0,0,0,.35);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation}#__hubBack:active{background:rgba(0,0,0,.8);transform:scale(.92)}</style>
 </body>
 </html>

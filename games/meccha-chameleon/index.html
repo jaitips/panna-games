@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>🦎 Meccha Chameleon</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Lilita+One&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    font-family: 'Fredoka', sans-serif;
+    background: #14351f;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #gameCanvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    display: block;
+  }
+
+  /* ---------- Screens ---------- */
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    text-align: center;
+    padding: 1rem;
+  }
+  .hidden { display: none !important; }
+
+  #titleScreen {
+    background:
+      radial-gradient(ellipse 80% 60% at 25% 15%, rgba(120,220,100,0.25) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 70% at 80% 30%, rgba(255,180,60,0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 70% 50% at 50% 95%, rgba(60,160,255,0.18) 0%, transparent 60%),
+      #14351f;
+  }
+
+  .big-title {
+    font-family: 'Lilita One', sans-serif;
+    font-size: clamp(2.4rem, 9vw, 4.5rem);
+    color: #fff;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #8ef06e, #ffd94f, #ff9d6b, #6ec9ff);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmerText 5s ease infinite;
+    filter: drop-shadow(0 4px 18px rgba(140,240,110,0.35));
+    margin-bottom: 0.3rem;
+  }
+  @keyframes shimmerText {
+    0%,100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  .title-lizard {
+    font-size: clamp(4rem, 16vw, 7rem);
+    animation: bobble 2.4s ease-in-out infinite;
+    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.4));
+  }
+  @keyframes bobble {
+    0%,100% { transform: translateY(0) rotate(-4deg); }
+    50% { transform: translateY(-14px) rotate(4deg); }
+  }
+
+  .subtitle {
+    color: rgba(255,255,255,0.75);
+    font-size: clamp(1rem, 3.5vw, 1.3rem);
+    font-weight: 500;
+    margin-bottom: 2rem;
+  }
+
+  .mode-row {
+    display: flex;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .mode-btn {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 700;
+    font-size: clamp(1.1rem, 4vw, 1.5rem);
+    color: #fff;
+    border: none;
+    border-radius: 1.4rem;
+    padding: 1.3rem 1.8rem;
+    cursor: pointer;
+    min-width: 240px;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.25), 0 14px 30px rgba(0,0,0,0.35);
+    transition: transform 0.12s, box-shadow 0.12s;
+    line-height: 1.3;
+  }
+  .mode-btn small {
+    display: block;
+    font-weight: 500;
+    font-size: 0.72em;
+    opacity: 0.85;
+    margin-top: 0.25rem;
+  }
+  .mode-btn:active {
+    transform: translateY(5px);
+    box-shadow: 0 3px 0 rgba(0,0,0,0.25), 0 6px 14px rgba(0,0,0,0.3);
+  }
+  .btn-seek { background: linear-gradient(160deg, #ffb84f, #f4772e); }
+  .btn-hide { background: linear-gradient(160deg, #6ede64, #2e9e4a); }
+
+  /* ---------- HUD ---------- */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: max(0.6rem, env(safe-area-inset-top)) 0.8rem 0.6rem;
+    z-index: 5;
+    pointer-events: none;
+  }
+  #hud > * { pointer-events: auto; }
+
+  .hud-pill {
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 2rem;
+    padding: 0.45rem 0.9rem;
+    color: #fff;
+    font-weight: 700;
+    font-size: clamp(1rem, 3.5vw, 1.25rem);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+  }
+
+  .hud-btn {
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(6px);
+    border: none;
+    border-radius: 50%;
+    width: clamp(2.8rem, 10vw, 3.4rem);
+    height: clamp(2.8rem, 10vw, 3.4rem);
+    font-size: clamp(1.3rem, 5vw, 1.7rem);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    transition: transform 0.1s;
+  }
+  .hud-btn:active { transform: scale(0.88); }
+
+  #timerWrap {
+    flex: 1;
+    height: 1.1rem;
+    background: rgba(0,0,0,0.45);
+    border-radius: 1rem;
+    overflow: hidden;
+    min-width: 60px;
+  }
+  #timerBar {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #6ede64, #ffd94f);
+    border-radius: 1rem;
+    transition: width 0.4s linear;
+  }
+
+  /* ---------- Banner messages ---------- */
+  #banner {
+    position: fixed;
+    top: 22%;
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    z-index: 8;
+    font-family: 'Lilita One', sans-serif;
+    font-size: clamp(1.6rem, 7vw, 3rem);
+    color: #fff;
+    text-shadow: 0 3px 0 rgba(0,0,0,0.35), 0 8px 24px rgba(0,0,0,0.4);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #banner.pop {
+    animation: bannerPop 1.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  @keyframes bannerPop {
+    0% { transform: translateX(-50%) scale(0); opacity: 0; }
+    18% { transform: translateX(-50%) scale(1.12); opacity: 1; }
+    28% { transform: translateX(-50%) scale(1); }
+    80% { transform: translateX(-50%) scale(1); opacity: 1; }
+    100% { transform: translateX(-50%) scale(0.9); opacity: 0; }
+  }
+
+  /* ---------- Paint palette (Hide mode) ---------- */
+  #palette {
+    position: fixed;
+    bottom: max(0.8rem, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: clamp(0.4rem, 2vw, 0.9rem);
+    z-index: 6;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(8px);
+    padding: 0.7rem 0.9rem;
+    border-radius: 2rem;
+  }
+  .bucket {
+    width: clamp(3rem, 12vw, 4.2rem);
+    height: clamp(3rem, 12vw, 4.2rem);
+    border-radius: 50%;
+    border: 4px solid rgba(255,255,255,0.85);
+    cursor: pointer;
+    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.35), inset 0 -6px 10px rgba(0,0,0,0.2);
+    position: relative;
+  }
+  .bucket:active { transform: scale(0.85); }
+  .bucket.picked {
+    transform: scale(1.18);
+    border-color: #fff;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.35), 0 4px 16px rgba(0,0,0,0.4);
+  }
+
+  /* ---------- Result overlay ---------- */
+  #resultScreen {
+    background: rgba(10, 25, 15, 0.82);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .result-emoji { font-size: clamp(4rem, 18vw, 7rem); margin-bottom: 0.4rem; }
+  .result-title {
+    font-family: 'Lilita One', sans-serif;
+    font-size: clamp(2rem, 8vw, 3.4rem);
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+  .result-stars { font-size: clamp(2rem, 9vw, 3.2rem); letter-spacing: 0.2rem; margin-bottom: 0.6rem; }
+  .result-sub {
+    color: rgba(255,255,255,0.8);
+    font-size: clamp(1rem, 3.5vw, 1.3rem);
+    font-weight: 500;
+    margin-bottom: 1.6rem;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <button class="hud-btn" id="homeBtn" aria-label="Home">🏠</button>
+  <div class="hud-pill" id="hudInfo">🦎 0/3</div>
+  <div id="timerWrap"><div id="timerBar"></div></div>
+  <button class="hud-btn" id="hintBtn" aria-label="Hint">🔍</button>
+</div>
+
+<div id="banner"></div>
+
+<!-- Paint palette for Hide mode -->
+<div id="palette" class="hidden"></div>
+
+<!-- Title screen -->
+<div class="screen" id="titleScreen">
+  <div class="title-lizard">🦎</div>
+  <h1 class="big-title">Meccha Chameleon</h1>
+  <p class="subtitle">Chameleons hide by painting themselves — can you spot them?</p>
+  <div class="mode-row">
+    <button class="mode-btn btn-seek" id="seekModeBtn">🔍 Find Them!<small>Spot the hiding chameleons</small></button>
+    <button class="mode-btn btn-hide" id="hideModeBtn">🎨 Hide Me!<small>Paint yourself to blend in</small></button>
+  </div>
+</div>
+
+<!-- Result screen -->
+<div class="screen hidden" id="resultScreen">
+  <div class="result-emoji" id="resultEmoji">🎉</div>
+  <div class="result-title" id="resultTitle">You found them all!</div>
+  <div class="result-stars" id="resultStars"></div>
+  <div class="result-sub" id="resultSub"></div>
+  <div class="mode-row">
+    <button class="mode-btn btn-seek" id="againBtn">▶️ Play Again</button>
+    <button class="mode-btn btn-hide" id="menuBtn">🏠 Menu</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   Meccha Chameleon — kid-friendly hide-and-seek rebuild.
+   Seek mode: tap camouflaged chameleons on a painted wall.
+   Hide mode: paint your chameleon to match the wall before
+   the hunter robot scans past.
+   ============================================================ */
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * DPR;
+  canvas.height = H * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (state === 'seek') buildSeekLevel(seekLevel, true);
+  if (state === 'hide') layoutHide();
+}
+window.addEventListener('resize', resize);
+
+/* ---------------- Audio (procedural, Web Audio API) ---------------- */
+let AC = null;
+function audio() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  if (AC && AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function tone(freq, dur, type, vol, when, slide) {
+  const ac = audio(); if (!ac) return;
+  const t = ac.currentTime + (when || 0);
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(freq, t);
+  if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol || 0.2, t + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(ac.destination);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+const sfx = {
+  click:   () => tone(600, 0.08, 'triangle', 0.25),
+  pop:     () => { tone(420, 0.12, 'triangle', 0.3, 0, 880); tone(1200, 0.1, 'sine', 0.15, 0.03); },
+  found:   () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.16, 'triangle', 0.22, i * 0.09)); },
+  win:     () => { [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.22, 'triangle', 0.22, i * 0.12)); },
+  wrong:   () => { tone(300, 0.25, 'sawtooth', 0.12, 0, 180); },
+  paint:   () => { tone(500, 0.1, 'sine', 0.2, 0, 700); tone(900, 0.08, 'sine', 0.12, 0.06); },
+  tick:    () => tone(880, 0.05, 'square', 0.05),
+  giggle:  () => { [700, 900, 750, 1000].forEach((f, i) => tone(f, 0.08, 'sine', 0.15, i * 0.07)); },
+  wiggle:  () => tone(350, 0.1, 'sine', 0.08, 0, 450),
+  robot:   () => { tone(120, 0.12, 'square', 0.08); tone(160, 0.12, 'square', 0.08, 0.15); },
+  scan:    () => tone(1400, 0.5, 'sine', 0.06, 0, 600),
+};
+
+/* ---------------- Shared helpers ---------------- */
+const PALETTE = [
+  { name: 'Red',    h: 4,   s: 78, l: 58 },
+  { name: 'Orange', h: 32,  s: 88, l: 58 },
+  { name: 'Yellow', h: 50,  s: 90, l: 60 },
+  { name: 'Green',  h: 125, s: 55, l: 50 },
+  { name: 'Blue',   h: 212, s: 75, l: 58 },
+  { name: 'Purple', h: 280, s: 55, l: 60 },
+];
+const hsl = (h, s, l, a) => a === undefined ? `hsl(${h},${s}%,${l}%)` : `hsla(${h},${s}%,${l}%,${a})`;
+const rand = (a, b) => a + Math.random() * (b - a);
+const randi = (a, b) => Math.floor(rand(a, b + 1));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+
+let state = 'menu';   // menu | seek | hide | result
+let rafId = null;
+let now = 0;
+
+/* ---------------- Confetti particles ---------------- */
+let particles = [];
+function burstConfetti(x, y, n, big) {
+  for (let i = 0; i < n; i++) {
+    const a = rand(0, Math.PI * 2), sp = rand(2, big ? 9 : 6);
+    particles.push({
+      x, y,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 3,
+      life: 1, decay: rand(0.008, 0.02),
+      size: rand(4, big ? 12 : 8),
+      hue: randi(0, 360),
+      spin: rand(-0.2, 0.2), rot: rand(0, Math.PI * 2),
+    });
+  }
+}
+function updateDrawParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy; p.vy += 0.25; p.vx *= 0.98;
+    p.rot += p.spin; p.life -= p.decay;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = hsl(p.hue, 85, 60);
+    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+    ctx.restore();
+  }
+}
+
+/* ---------------- Chameleon drawing ----------------
+   Draws a cute cartoon chameleon at (x,y), body length ~size.
+   opts: { blink 0..1, wigglePhase, facing (1|-1), happy, alpha } */
+function drawChameleon(x, y, size, colH, colS, colL, opts) {
+  const o = opts || {};
+  const f = o.facing || 1;
+  const wig = o.wigglePhase ? Math.sin(o.wigglePhase) * 0.12 : 0;
+  const body = hsl(colH, colS, colL);
+  const dark = hsl(colH, colS, Math.max(colL - 14, 8));
+  const light = hsl(colH, Math.max(colS - 10, 0), Math.min(colL + 12, 92));
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(f, 1);
+  ctx.rotate(wig);
+  if (o.alpha !== undefined) ctx.globalAlpha = o.alpha;
+  const s = size / 100; // normalize: body drawn in ~100-unit space
+  ctx.scale(s, s);
+
+  // Tail: spiral curl behind the body
+  ctx.strokeStyle = body;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.lineWidth = 13;
+  ctx.arc(-52, 6, 16, Math.PI * 0.5, Math.PI * 1.9, false);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.lineWidth = 8;
+  ctx.arc(-52, 6, 7, Math.PI * 1.2, Math.PI * 2.6, false);
+  ctx.stroke();
+
+  // Legs (little stubs with toes)
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 9;
+  [[-22, 26], [18, 26]].forEach(([lx, ly]) => {
+    ctx.beginPath();
+    ctx.moveTo(lx, 10);
+    ctx.lineTo(lx - 4, ly);
+    ctx.stroke();
+  });
+
+  // Body
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.ellipse(-8, 0, 44, 28, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Back crest zigzag
+  ctx.fillStyle = dark;
+  ctx.beginPath();
+  ctx.moveTo(-44, -12);
+  for (let i = 0; i < 5; i++) {
+    ctx.lineTo(-38 + i * 16, -30 + (i % 2) * 4);
+    ctx.lineTo(-30 + i * 16, -14);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // Belly highlight
+  ctx.fillStyle = light;
+  ctx.beginPath();
+  ctx.ellipse(-8, 10, 32, 14, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.ellipse(34, -8, 22, 19, -0.15, 0, Math.PI * 2);
+  ctx.fill();
+  // Head casque (little crest)
+  ctx.beginPath();
+  ctx.moveTo(22, -22);
+  ctx.quadraticCurveTo(34, -38, 46, -20);
+  ctx.closePath();
+  ctx.fillStyle = dark;
+  ctx.fill();
+
+  // Eye (big googly, blinks)
+  const blink = clamp(o.blink || 0, 0, 1); // 1 = closed
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(38, -12, 10, 10 * (1 - blink * 0.92), 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (blink < 0.7) {
+    ctx.fillStyle = '#222';
+    ctx.beginPath();
+    ctx.arc(40, -12, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(41.5, -13.5, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(31, -12); ctx.lineTo(45, -12);
+    ctx.stroke();
+  }
+
+  // Mouth — happy smile
+  ctx.strokeStyle = dark;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  if (o.happy) {
+    ctx.arc(44, -2, 8, 0.15, Math.PI * 0.75);
+  } else {
+    ctx.arc(46, -4, 6, 0.3, Math.PI * 0.6);
+  }
+  ctx.stroke();
+
+  // Spots
+  ctx.fillStyle = hsl(colH, colS, colL + 8, 0.7);
+  [[-24, -4], [-4, -8], [12, 2]].forEach(([sx, sy]) => {
+    ctx.beginPath();
+    ctx.arc(sx, sy, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.restore();
+}
+
+/* ============================================================
+   SEEK MODE — find the camouflaged chameleons
+   ============================================================ */
+const SEEK_LEVELS = [
+  { count: 3, blend: 26, time: 90 },
+  { count: 4, blend: 18, time: 90 },
+  { count: 5, blend: 13, time: 75 },
+  { count: 6, blend: 9,  time: 75 },
+  { count: 7, blend: 6,  time: 75 },
+];
+let seekLevel = 0;
+let panels = [];        // wall tiles
+let lizards = [];       // hidden chameleons
+let seekTimeLeft = 0, seekTimeTotal = 0, foundCount = 0;
+let lastTickSec = -1;
+let hintCooldown = 0;
+let seekOver = false;
+
+function buildSeekLevel(li, keepProgress) {
+  const cfg = SEEK_LEVELS[Math.min(li, SEEK_LEVELS.length - 1)];
+  // Wall of colored panels
+  const cols = W > H ? 7 : 5;
+  const rows = W > H ? 5 : 7;
+  const pw = W / cols, ph = H / rows;
+  const oldLizards = keepProgress ? lizards : null;
+  panels = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const base = PALETTE[randi(0, PALETTE.length - 1)];
+      panels.push({
+        x: c * pw, y: r * ph, w: pw, h: ph,
+        h1: base.h + randi(-10, 10),
+        s1: clamp(base.s + randi(-12, 8), 30, 95),
+        l1: clamp(base.l + randi(-10, 10), 30, 75),
+      });
+    }
+  }
+  if (oldLizards && oldLizards.length) {
+    // Re-place existing lizards after resize, keep found state
+    oldLizards.forEach(lz => placeLizard(lz, cfg));
+    lizards = oldLizards;
+    return;
+  }
+  lizards = [];
+  // Pick distinct panels away from the very top (HUD area)
+  const usable = panels.filter(p => p.y > H * 0.14);
+  shuffle(usable);
+  for (let i = 0; i < cfg.count; i++) {
+    const lz = {
+      found: false,
+      foundAt: 0,
+      blinkAt: now + rand(1000, 4000),
+      blink: 0,
+      wiggleAt: now + rand(2500, 7000),
+      wigglePhase: 0,
+      facing: Math.random() < 0.5 ? 1 : -1,
+      hintUntil: 0,
+      bounce: 0,
+    };
+    placeLizard(lz, cfg, usable[i % usable.length]);
+    lizards.push(lz);
+  }
+  seekTimeTotal = cfg.time;
+  if (!keepProgress) {
+    seekTimeLeft = cfg.time;
+    foundCount = 0;
+    seekOver = false;
+  }
+}
+
+function placeLizard(lz, cfg, panel) {
+  const p = panel || panels[randi(0, panels.length - 1)];
+  const size = clamp(Math.min(p.w, p.h) * 0.85, 60, 130);
+  lz.x = p.x + p.w / 2 + rand(-p.w * 0.12, p.w * 0.12);
+  lz.y = clamp(p.y + p.h / 2 + rand(-p.h * 0.1, p.h * 0.1), H * 0.16, H - size * 0.4);
+  lz.size = size;
+  lz.r = size * 0.62; // generous tap radius
+  // Camouflage: panel color shifted slightly (less shift = harder)
+  const d = cfg.blend;
+  lz.h = p.h1 + randi(-d, d);
+  lz.s = clamp(p.s1 + randi(-d, d) * 0.6, 25, 95);
+  lz.l = clamp(p.l1 + randi(-d, d) * 0.6, 25, 80);
+}
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = randi(0, i);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+}
+
+function startSeek() {
+  state = 'seek';
+  buildSeekLevel(seekLevel);
+  showHUD(true);
+  document.getElementById('hintBtn').classList.remove('hidden');
+  hintCooldown = 0;
+  updateHUD();
+  banner(`Find ${lizards.length} chameleons! 🔍`);
+  sfx.click();
+}
+
+function drawSeek(dt) {
+  // Wall
+  panels.forEach(p => {
+    ctx.fillStyle = hsl(p.h1, p.s1, p.l1);
+    ctx.fillRect(p.x - 0.5, p.y - 0.5, p.w + 1, p.h + 1);
+    // subtle inner shading for a "painted panel" look
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.fillRect(p.x + 3, p.y + 3, p.w - 6, 5);
+    ctx.fillStyle = 'rgba(0,0,0,0.07)';
+    ctx.fillRect(p.x + 3, p.y + p.h - 8, p.w - 6, 5);
+  });
+
+  // Timer
+  if (!seekOver) {
+    seekTimeLeft -= dt;
+    const sec = Math.ceil(seekTimeLeft);
+    if (seekTimeLeft <= 10 && sec !== lastTickSec && seekTimeLeft > 0) { lastTickSec = sec; sfx.tick(); }
+    if (seekTimeLeft <= 0) { seekTimeLeft = 0; endSeek(false); }
+    document.getElementById('timerBar').style.width = (seekTimeLeft / seekTimeTotal * 100) + '%';
+  }
+  if (hintCooldown > 0) hintCooldown -= dt;
+
+  // Lizards
+  lizards.forEach(lz => {
+    // blink cycle
+    if (now >= lz.blinkAt) {
+      const t = (now - lz.blinkAt) / 260;
+      lz.blink = t < 0.5 ? t * 2 : (t < 1 ? (1 - t) * 2 : 0);
+      if (t >= 1) { lz.blink = 0; lz.blinkAt = now + rand(1800, 5000); }
+    }
+    // occasional wiggle (a hint!)
+    if (!lz.found && now >= lz.wiggleAt) {
+      const t = (now - lz.wiggleAt) / 900;
+      if (t < 1) {
+        lz.wigglePhase = t * Math.PI * 6;
+        if (t < 0.05) sfx.wiggle();
+      } else {
+        lz.wigglePhase = 0;
+        lz.wiggleAt = now + rand(4000, 9000);
+      }
+    }
+    if (lz.found) {
+      lz.bounce = Math.max(0, lz.bounce - dt * 2.2);
+      const by = Math.sin(lz.bounce * Math.PI) * 30;
+      drawChameleon(lz.x, lz.y - by, lz.size, 125, 70, 48, {
+        facing: lz.facing, happy: true, blink: 0,
+      });
+      // star badge
+      ctx.font = `${lz.size * 0.34}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('⭐', lz.x, lz.y - lz.size * 0.55 - by);
+    } else {
+      const hinting = now < lz.hintUntil;
+      if (hinting) {
+        // sparkle ring hint
+        const pulse = (Math.sin(now / 120) + 1) / 2;
+        ctx.strokeStyle = `rgba(255,255,255,${0.5 + pulse * 0.5})`;
+        ctx.lineWidth = 4;
+        ctx.setLineDash([10, 8]);
+        ctx.beginPath();
+        ctx.arc(lz.x, lz.y, lz.r + pulse * 8, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      drawChameleon(lz.x, lz.y, lz.size, lz.h, lz.s, lz.l, {
+        facing: lz.facing,
+        blink: lz.blink,
+        wigglePhase: hinting ? now / 90 : lz.wigglePhase,
+      });
+    }
+  });
+
+  updateDrawParticles();
+}
+
+function seekTap(x, y) {
+  if (seekOver) return;
+  let best = null, bestD = Infinity;
+  lizards.forEach(lz => {
+    if (lz.found) return;
+    const d = Math.hypot(x - lz.x, y - lz.y);
+    if (d < lz.r * 1.35 && d < bestD) { best = lz; bestD = d; }
+  });
+  if (best) {
+    best.found = true;
+    best.bounce = 1;
+    foundCount++;
+    burstConfetti(best.x, best.y, 30);
+    sfx.found();
+    updateHUD();
+    if (foundCount >= lizards.length) {
+      setTimeout(() => endSeek(true), 900);
+    } else {
+      banner(['Got one! 🎉', 'There you are! 👀', 'Nice spotting! ⭐', 'Found you! 🦎'][randi(0, 3)]);
+    }
+  } else {
+    sfx.pop();
+    // small dust puff so taps always feel responsive
+    burstConfetti(x, y, 4);
+  }
+}
+
+function useHint() {
+  if (state !== 'seek' || seekOver || hintCooldown > 0) return;
+  const hidden = lizards.filter(lz => !lz.found);
+  if (!hidden.length) return;
+  const lz = hidden[randi(0, hidden.length - 1)];
+  lz.hintUntil = now + 2200;
+  hintCooldown = 6;
+  sfx.giggle();
+}
+
+function endSeek(won) {
+  if (seekOver) return;
+  seekOver = true;
+  if (won) {
+    sfx.win();
+    burstConfetti(W / 2, H / 2, 80, true);
+    const frac = seekTimeLeft / seekTimeTotal;
+    const stars = frac > 0.5 ? 3 : frac > 0.2 ? 2 : 1;
+    setTimeout(() => {
+      showResult('🏆', 'You found them all!', '⭐'.repeat(stars),
+        `Level ${seekLevel + 1} complete!`, () => { seekLevel = Math.min(seekLevel + 1, SEEK_LEVELS.length - 1); startSeek(); });
+    }, 1200);
+  } else {
+    // Gentle: reveal the rest, no scary fail
+    lizards.forEach(lz => { if (!lz.found) { lz.hintUntil = now + 4000; } });
+    sfx.wrong();
+    banner('Time\'s up! There they are! 👇');
+    setTimeout(() => {
+      showResult('🦎', 'So sneaky!', '⭐',
+        `You found ${foundCount} of ${lizards.length} — try again!`, startSeek);
+    }, 3200);
+  }
+}
+
+/* ============================================================
+   HIDE MODE — paint your chameleon to match the wall
+   ============================================================ */
+const HIDE_ROUNDS = 5;
+let hideRound = 0, hideWins = 0, hideTries = 0;
+let wallIdx = 0;           // palette index of the wall
+let myColorIdx = -1;       // what the kid painted
+let myColor = { h: 0, s: 0, l: 62 };     // displayed color (animates)
+let myTarget = { h: 0, s: 0, l: 62 };
+let hidePhase = 'paint';   // paint | approach | scan | verdict
+let phaseT = 0;            // seconds in current phase
+let hunter = { x: 0 };
+let hideWallPanels = [];
+let myLz = { x: 0, y: 0, size: 0, blinkAt: 0, blink: 0 };
+
+const PAINT_TIME = 10;   // seconds to paint before hunter comes
+
+function layoutHide() {
+  myLz.size = clamp(Math.min(W, H) * 0.3, 110, 200);
+  myLz.x = W * 0.62;
+  myLz.y = H * 0.58;
+  // wall = brick-ish grid of one palette color with slight variation
+  const base = PALETTE[wallIdx];
+  hideWallPanels = [];
+  const cols = 6, rows = 8;
+  const pw = W / cols, ph = H / rows;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      hideWallPanels.push({
+        x: c * pw, y: r * ph, w: pw, h: ph,
+        l: clamp(base.l + randi(-6, 6), 30, 75),
+        s: clamp(base.s + randi(-6, 4), 30, 95),
+      });
+    }
+  }
+}
+
+function startHide() {
+  state = 'hide';
+  hideRound = 0;
+  hideWins = 0;
+  showHUD(true);
+  document.getElementById('hintBtn').classList.add('hidden');
+  buildPalette();
+  nextHideRound();
+  sfx.click();
+}
+
+function nextHideRound() {
+  wallIdx = randi(0, PALETTE.length - 1);
+  myColorIdx = -1;
+  myColor = { h: 0, s: 5, l: 65 };   // unpainted grey — clearly "not hiding yet"
+  myTarget = { ...myColor };
+  hidePhase = 'paint';
+  phaseT = 0;
+  hideTries = 0;
+  hunter.x = -200;
+  layoutHide();
+  document.getElementById('palette').classList.remove('hidden');
+  document.querySelectorAll('.bucket').forEach(b => b.classList.remove('picked'));
+  updateHUD();
+  banner('Paint yourself to hide! 🎨');
+}
+
+function buildPalette() {
+  const pal = document.getElementById('palette');
+  pal.innerHTML = '';
+  PALETTE.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.className = 'bucket';
+    b.style.background = `radial-gradient(circle at 35% 30%, ${hsl(c.h, c.s, c.l + 12)}, ${hsl(c.h, c.s, c.l - 8)})`;
+    b.setAttribute('aria-label', c.name);
+    b.addEventListener('click', () => pickColor(i, b));
+    pal.appendChild(b);
+  });
+}
+
+function pickColor(i, btn) {
+  if (state !== 'hide' || hidePhase === 'scan' || hidePhase === 'verdict') return;
+  myColorIdx = i;
+  myTarget = { ...PALETTE[i] };
+  document.querySelectorAll('.bucket').forEach(b => b.classList.remove('picked'));
+  btn.classList.add('picked');
+  burstConfetti(myLz.x, myLz.y, 12);
+  sfx.paint();
+}
+
+function drawHide(dt) {
+  phaseT += dt;
+
+  // Wall
+  hideWallPanels.forEach(p => {
+    ctx.fillStyle = hsl(PALETTE[wallIdx].h, p.s, p.l);
+    ctx.fillRect(p.x - 0.5, p.y - 0.5, p.w + 1, p.h + 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(p.x + 3, p.y + 3, p.w - 6, 4);
+  });
+
+  // Branch perch
+  ctx.strokeStyle = '#6b4326';
+  ctx.lineWidth = Math.max(14, myLz.size * 0.12);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(myLz.x - myLz.size, myLz.y + myLz.size * 0.34);
+  ctx.quadraticCurveTo(myLz.x, myLz.y + myLz.size * 0.42, myLz.x + myLz.size, myLz.y + myLz.size * 0.3);
+  ctx.stroke();
+
+  // Animate paint color toward target
+  myColor.h = lerp(myColor.h, myTarget.h, 0.12);
+  myColor.s = lerp(myColor.s, myTarget.s, 0.12);
+  myColor.l = lerp(myColor.l, myTarget.l, 0.12);
+
+  // Blink
+  if (now >= myLz.blinkAt) {
+    const t = (now - myLz.blinkAt) / 260;
+    myLz.blink = t < 0.5 ? t * 2 : (t < 1 ? (1 - t) * 2 : 0);
+    if (t >= 1) { myLz.blink = 0; myLz.blinkAt = now + rand(1500, 4500); }
+  }
+
+  const caught = hidePhase === 'verdict' && !verdictSafe;
+  drawChameleon(myLz.x, myLz.y, myLz.size, myColor.h, myColor.s, myColor.l, {
+    facing: -1,
+    blink: hidePhase === 'scan' ? 0.15 : myLz.blink,   // eyes wide during the scan!
+    happy: hidePhase === 'verdict' && verdictSafe,
+    wigglePhase: caught ? now / 100 : 0,
+  });
+
+  // Phase logic
+  if (hidePhase === 'paint') {
+    const left = PAINT_TIME - phaseT;
+    document.getElementById('timerBar').style.width = clamp(left / PAINT_TIME * 100, 0, 100) + '%';
+    if (left <= 3.2 && left > 0) {
+      const sec = Math.ceil(left);
+      if (sec !== lastTickSec) { lastTickSec = sec; sfx.tick(); banner(`Hunter coming in ${sec}... 🤖`); }
+    }
+    if (left <= 0) {
+      hidePhase = 'approach';
+      phaseT = 0;
+      hunter.x = -180;
+      document.getElementById('palette').classList.add('hidden');
+      sfx.robot();
+    }
+  } else if (hidePhase === 'approach') {
+    hunter.x = lerp(-180, W * 0.22, Math.min(phaseT / 2, 1));
+    if (phaseT >= 2) { hidePhase = 'scan'; phaseT = 0; sfx.scan(); }
+  } else if (hidePhase === 'scan') {
+    if (phaseT >= 2.2) {
+      verdictSafe = myColorIdx === wallIdx;
+      hidePhase = 'verdict';
+      phaseT = 0;
+      if (verdictSafe) {
+        hideWins++;
+        sfx.win();
+        burstConfetti(myLz.x, myLz.y, 50, true);
+        banner('He can\'t see you! 🥳');
+      } else {
+        sfx.giggle();
+        banner('Found you! Hee hee! 😆');
+      }
+    }
+  } else if (hidePhase === 'verdict') {
+    if (verdictSafe) {
+      hunter.x += dt * W * 0.5; // hunter walks off
+      if (phaseT >= 2.4) {
+        hideRound++;
+        if (hideRound >= HIDE_ROUNDS) return endHide();
+        nextHideRound();
+      }
+    } else if (phaseT >= 2.6) {
+      // Gentle retry: same round, palette comes back, wrong bucket unmarked
+      hideTries++;
+      hidePhase = 'paint';
+      phaseT = 0;
+      hunter.x = -200;
+      document.getElementById('palette').classList.remove('hidden');
+      banner('Try another color! 🎨');
+    }
+  }
+
+  // Hunter robot
+  if (hidePhase !== 'paint') drawHunter(hunter.x, myLz.y + myLz.size * 0.1, myLz.size);
+
+  updateDrawParticles();
+}
+
+let verdictSafe = false;
+
+function drawHunter(x, y, ref) {
+  const s = ref / 130;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+
+  const t = now / 1000;
+  const bob = Math.sin(t * 6) * 3;
+  ctx.translate(0, bob);
+
+  // Legs
+  ctx.fillStyle = '#455066';
+  ctx.fillRect(-24, 48, 14, 26);
+  ctx.fillRect(10, 48, 14, 26);
+  // Body
+  ctx.fillStyle = '#8b97ad';
+  ctx.beginPath();
+  ctx.roundRect(-36, -10, 72, 62, 12);
+  ctx.fill();
+  ctx.fillStyle = '#6d7a92';
+  ctx.beginPath();
+  ctx.roundRect(-28, 0, 56, 22, 8);
+  ctx.fill();
+  // Head
+  ctx.fillStyle = '#aab6cc';
+  ctx.beginPath();
+  ctx.roundRect(-26, -58, 52, 44, 10);
+  ctx.fill();
+  // Antenna
+  ctx.strokeStyle = '#aab6cc';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(0, -58); ctx.lineTo(0, -72);
+  ctx.stroke();
+  ctx.fillStyle = hidePhase === 'scan' ? '#ff5252' : '#ffd94f';
+  ctx.beginPath();
+  ctx.arc(0, -76, 6 + (hidePhase === 'scan' ? Math.sin(t * 12) * 2 : 0), 0, Math.PI * 2);
+  ctx.fill();
+  // Eyes — visor
+  ctx.fillStyle = '#20293a';
+  ctx.beginPath();
+  ctx.roundRect(-20, -50, 40, 18, 8);
+  ctx.fill();
+  const scanning = hidePhase === 'scan';
+  ctx.fillStyle = scanning ? '#ff8080' : '#7fe3ff';
+  const ex = scanning ? Math.sin(t * 8) * 8 : 4;
+  ctx.beginPath();
+  ctx.arc(-8 + ex, -41, 4.5, 0, Math.PI * 2);
+  ctx.arc(10 + ex, -41, 4.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Magnifying glass toward the chameleon
+  ctx.strokeStyle = '#3e4759';
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(34, 6); ctx.lineTo(58, -8);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(70, -16, 16, 0, Math.PI * 2);
+  ctx.strokeStyle = '#3e4759';
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(160,220,255,0.3)';
+  ctx.fill();
+
+  // Scan beam
+  if (scanning) {
+    ctx.globalAlpha = 0.25 + Math.sin(t * 10) * 0.1;
+    ctx.fillStyle = '#fff387';
+    ctx.beginPath();
+    ctx.moveTo(78, -18);
+    ctx.lineTo(360, -70);
+    ctx.lineTo(360, 40);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
+function endHide() {
+  document.getElementById('palette').classList.add('hidden');
+  sfx.win();
+  burstConfetti(W / 2, H / 2, 90, true);
+  const stars = hideTries === 0 ? 3 : hideTries <= 2 ? 2 : 1;
+  setTimeout(() => {
+    showResult('🥳', 'Master of Disguise!', '⭐'.repeat(clamp(stars, 1, 3)),
+      `You hid from the hunter ${HIDE_ROUNDS} times!`, startHide);
+  }, 1000);
+}
+
+/* ---------------- UI helpers ---------------- */
+function showHUD(show) {
+  document.getElementById('hud').classList.toggle('hidden', !show);
+}
+function updateHUD() {
+  const info = document.getElementById('hudInfo');
+  if (state === 'seek') info.textContent = `🦎 ${foundCount}/${lizards.length}`;
+  else if (state === 'hide') info.textContent = `🛡️ ${hideWins}/${HIDE_ROUNDS}`;
+}
+function banner(msg) {
+  const b = document.getElementById('banner');
+  b.textContent = msg;
+  b.classList.remove('pop');
+  void b.offsetWidth;   // restart animation
+  b.classList.add('pop');
+}
+let onAgain = null;
+function showResult(emoji, title, stars, sub, again) {
+  state = 'result';
+  onAgain = again;
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultStars').textContent = stars;
+  document.getElementById('resultSub').textContent = sub;
+  document.getElementById('resultScreen').classList.remove('hidden');
+  document.getElementById('palette').classList.add('hidden');
+  showHUD(false);
+}
+function goMenu() {
+  state = 'menu';
+  particles = [];
+  document.getElementById('resultScreen').classList.add('hidden');
+  document.getElementById('titleScreen').classList.remove('hidden');
+  document.getElementById('palette').classList.add('hidden');
+  showHUD(false);
+}
+
+/* ---------------- Main loop ---------------- */
+let lastT = 0;
+function loop(t) {
+  now = t;
+  const dt = Math.min((t - lastT) / 1000, 0.05);
+  lastT = t;
+  ctx.clearRect(0, 0, W, H);
+  if (state === 'seek') drawSeek(dt);
+  else if (state === 'hide') drawHide(dt);
+  else if (state === 'result' || state === 'menu') updateDrawParticles();
+  rafId = requestAnimationFrame(loop);
+}
+
+/* ---------------- Input ---------------- */
+function tapAt(e) {
+  const pt = e.changedTouches ? e.changedTouches[0] : e;
+  return { x: pt.clientX, y: pt.clientY };
+}
+canvas.addEventListener('pointerdown', e => {
+  audio();
+  if (state === 'seek') {
+    const { x, y } = tapAt(e);
+    seekTap(x, y);
+  }
+});
+
+document.getElementById('seekModeBtn').addEventListener('click', () => {
+  audio();
+  document.getElementById('titleScreen').classList.add('hidden');
+  seekLevel = 0;
+  startSeek();
+});
+document.getElementById('hideModeBtn').addEventListener('click', () => {
+  audio();
+  document.getElementById('titleScreen').classList.add('hidden');
+  startHide();
+});
+document.getElementById('homeBtn').addEventListener('click', () => { sfx.click(); goMenu(); });
+document.getElementById('hintBtn').addEventListener('click', useHint);
+document.getElementById('againBtn').addEventListener('click', () => {
+  sfx.click();
+  document.getElementById('resultScreen').classList.add('hidden');
+  if (onAgain) onAgain();
+});
+document.getElementById('menuBtn').addEventListener('click', () => { sfx.click(); goMenu(); });
+
+/* ---------------- Boot ---------------- */
+resize();
+requestAnimationFrame(t => { lastT = t; loop(t); });
+</script>
+</body>
+</html>

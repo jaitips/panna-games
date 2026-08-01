@@ -2,67 +2,863 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Balloon Math — Play Zone</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#5b4ab8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Play Zone">
+<link rel="apple-touch-icon" href="/shared/apple-touch-icon.png">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Fredoka', sans-serif;
-    background: #0f0a2e;
-    color: #fff;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 2rem;
-  }
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(ellipse at 50% 40%, rgba(80,230,180,0.2) 0%, transparent 60%);
-    z-index: 0;
-  }
-  .content { position: relative; z-index: 1; }
-  .icon { font-size: 5rem; margin-bottom: 1rem; }
-  h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
-  p { color: rgba(255,255,255,0.6); font-size: 1.1rem; margin-bottom: 2rem; max-width: 400px; }
-  .back {
-    display: inline-block;
-    padding: 0.8rem 2rem;
-    border-radius: 2rem;
-    background: rgba(255,255,255,0.12);
-    color: #fff;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: background 0.2s;
-  }
-  .back:hover { background: rgba(255,255,255,0.2); }
-  .hint {
-    margin-top: 2rem;
-    padding: 1rem 1.5rem;
-    border-radius: 1rem;
-    background: rgba(255,200,50,0.1);
-    border: 1px solid rgba(255,200,50,0.2);
-    color: rgba(255,200,80,0.9);
-    font-size: 0.85rem;
-    max-width: 420px;
-  }
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Fredoka',sans-serif;color:#fff;touch-action:none;user-select:none;-webkit-user-select:none}
+body{background:linear-gradient(180deg,#87CEEB 0%,#b5e8ff 40%,#e0f7ff 100%)}
+#wrap{width:100%;height:100%;position:relative;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+
+/* ── overlays ── */
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:30;text-align:center;padding:1.5rem;transition:opacity .3s}
+.overlay.hidden{opacity:0;pointer-events:none}
+.overlay-bg{background:rgba(0,0,0,.7)}
+.overlay h1{font-size:clamp(2rem,6vw,3.2rem);margin-bottom:.3rem;text-shadow:2px 2px 8px rgba(0,0,0,.3)}
+.overlay h2{font-size:clamp(1.3rem,4vw,2rem);margin-bottom:.6rem;color:#ffe066}
+.overlay p{font-size:clamp(.9rem,2.8vw,1.1rem);color:rgba(255,255,255,.75);margin-bottom:1rem;max-width:420px;line-height:1.6}
+.btn{display:inline-block;padding:.65rem 2rem;border-radius:2rem;background:#ffe066;color:#333;font-weight:700;font-size:clamp(1rem,3vw,1.15rem);border:none;cursor:pointer;font-family:inherit;margin:.35rem;text-decoration:none;box-shadow:0 4px 12px rgba(0,0,0,.15);transition:transform .15s,background .15s}
+.btn:hover{transform:scale(1.05)}
+.btn:active{transform:scale(.97)}
+.btn-blue{background:#64b5f6;color:#fff}
+.btn-green{background:#81c784;color:#fff}
+.btn-pink{background:#f48fb1;color:#fff}
+.btn-gray{background:rgba(255,255,255,.18);color:rgba(255,255,255,.7);box-shadow:none}
+.btn-back{background:rgba(255,255,255,.18);color:#fff;box-shadow:none}
+
+/* ── level select grid ── */
+.level-scroll{max-height:clamp(300px,55vh,520px);overflow-y:auto;width:100%;padding:0 1rem;-webkit-overflow-scrolling:touch}
+.level-scroll::-webkit-scrollbar{width:6px}
+.level-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.3);border-radius:3px}
+.level-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(.5rem,1.2vw,.9rem);max-width:clamp(380px,60vw,700px);margin:0 auto;width:100%;padding:.5rem 0}
+.level-card{background:rgba(255,255,255,.15);border-radius:1rem;padding:clamp(.6rem,1.2vw,1rem) .4rem;cursor:pointer;border:2px solid transparent;transition:all .2s;text-align:center}
+.level-card:hover{background:rgba(255,255,255,.25);transform:translateY(-2px)}
+.level-card.locked{opacity:.4;cursor:default;pointer-events:none}
+.level-card.locked:hover{transform:none;background:rgba(255,255,255,.15)}
+.level-card .lv-num{font-size:clamp(1.3rem,2.5vw,2rem);font-weight:700}
+.level-card .lv-name{font-size:clamp(.55rem,1.2vw,.8rem);color:rgba(255,255,255,.7);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.level-card .lv-stars{font-size:clamp(.7rem,1.2vw,1rem);margin-top:3px;color:#ffe066}
+.section-label{grid-column:1/-1;font-size:clamp(.75rem,1.8vw,1rem);color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.1em;padding:.3rem 0 0;text-align:left;border-top:1px solid rgba(255,255,255,.15);margin-top:.3rem}
+
+/* ── question bar ── */
+#qbar{position:absolute;top:64px;left:clamp(8px,2vw,20px);right:clamp(8px,2vw,20px);z-index:10;text-align:center;padding:12px 18px 12px;background:linear-gradient(180deg,rgba(60,40,20,.78) 0%,rgba(60,40,20,.58) 100%);border-radius:0 0 18px 18px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+#qbar .q-text{font-size:clamp(1.6rem,5vw,2.6rem);font-weight:700;text-shadow:2px 2px 6px rgba(0,0,0,.4)}
+#qbar .q-sub{font-size:clamp(.75rem,2vw,.9rem);color:rgba(255,255,255,.6);margin-top:2px}
+#qbar .q-hint{font-size:clamp(.7rem,1.8vw,.85rem);color:#ffe066;margin-top:4px;font-style:italic}
+#qbar .q-dots{display:flex;justify-content:center;align-items:center;gap:clamp(8px,1.5vw,16px);margin-top:8px;flex-wrap:wrap}
+.dot-group{display:flex;flex-wrap:wrap;gap:clamp(6px,1vw,12px);justify-content:center;max-width:clamp(200px,40vw,500px)}
+.dot-group .dot{width:clamp(28px,4.5vw,48px);height:clamp(28px,4.5vw,48px);display:inline-flex;align-items:center;justify-content:center;font-size:clamp(20px,3.8vw,40px);line-height:1;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));animation:dotBounce .4s ease-out backwards;background:rgba(255,255,255,.15);border-radius:50%;backdrop-filter:blur(2px)}
+.dot-group .dot:nth-child(2){animation-delay:.05s}.dot-group .dot:nth-child(3){animation-delay:.1s}.dot-group .dot:nth-child(4){animation-delay:.15s}.dot-group .dot:nth-child(5){animation-delay:.2s}.dot-group .dot:nth-child(6){animation-delay:.25s}.dot-group .dot:nth-child(7){animation-delay:.3s}.dot-group .dot:nth-child(8){animation-delay:.35s}.dot-group .dot:nth-child(9){animation-delay:.4s}.dot-group .dot:nth-child(10){animation-delay:.45s}
+@keyframes dotBounce{0%{transform:scale(0) translateY(10px);opacity:0}60%{transform:scale(1.3) translateY(-2px);opacity:1}100%{transform:scale(1) translateY(0);opacity:1}}
+.dot-plus,.dot-minus{font-size:clamp(1.4rem,3vw,2.4rem);font-weight:700;margin:0 clamp(4px,1vw,12px)}
+.dot-eq{font-size:clamp(1.4rem,3vw,2.4rem);font-weight:700;margin:0 clamp(4px,1vw,12px)}
+.dot-crossed{opacity:.35;text-decoration:line-through;position:relative}
+
+/* ── HUD ── wooden plaques */
+#hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;z-index:15;pointer-events:none}
+.plaque{font-size:clamp(1rem,2.3vw,1.5rem);font-weight:700;color:#fff;letter-spacing:.02em;padding:.45rem 1.1rem;border-radius:14px;background:linear-gradient(180deg,#d99a4e 0%,#b4773a 60%,#9a6228 100%);border:3px solid #6f4a20;box-shadow:0 4px 0 #5a3a18,0 6px 14px rgba(0,0,0,.25),inset 0 2px 0 rgba(255,255,255,.3);text-shadow:1px 2px 0 rgba(0,0,0,.35),-1px -1px 0 rgba(255,255,255,.12);white-space:nowrap}
+
+/* ── feedback ── */
+#feedback{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;font-size:clamp(2rem,8vw,4rem);font-weight:700;pointer-events:none;opacity:0;transition:none;text-shadow:3px 3px 10px rgba(0,0,0,.3)}
+#feedback.show{opacity:1;animation:fbPop .6s ease-out forwards}
+@keyframes fbPop{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}30%{transform:translate(-50%,-50%) scale(1.2);opacity:1}100%{transform:translate(-50%,-80%) scale(1);opacity:0}}
 </style>
 </head>
 <body>
-<div class="content">
-  <div class="icon">🎈</div>
-  <h1>Balloon Math</h1>
-  <p>Pop the right answer balloon!</p>
-  <a class="back" href="../../index.html">← Back to Play Zone</a>
-  <div class="hint">
-    📋 Placeholder — Replace this file with the actual game HTML to activate!
+<div id="wrap">
+  <canvas id="game"></canvas>
+  <div id="qbar" style="display:none">
+    <div class="q-text" id="qText"></div>
+    <div class="q-sub" id="qSub"></div>
+    <div class="q-hint" id="qHint"></div>
+    <div class="q-dots" id="qDots"></div>
+  </div>
+  <div id="hud" style="display:none">
+    <div class="plaque" id="hudScore">Score: 0</div>
+    <div class="plaque" id="hudProg">Level: 1</div>
+  </div>
+  <div id="feedback"></div>
+
+  <!-- TITLE -->
+  <div class="overlay overlay-bg" id="scrTitle">
+    <div style="font-size:4.5rem;margin-bottom:.3rem">🎈</div>
+    <h1>Balloon Math</h1>
+    <p>Pop the right balloon to solve math puzzles!<br>Master addition and subtraction step by step.</p>
+    <button class="btn" id="btnPlay">Play</button><br>
+    <a class="btn btn-back" href="../../index.html">&larr; Back</a>
+  </div>
+
+  <!-- LEVEL SELECT -->
+  <div class="overlay overlay-bg hidden" id="scrLevels">
+    <h2>Choose a Level</h2>
+    <div class="level-scroll"><div class="level-grid" id="levelGrid"></div></div>
+    <button class="btn btn-back" id="btnBackTitle">&larr; Back</button>
+  </div>
+
+  <!-- LEVEL INTRO -->
+  <div class="overlay overlay-bg hidden" id="scrIntro">
+    <div style="font-size:3.5rem;margin-bottom:.3rem" id="introIcon">🎈</div>
+    <h2 id="introTitle"></h2>
+    <p id="introDesc"></p>
+    <button class="btn" id="btnStartLevel">Let's Go!</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="overlay overlay-bg hidden" id="scrResults">
+    <h1 id="resTitle">Great Job!</h1>
+    <div id="resStars" style="font-size:3rem;margin:.5rem 0"></div>
+    <h2 id="resScore"></h2>
+    <p id="resMsg"></p>
+    <div id="resBtns"></div>
   </div>
 </div>
+
+<script>
+(function(){
+"use strict";
+
+/* ══════════════════════════════════════════
+   LEVEL DEFINITIONS — 20 levels
+   ══════════════════════════════════════════ */
+const LEVELS=[
+  // ── COUNTING ──
+  {id:1,name:'Count Stars',icon:'⭐',section:'Counting',
+   desc:'How many stars do you see? Tap the balloon with the right number!',
+   type:'count',range:[1,5],showDots:true,speed:0.3,questions:8},
+  {id:2,name:'Count More',icon:'🌟',section:null,
+   desc:'Count up to 10! Look carefully and tap the right number.',
+   type:'count',range:[1,10],showDots:true,speed:0.3,questions:8},
+
+  // ── ADDITION PATTERNS ──
+  {id:3,name:'Plus 1',icon:'1️⃣',section:'Addition Patterns',
+   desc:'Add 1 to any number. The answer is always the next number!',
+   type:'addN',n:1,aRange:[1,9],showDots:true,speed:0.3,questions:10,
+   hint:'Adding 1 = the next number!'},
+  {id:4,name:'Plus 2',icon:'2️⃣',section:null,
+   desc:'Add 2 to any number. Try counting 2 more in your head!',
+   type:'addN',n:2,aRange:[1,8],showDots:true,speed:0.3,questions:10,
+   hint:'Hold the big number, count 2 more!'},
+  {id:5,name:'Plus 3',icon:'3️⃣',section:null,
+   desc:'Add 3 to any number. Hold the number and count up 3!',
+   type:'addN',n:3,aRange:[1,7],showDots:true,speed:0.32,questions:10,
+   hint:'Hold the number in your head, count up 3!'},
+  {id:6,name:'Plus 4',icon:'4️⃣',section:null,
+   desc:'Add 4 to any number. You can do it!',
+   type:'addN',n:4,aRange:[1,6],showDots:false,speed:0.33,questions:10,
+   hint:'Think: what is 4 more?'},
+  {id:7,name:'Plus 5',icon:'5️⃣',section:null,
+   desc:'Add 5 — half of 10! Use your fingers to help.',
+   type:'addN',n:5,aRange:[1,5],showDots:false,speed:0.35,questions:10,
+   hint:'5 is half of 10!'},
+
+  // ── BUILDING FLUENCY ──
+  {id:8,name:'Friends of 10',icon:'🤝',section:'Building Fluency',
+   desc:'Find pairs that add up to 10! These are super important to memorize.',
+   type:'friends10',showDots:true,speed:0.33,questions:10,
+   hint:'1+9, 2+8, 3+7, 4+6, 5+5'},
+  {id:9,name:'Plus 6-9',icon:'💪',section:null,
+   desc:'Add bigger numbers! Use "make 10" trick: 8+5 = 8+2+3 = 10+3 = 13',
+   type:'add',range:[2,9],minB:6,maxSum:18,showDots:false,speed:0.35,questions:10,
+   hint:'Make 10 first, then add the rest!'},
+  {id:10,name:'Sums to 20',icon:'🧠',section:null,
+   desc:'Any addition up to 20! No dots — use your brain power!',
+   type:'add',range:[1,15],maxSum:20,showDots:false,speed:0.38,questions:10},
+
+  // ── TWO-DIGIT ADDITION ──
+  {id:11,name:'2-Digit + 1-Digit',icon:'📐',section:'Bigger Numbers',
+   desc:'Add a small number to a bigger number. No carrying needed!',
+   type:'add2d1d',carry:false,speed:0.35,questions:10,
+   hint:'Just add the ones digits!'},
+  {id:12,name:'2-Digit + 2-Digit',icon:'📏',section:null,
+   desc:'Add two bigger numbers together. Add tens, then add ones!',
+   type:'add2d2d',carry:false,speed:0.38,questions:10,
+   hint:'Add tens first, then ones!'},
+  {id:13,name:'Carry to 20',icon:'🔥',section:null,
+   desc:'When ones add up to more than 10, you need to carry! Like 8+7 = 15',
+   type:'add',range:[2,9],maxSum:20,minSum:11,showDots:false,speed:0.38,questions:10,
+   hint:'Make 10, carry the rest!'},
+  {id:14,name:'2-Digit + Carry',icon:'🏆',section:null,
+   desc:'Two-digit addition with carrying. You are getting really good!',
+   type:'add2d1d',carry:true,speed:0.4,questions:10,
+   hint:'When ones go over 9, carry 1 to tens!'},
+  {id:15,name:'Speed Addition',icon:'⚡',section:null,
+   desc:'Mix of all addition types — balloons move faster! How many can you ace?',
+   type:'mixedAdd',speed:0.55,questions:12},
+
+  // ── SUBTRACTION ──
+  {id:16,name:'Minus 1',icon:'👇',section:'Subtraction',
+   desc:'Take away 1. The answer is the number just before!',
+   type:'subN',n:1,aRange:[2,10],showDots:true,speed:0.3,questions:10,
+   hint:'Minus 1 = the number before!'},
+  {id:17,name:'Minus 2-3',icon:'✌️',section:null,
+   desc:'Take away 2 or 3. Count backwards in your head!',
+   type:'sub',range:[2,3],aRange:[4,10],showDots:true,speed:0.32,questions:10,
+   hint:'Count backwards!'},
+  {id:18,name:'From 10',icon:'🔟',section:null,
+   desc:'10 minus something. Use your Friends of 10 knowledge!',
+   type:'subFrom10',showDots:true,speed:0.35,questions:10,
+   hint:'10 - 3 = 7 because 3 + 7 = 10!'},
+  {id:19,name:'Subtract to 20',icon:'🎯',section:null,
+   desc:'Subtraction with numbers up to 20. Think about what adds up!',
+   type:'sub',range:[1,9],aRange:[5,20],showDots:false,speed:0.4,questions:10,
+   hint:'Think: what + ? = the big number?'},
+  {id:20,name:'Speed Mix!',icon:'🚀',section:null,
+   desc:'Addition AND subtraction mixed together — the ultimate challenge!',
+   type:'mixedAll',speed:0.6,questions:12}
+];
+
+const B_COLORS=['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff6eb4','#ff9f43','#a29bfe','#00cec9'];
+const PRAISE=['Great!','Awesome!','Yes!','Perfect!','Super!','Wow!','Nice!','Cool!','Correct!','Bravo!'];
+const ENCOURAGE=['Try again!','Almost!','Not quite!','Keep going!','You can do it!','Oops!'];
+const COUNT_ICONS=['⭐','🌟','✨','💫','🌙'];
+const ADD_A_ICONS=['🍎','🍓','🍒','🫐','🍑'];
+const ADD_B_ICONS=['🐟','🐠','🐬','🐳','🦈'];
+const SUB_ICONS=['🍪','🍩','🧁','🍬','🍭'];
+function pickIcon(arr){return arr[Math.floor(Math.random()*arr.length)]}
+
+/* ══════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════ */
+const cvs=document.getElementById('game');
+const C=cvs.getContext('2d');
+let W=0,H=0;
+
+let screen='title';
+let curLevel=null;
+let questions=[];
+let qIdx=0;
+let balloons=[];
+let score=0;
+let firstTries=0;
+let triedThisQ=false;
+let answered=false;
+let answerCooldown=0;
+let correctAnswer=0;
+let clouds=[];
+let confetti=[];
+
+// progress
+let progress={unlocked:1,stars:{}};
+function loadProgress(){try{const d=JSON.parse(localStorage.getItem('bmath_progress'));if(d){progress=d}}catch(e){}}
+function saveProgress(){try{localStorage.setItem('bmath_progress',JSON.stringify(progress))}catch(e){}}
+
+// audio
+let ac=null;
+function aInit(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)()}
+function tone(f,dur,type,vol){if(!ac)return;const o=ac.createOscillator(),g=ac.createGain();o.type=type||'sine';o.frequency.value=f;g.gain.setValueAtTime(vol||.12,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+dur);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+dur)}
+function sPop(){tone(600,.08,'square',.1);setTimeout(()=>tone(900,.06,'square',.08),60)}
+function sWrong(){tone(200,.15,'triangle',.08);setTimeout(()=>tone(160,.15,'triangle',.06),100)}
+function sWin(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.12,'square',.08),i*100))}
+function sStar(){tone(880,.1,'sine',.08);setTimeout(()=>tone(1100,.15,'sine',.1),80)}
+
+/* ══════════════════════════════════════════
+   RESIZE
+   ══════════════════════════════════════════ */
+function resize(){
+  W=window.innerWidth;H=window.innerHeight;
+  cvs.width=W*devicePixelRatio;cvs.height=H*devicePixelRatio;
+  cvs.style.width=W+'px';cvs.style.height=H+'px';
+  C.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  initClouds();
+  meadowCanvas=null;
+}
+window.addEventListener('resize',resize);
+
+/* ══════════════════════════════════════════
+   CLOUDS
+   ══════════════════════════════════════════ */
+function initClouds(){
+  clouds=[];
+  for(let i=0;i<6;i++){
+    clouds.push({x:Math.random()*W,y:H*0.05+Math.random()*H*0.35,w:W*0.06+Math.random()*W*0.1,h:H*0.04+Math.random()*H*0.05,spd:0.15+Math.random()*0.25,a:0.3+Math.random()*0.3});
+  }
+}
+function updClouds(dt){for(const c of clouds){c.x+=c.spd*dt*30;if(c.x>W+c.w)c.x=-c.w}}
+function drawCloud(c){
+  C.globalAlpha=c.a;C.fillStyle='#fff';
+  C.beginPath();C.ellipse(c.x,c.y,c.w*.5,c.h*.5,0,0,Math.PI*2);C.fill();
+  C.beginPath();C.ellipse(c.x-c.w*.25,c.y+c.h*.1,c.w*.3,c.h*.35,0,0,Math.PI*2);C.fill();
+  C.beginPath();C.ellipse(c.x+c.w*.25,c.y+c.h*.05,c.w*.35,c.h*.4,0,0,Math.PI*2);C.fill();
+  C.globalAlpha=1;
+}
+
+/* ══════════════════════════════════════════
+   MEADOW — rolling hills + flower scatter
+   ══════════════════════════════════════════ */
+let meadowCanvas=null;
+function buildMeadow(){
+  meadowCanvas=document.createElement('canvas');
+  meadowCanvas.width=W*devicePixelRatio;meadowCanvas.height=H*devicePixelRatio;
+  const m=meadowCanvas.getContext('2d');
+  m.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  const gyBack=H*0.82,gyFront=H*0.88;
+  // back hill (darker, further away)
+  m.fillStyle='#66bb6a';
+  m.beginPath();m.moveTo(0,gyBack);
+  for(let x=0;x<=W;x+=20)m.lineTo(x,gyBack-10+Math.sin((x+20)*0.008)*18);
+  m.lineTo(W,H);m.lineTo(0,H);m.closePath();m.fill();
+  // front ground (brighter green)
+  m.fillStyle='#7cc47f';
+  m.beginPath();m.moveTo(0,gyFront);
+  for(let x=0;x<=W;x+=20)m.lineTo(x,gyFront-4+Math.sin(x*0.035)*6);
+  m.lineTo(W,H);m.lineTo(0,H);m.closePath();m.fill();
+  // darker base strip
+  m.fillStyle='#3f8b48';m.fillRect(0,gyFront+28,W,H-gyFront-28);
+  // flowers — deterministic positions from W as seed
+  const petalColors=['#ef5350','#ffee58','#ffffff','#ff80ab','#b39ddb'];
+  const seed=Math.floor(W);
+  function rnd(i){const x=Math.sin(seed*12.9898+i*78.233)*43758.5453;return x-Math.floor(x)}
+  const flowerCount=Math.max(12,Math.round(W/90));
+  for(let i=0;i<flowerCount;i++){
+    const fx=rnd(i)*W;
+    const fy=gyFront+6+rnd(i+100)*Math.min(28,H*0.05);
+    const fs=Math.max(5,Math.min(11,W*0.009))*(0.8+rnd(i+200)*0.6);
+    const col=petalColors[i%petalColors.length];
+    // stem
+    m.strokeStyle='#2e7d32';m.lineWidth=Math.max(1,fs*0.15);
+    m.beginPath();m.moveTo(fx,fy);m.lineTo(fx+rnd(i+300)*2-1,fy-fs*1.2);m.stroke();
+    // 4 petals
+    m.fillStyle=col;
+    for(let p=0;p<4;p++){
+      const ang=p*Math.PI/2;
+      m.beginPath();m.ellipse(fx+Math.cos(ang)*fs*0.5,fy-fs*1.2+Math.sin(ang)*fs*0.5,fs*0.5,fs*0.35,ang,0,Math.PI*2);m.fill();
+    }
+    // center
+    m.fillStyle='#ffca28';m.beginPath();m.arc(fx,fy-fs*1.2,fs*0.3,0,Math.PI*2);m.fill();
+  }
+}
+function drawMeadow(){
+  if(!meadowCanvas)buildMeadow();
+  C.drawImage(meadowCanvas,0,0,W,H);
+}
+
+/* ══════════════════════════════════════════
+   BALLOON RENDERING
+   ══════════════════════════════════════════ */
+function drawBalloon(b){
+  if(b.pop>0)return drawPop(b);
+  C.save();
+  let sx=0;
+  if(b.shake>0)sx=Math.sin(b.shake*20)*6*(b.shake/.4);
+  C.translate(b.x+sx,b.y);
+  C.rotate(Math.sin(b.wobbleT)*0.03);
+
+  // string — curvier, thicker, slate-gray
+  C.strokeStyle='rgba(60,70,85,.65)';C.lineWidth=2;C.lineCap='round';
+  C.beginPath();
+  C.moveTo(0,b.r+9);
+  C.quadraticCurveTo(b.r*0.25,b.r+b.r*0.7,-b.r*0.15,b.r+b.r*1.4);
+  C.quadraticCurveTo(-b.r*0.4,b.r+b.r*1.8,b.r*0.1,b.r+b.r*2.2);
+  C.stroke();
+
+  // shadow
+  C.globalAlpha=0.12;C.fillStyle='#000';
+  C.beginPath();C.ellipse(4,5,b.r,b.r*1.15,0,0,Math.PI*2);C.fill();
+  C.globalAlpha=1;
+
+  // body
+  const grad=C.createRadialGradient(-b.r*0.3,-b.r*0.3,b.r*0.1,-b.r*0.1,-b.r*0.1,b.r*1.1);
+  grad.addColorStop(0,'rgba(255,255,255,.55)');
+  grad.addColorStop(0.4,b.color);
+  grad.addColorStop(1,darken(b.color,30));
+  C.fillStyle=grad;
+  C.beginPath();C.ellipse(0,0,b.r,b.r*1.15,0,0,Math.PI*2);C.fill();
+
+  // outline — gives that cartoon pop
+  C.strokeStyle=darken(b.color,55);C.lineWidth=Math.max(1.5,b.r*0.04);
+  C.beginPath();C.ellipse(0,0,b.r,b.r*1.15,0,0,Math.PI*2);C.stroke();
+
+  // large upper-left highlight
+  C.globalAlpha=0.45;C.fillStyle='#fff';
+  C.beginPath();C.ellipse(-b.r*0.35,-b.r*0.4,b.r*0.28,b.r*0.38,-0.5,0,Math.PI*2);C.fill();
+  // tiny sparkle highlight
+  C.globalAlpha=0.7;
+  C.beginPath();C.ellipse(-b.r*0.15,-b.r*0.65,b.r*0.08,b.r*0.12,-0.4,0,Math.PI*2);C.fill();
+  C.globalAlpha=1;
+
+  // knot — triangular, darker shade of balloon color
+  C.fillStyle=darken(b.color,45);
+  C.beginPath();C.moveTo(-5,b.r+1);C.lineTo(5,b.r+1);C.lineTo(0,b.r+9);C.closePath();C.fill();
+
+  // text — outlined for readability
+  if(b.text!==undefined&&b.text!==null){
+    const fontSize=String(b.text).length>2?Math.round(b.r*0.5):Math.round(b.r*0.7);
+    C.font=`700 ${fontSize}px Fredoka,sans-serif`;
+    C.textAlign='center';C.textBaseline='middle';
+    C.lineJoin='round';
+    C.strokeStyle=darken(b.color,55);C.lineWidth=Math.max(3,fontSize*0.18);
+    C.strokeText(b.text,0,-b.r*0.05);
+    C.fillStyle='#fff';
+    C.fillText(b.text,0,-b.r*0.05);
+  }
+  C.restore();
+}
+
+function drawPop(b){
+  const prog=b.pop/0.4;
+  C.save();C.translate(b.x,b.y);
+  for(let i=0;i<8;i++){
+    const ang=i/8*Math.PI*2+b.wobbleT;
+    const dist=b.r*(0.5+prog*1.5);
+    const sz=b.r*0.2*(1-prog);
+    if(sz<=0)continue;
+    C.globalAlpha=1-prog;C.fillStyle=b.color;
+    C.beginPath();C.arc(Math.cos(ang)*dist,Math.sin(ang)*dist,sz,0,Math.PI*2);C.fill();
+  }
+  C.globalAlpha=1;C.restore();
+}
+
+function darken(hex,amt){
+  let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return '#'+[Math.max(0,r-amt),Math.max(0,g-amt),Math.max(0,b-amt)].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+
+/* ══════════════════════════════════════════
+   CONFETTI
+   ══════════════════════════════════════════ */
+function spawnConfetti(cx,cy,count){
+  for(let i=0;i<count;i++){
+    const ang=Math.random()*Math.PI*2,spd=2+Math.random()*5;
+    confetti.push({x:cx,y:cy,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd-3,r:Math.max(3,W*0.004)+Math.random()*Math.max(4,W*0.005),color:B_COLORS[Math.floor(Math.random()*B_COLORS.length)],life:1,rot:Math.random()*Math.PI*2,rotSpd:(-1+Math.random()*2)*8});
+  }
+}
+function updConfetti(dt){
+  for(let i=confetti.length-1;i>=0;i--){
+    const p=confetti[i];p.x+=p.vx*dt*60;p.y+=p.vy*dt*60;p.vy+=0.12*dt*60;p.rot+=p.rotSpd*dt;p.life-=dt*1.2;
+    if(p.life<=0)confetti.splice(i,1);
+  }
+}
+function drawConfetti(){
+  for(const p of confetti){
+    C.save();C.translate(p.x,p.y);C.rotate(p.rot);
+    C.globalAlpha=Math.max(0,p.life);C.fillStyle=p.color;
+    C.fillRect(-p.r,-p.r*0.5,p.r*2,p.r);
+    C.globalAlpha=1;C.restore();
+  }
+}
+
+/* ══════════════════════════════════════════
+   QUESTION GENERATION
+   ══════════════════════════════════════════ */
+function randInt(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
+
+function generateQuestions(lv){
+  const qs=[];const used=new Set();
+  for(let i=0;i<lv.questions;i++){
+    let q,attempts=0;
+    do{q=makeQuestion(lv);attempts++}while(used.has(q.key)&&attempts<80);
+    used.add(q.key);qs.push(q);
+  }
+  return qs;
+}
+
+function makeQuestion(lv){
+  const t=lv.type;
+
+  // COUNT
+  if(t==='count'){
+    const n=randInt(lv.range[0],lv.range[1]);
+    return{type:'count',answer:n,text:'How many?',dotCount:n,choices:makeChoices(n,lv.range[0],Math.max(lv.range[1],n+2)),key:'c'+n+'_'+Math.random()};
+  }
+
+  // ADD N (pattern: a + N)
+  if(t==='addN'){
+    const a=randInt(lv.aRange[0],lv.aRange[1]);
+    const ans=a+lv.n;
+    return{type:'add',a,b:lv.n,answer:ans,text:`${a} + ${lv.n} = ?`,showDots:lv.showDots,
+      choices:makeChoices(ans,Math.max(1,ans-3),ans+3),key:'an'+a+'_'+lv.n,hint:lv.hint};
+  }
+
+  // FRIENDS OF 10
+  if(t==='friends10'){
+    const a=randInt(1,9);const b=10-a;
+    return{type:'add',a,b,answer:10,text:`${a} + ? = 10`,showDots:lv.showDots,
+      choices:makeChoices(b,Math.max(1,b-3),Math.min(9,b+3)),key:'f10_'+a,hint:lv.hint};
+  }
+
+  // BASIC ADD
+  if(t==='add'){
+    let a,b;
+    do{
+      a=randInt(lv.range[0],lv.range[1]);
+      b=randInt(lv.minB||lv.range[0],lv.range[1]);
+    }while(a+b>(lv.maxSum||20)||a+b<(lv.minSum||2));
+    const ans=a+b;
+    return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,showDots:lv.showDots||false,
+      choices:makeChoices(ans,Math.max(1,ans-4),ans+4),key:'a'+a+'_'+b,hint:lv.hint};
+  }
+
+  // 2-DIGIT + 1-DIGIT
+  if(t==='add2d1d'){
+    let a,b,ans;
+    do{
+      a=randInt(11,89);b=randInt(2,9);ans=a+b;
+      const onesA=a%10,onesSum=onesA+b;
+      if(lv.carry&&onesSum<10)continue; // need carry
+      if(!lv.carry&&onesSum>=10)continue; // no carry
+      break;
+    }while(true);
+    return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,showDots:false,
+      choices:makeChoices(ans,Math.max(1,ans-5),ans+5),key:'2d1d'+a+'_'+b,hint:lv.hint};
+  }
+
+  // 2-DIGIT + 2-DIGIT (no carry)
+  if(t==='add2d2d'){
+    let a,b;
+    do{
+      a=randInt(10,49);b=randInt(10,49);
+    }while((a%10)+(b%10)>=10||a+b>99);
+    const ans=a+b;
+    return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,showDots:false,
+      choices:makeChoices(ans,Math.max(10,ans-8),Math.min(99,ans+8)),key:'2d2d'+a+'_'+b,hint:lv.hint};
+  }
+
+  // SUB N (pattern: a - N)
+  if(t==='subN'){
+    const a=randInt(lv.aRange[0],lv.aRange[1]);
+    const ans=a-lv.n;
+    return{type:'sub',a,b:lv.n,answer:ans,text:`${a} - ${lv.n} = ?`,showDots:lv.showDots,
+      choices:makeChoices(ans,Math.max(0,ans-3),ans+3),key:'sn'+a+'_'+lv.n,hint:lv.hint};
+  }
+
+  // SUB FROM 10
+  if(t==='subFrom10'){
+    const b=randInt(1,9);const ans=10-b;
+    return{type:'sub',a:10,b,answer:ans,text:`10 - ${b} = ?`,showDots:lv.showDots,
+      choices:makeChoices(ans,Math.max(1,ans-3),ans+3),key:'sf10_'+b,hint:lv.hint};
+  }
+
+  // BASIC SUB
+  if(t==='sub'){
+    let a,b;
+    do{
+      a=randInt(lv.aRange[0],lv.aRange[1]);
+      b=randInt(lv.range[0],lv.range[1]);
+    }while(a-b<0||a===b);
+    const ans=a-b;
+    return{type:'sub',a,b,answer:ans,text:`${a} - ${b} = ?`,showDots:lv.showDots||false,
+      choices:makeChoices(ans,Math.max(0,ans-4),ans+4),key:'s'+a+'_'+b,hint:lv.hint};
+  }
+
+  // MIXED ADD (levels 1-14 content)
+  if(t==='mixedAdd'){
+    const types=['add','addN','add2d1d','friends10'];
+    const pick=types[randInt(0,types.length-1)];
+    if(pick==='addN'){
+      const n=randInt(1,5),a=randInt(1,10-n);
+      const ans=a+n;
+      return{type:'add',a,b:n,answer:ans,text:`${a} + ${n} = ?`,showDots:false,
+        choices:makeChoices(ans,Math.max(1,ans-3),ans+3),key:'ma'+a+'_'+n};
+    }
+    if(pick==='friends10'){
+      const a=randInt(1,9),b=10-a;
+      return{type:'add',a,b,answer:10,text:`${a} + ${b} = ?`,showDots:false,
+        choices:makeChoices(10,7,13),key:'mf'+a};
+    }
+    if(pick==='add2d1d'){
+      const a=randInt(11,49),b=randInt(2,9);
+      if((a%10)+b<10){
+        const ans=a+b;
+        return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,showDots:false,
+          choices:makeChoices(ans,Math.max(10,ans-5),ans+5),key:'m2d'+a+'_'+b};
+      }
+    }
+    // fallback: simple add
+    const a=randInt(2,12),b=randInt(2,8),ans=a+b;
+    return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,showDots:false,
+      choices:makeChoices(ans,Math.max(1,ans-4),ans+4),key:'mx'+a+'_'+b};
+  }
+
+  // MIXED ALL (add + sub)
+  if(t==='mixedAll'){
+    if(Math.random()<0.5){
+      const a=randInt(2,15),b=randInt(1,9),ans=a+b;
+      return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,showDots:false,
+        choices:makeChoices(ans,Math.max(1,ans-4),ans+4),key:'xa'+a+'_'+b};
+    }else{
+      const a=randInt(5,20),b=randInt(1,Math.min(9,a-1)),ans=a-b;
+      return{type:'sub',a,b,answer:ans,text:`${a} - ${b} = ?`,showDots:false,
+        choices:makeChoices(ans,Math.max(0,ans-4),ans+4),key:'xs'+a+'_'+b};
+    }
+  }
+
+  // fallback
+  const a=randInt(1,5),b=randInt(1,5),ans=a+b;
+  return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,showDots:true,
+    choices:makeChoices(ans,1,10),key:'fb'+a+'_'+b};
+}
+
+function makeChoices(correct,lo,hi){
+  const set=new Set([correct]);
+  let attempts=0;
+  while(set.size<4&&attempts<100){
+    let wrong;
+    if(attempts<20)wrong=correct+randInt(-3,3);
+    else wrong=randInt(Math.max(0,lo),Math.max(hi,correct+3));
+    if(wrong!==correct&&wrong>=0)set.add(wrong);
+    attempts++;
+  }
+  let fill=1;while(set.size<4){if(correct+fill!==correct)set.add(correct+fill);fill++}
+  return shuffle([...set]);
+}
+
+/* ══════════════════════════════════════════
+   BALLOON SPAWNING
+   ══════════════════════════════════════════ */
+function spawnBalloons(q){
+  balloons=[];
+  const count=q.choices.length;
+  const bRad=Math.min(W*0.1,W>800?W*0.07:50,H*0.14);
+  const gap=Math.min(bRad*0.4,30);
+  const totalW=count*(bRad*2+gap);
+  const startX=(W-totalW)/2+bRad+gap/2;
+  const baseY=H+bRad+20;
+  for(let i=0;i<count;i++){
+    balloons.push({
+      x:startX+i*(bRad*2+gap)+Math.random()*10-5,
+      y:baseY+Math.random()*40,
+      targetY:H*0.35+Math.random()*H*0.22,
+      r:bRad,
+      color:B_COLORS[(qIdx*4+i)%B_COLORS.length],
+      text:q.choices[i],
+      value:q.choices[i],
+      shake:0,pop:0,popped:false,
+      wobbleT:Math.random()*Math.PI*2,
+      floatSpd:(curLevel?curLevel.speed:0.3)*(0.9+Math.random()*0.2)
+    });
+  }
+}
+
+/* ══════════════════════════════════════════
+   QUESTION DISPLAY
+   ══════════════════════════════════════════ */
+const qBar=document.getElementById('qbar');
+const qText=document.getElementById('qText');
+const qSub=document.getElementById('qSub');
+const qHint=document.getElementById('qHint');
+const qDots=document.getElementById('qDots');
+
+function showQuestion(q){
+  qBar.style.display='';
+  qText.textContent=q.text;
+  qDots.innerHTML='';
+  qHint.textContent=q.hint||'';
+
+  if(q.type==='count'){
+    qSub.textContent='Count and pop the right number!';
+    const icon=pickIcon(COUNT_ICONS);
+    const grp=document.createElement('div');grp.className='dot-group';
+    for(let i=0;i<q.dotCount;i++){const d=document.createElement('span');d.className='dot';d.textContent=icon;grp.appendChild(d)}
+    qDots.appendChild(grp);
+  }
+  else if(q.type==='add'){
+    qSub.textContent='Pop the balloon with the answer!';
+    if(q.showDots&&q.a<=10&&q.b<=10){
+      const iconA=pickIcon(ADD_A_ICONS),iconB=pickIcon(ADD_B_ICONS);
+      const grpA=document.createElement('div');grpA.className='dot-group';
+      for(let i=0;i<q.a;i++){const d=document.createElement('span');d.className='dot';d.textContent=iconA;grpA.appendChild(d)}
+      const plus=document.createElement('span');plus.className='dot-plus';plus.textContent='+';
+      const grpB=document.createElement('div');grpB.className='dot-group';
+      for(let i=0;i<q.b;i++){const d=document.createElement('span');d.className='dot';d.textContent=iconB;grpB.appendChild(d)}
+      const eq=document.createElement('span');eq.className='dot-eq';eq.textContent='= ?';
+      qDots.appendChild(grpA);qDots.appendChild(plus);qDots.appendChild(grpB);qDots.appendChild(eq);
+    }
+  }
+  else if(q.type==='sub'){
+    qSub.textContent='Pop the balloon with the answer!';
+    if(q.showDots&&q.a<=10){
+      const icon=pickIcon(SUB_ICONS);
+      const grp=document.createElement('div');grp.className='dot-group';
+      // show a items, cross out b of them
+      for(let i=0;i<q.a;i++){
+        const d=document.createElement('span');d.className='dot';
+        if(i>=q.a-q.b)d.classList.add('dot-crossed');
+        d.textContent=icon;grp.appendChild(d);
+      }
+      const minus=document.createElement('span');minus.className='dot-minus';minus.textContent=`- ${q.b} = ?`;
+      qDots.appendChild(grp);qDots.appendChild(minus);
+    }
+  }
+}
+
+/* ══════════════════════════════════════════
+   FEEDBACK
+   ══════════════════════════════════════════ */
+const fbEl=document.getElementById('feedback');
+function showFeedback(text,color){
+  fbEl.textContent=text;fbEl.style.color=color||'#fff';
+  fbEl.classList.remove('show');void fbEl.offsetWidth;fbEl.classList.add('show');
+}
+
+/* ══════════════════════════════════════════
+   GAME FLOW
+   ══════════════════════════════════════════ */
+function showScreen(id){
+  document.querySelectorAll('.overlay').forEach(el=>el.classList.add('hidden'));
+  if(id)document.getElementById(id).classList.remove('hidden');
+}
+function goTitle(){screen='title';showScreen('scrTitle');qBar.style.display='none';document.getElementById('hud').style.display='none'}
+function goLevels(){screen='levels';buildLevelGrid();showScreen('scrLevels')}
+function goIntro(lv){
+  curLevel=lv;
+  document.getElementById('introIcon').textContent=lv.icon;
+  document.getElementById('introTitle').textContent='Level '+lv.id+': '+lv.name;
+  document.getElementById('introDesc').textContent=lv.desc;
+  showScreen('scrIntro');
+}
+function startLevel(){
+  screen='playing';showScreen(null);
+  document.getElementById('hud').style.display='flex';
+  questions=generateQuestions(curLevel);
+  qIdx=0;score=0;firstTries=0;
+  nextQuestion();
+}
+function nextQuestion(){
+  if(qIdx>=questions.length){finishLevel();return}
+  const q=questions[qIdx];
+  correctAnswer=q.answer;triedThisQ=false;answered=false;answerCooldown=0;
+  showQuestion(q);spawnBalloons(q);updateHUD();
+}
+function finishLevel(){
+  screen='results';qBar.style.display='none';
+  document.getElementById('hud').style.display='none';
+  const total=questions.length,pct=firstTries/total;
+  let stars=1;if(pct>=7/8)stars=3;else if(pct>=5/8)stars=2;
+
+  const prev=progress.stars[curLevel.id]||0;
+  if(stars>prev)progress.stars[curLevel.id]=stars;
+  if(curLevel.id>=progress.unlocked&&stars>=1)progress.unlocked=Math.min(LEVELS.length,curLevel.id+1);
+  saveProgress();
+
+  document.getElementById('resStars').textContent='\u2B50'.repeat(stars)+'\u2606'.repeat(3-stars);
+  document.getElementById('resScore').textContent=`${firstTries} / ${total} first try!`;
+  const msgs=['Keep practicing!','Good job!','Amazing work!'];
+  document.getElementById('resMsg').textContent=msgs[stars-1];
+
+  let btns='';
+  if(stars<3)btns+=`<button class="btn btn-pink" onclick="window._retry()">Try Again</button>`;
+  if(curLevel.id<LEVELS.length&&progress.unlocked>curLevel.id)
+    btns+=`<button class="btn btn-green" onclick="window._nextLv()">Next Level</button>`;
+  btns+=`<button class="btn btn-blue" onclick="window._goLevels()">Level Select</button>`;
+  document.getElementById('resBtns').innerHTML=btns;
+  showScreen('scrResults');sWin();
+  for(let i=0;i<stars;i++)setTimeout(()=>sStar(),400+i*300);
+}
+function updateHUD(){
+  document.getElementById('hudScore').textContent='Score: '+score;
+  document.getElementById('hudProg').textContent='Level: '+(curLevel?curLevel.id:1)+' · '+(qIdx+1)+'/'+questions.length;
+}
+
+/* ══════════════════════════════════════════
+   LEVEL GRID (4 columns, scrollable, with section headers)
+   ══════════════════════════════════════════ */
+function buildLevelGrid(){
+  const grid=document.getElementById('levelGrid');grid.innerHTML='';
+  for(const lv of LEVELS){
+    if(lv.section){
+      const label=document.createElement('div');label.className='section-label';label.textContent=lv.section;
+      grid.appendChild(label);
+    }
+    const card=document.createElement('div');
+    card.className='level-card'+(lv.id>progress.unlocked?' locked':'');
+    const st=progress.stars[lv.id]||0;
+    card.innerHTML=`
+      <div class="lv-num">${lv.icon}</div>
+      <div class="lv-name">${lv.name}</div>
+      <div class="lv-stars">${st>0?'\u2B50'.repeat(st)+'\u2606'.repeat(3-st):(lv.id<=progress.unlocked?'\u2606\u2606\u2606':'\uD83D\uDD12')}</div>
+    `;
+    if(lv.id<=progress.unlocked)card.addEventListener('click',()=>{aInit();goIntro(lv)});
+    grid.appendChild(card);
+  }
+}
+
+/* ══════════════════════════════════════════
+   INPUT
+   ══════════════════════════════════════════ */
+function handleTap(px,py){
+  if(screen!=='playing'||answered||answerCooldown>0)return;
+  aInit();
+  for(const b of balloons){
+    if(b.popped)continue;
+    if(Math.hypot(px-b.x,py-b.y)<b.r*1.4){
+      if(b.value===correctAnswer){
+        b.popped=true;b.pop=0.001;answered=true;answerCooldown=1.2;score++;
+        if(!triedThisQ)firstTries++;
+        sPop();spawnConfetti(b.x,b.y,20);
+        showFeedback(PRAISE[Math.floor(Math.random()*PRAISE.length)],'#ffe066');
+        updateHUD();
+      }else{
+        b.shake=0.4;triedThisQ=true;sWrong();
+        showFeedback(ENCOURAGE[Math.floor(Math.random()*ENCOURAGE.length)],'#ff9999');
+        answerCooldown=0.5;
+      }
+      return;
+    }
+  }
+}
+cvs.addEventListener('click',e=>handleTap(e.clientX,e.clientY));
+cvs.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];handleTap(t.clientX,t.clientY)},{passive:false});
+
+/* ══════════════════════════════════════════
+   MAIN LOOP
+   ══════════════════════════════════════════ */
+let lastT=0;
+function loop(ts){
+  const dt=Math.min((ts-lastT)/1000,0.05);lastT=ts;
+  updClouds(dt);updConfetti(dt);
+  if(screen==='playing'){
+    for(const b of balloons){
+      b.wobbleT+=dt*2;
+      if(b.pop>0){b.pop+=dt;continue}
+      if(b.shake>0)b.shake-=dt;
+      if(b.y>b.targetY){b.y-=b.floatSpd*dt*120;if(b.y<b.targetY)b.y=b.targetY}
+      b.y+=Math.sin(b.wobbleT*1.5)*0.15;
+    }
+    if(answerCooldown>0){answerCooldown-=dt;if(answerCooldown<=0&&answered){qIdx++;nextQuestion()}}
+  }
+  render();requestAnimationFrame(loop);
+}
+
+function render(){
+  const skyGrad=C.createLinearGradient(0,0,0,H);
+  skyGrad.addColorStop(0,'#87CEEB');skyGrad.addColorStop(0.5,'#b5e8ff');skyGrad.addColorStop(1,'#dff5d0');
+  C.fillStyle=skyGrad;C.fillRect(0,0,W,H);
+  for(const c of clouds)drawCloud(c);
+  drawMeadow();
+  if(screen==='playing')for(const b of balloons)drawBalloon(b);
+  drawConfetti();
+}
+
+/* ══════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════ */
+document.getElementById('btnPlay').addEventListener('click',()=>{aInit();goLevels()});
+document.getElementById('btnBackTitle').addEventListener('click',()=>goTitle());
+document.getElementById('btnStartLevel').addEventListener('click',()=>{aInit();startLevel()});
+window._retry=()=>{aInit();startLevel()};
+window._nextLv=()=>{aInit();const nxt=LEVELS.find(l=>l.id===curLevel.id+1);if(nxt)goIntro(nxt)};
+window._goLevels=()=>goLevels();
+
+loadProgress();resize();initClouds();requestAnimationFrame(loop);
+
+/* ── Exit confirmation ── */
+document.addEventListener('click',function(e){
+  var a=e.target.closest('a[href*="index.html"]');
+  if(a){e.preventDefault();if(confirm('Leave game? Your progress will be lost!'))location.assign(a.href);}
+});
+
+})();
+</script>
+<a href="../../index.html" id="__hubBack" aria-label="Back to Play Zone">‹</a>
+<style>#__hubBack{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 8px);z-index:99999;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1;font-weight:700;text-decoration:none;border:2px solid rgba(255,255,255,.45);box-shadow:0 2px 8px rgba(0,0,0,.35);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation}#__hubBack:active{background:rgba(0,0,0,.8);transform:scale(.92)}</style>
 </body>
 </html>

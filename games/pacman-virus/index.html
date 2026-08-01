@@ -2,67 +2,915 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Pac-Chomp — Play Zone</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#5b4ab8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Play Zone">
+<link rel="apple-touch-icon" href="/shared/apple-touch-icon.png">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Fredoka', sans-serif;
-    background: #0f0a2e;
-    color: #fff;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 2rem;
-  }
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(ellipse at 50% 40%, rgba(255,215,0,0.2) 0%, transparent 60%);
-    z-index: 0;
-  }
-  .content { position: relative; z-index: 1; }
-  .icon { font-size: 5rem; margin-bottom: 1rem; }
-  h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
-  p { color: rgba(255,255,255,0.6); font-size: 1.1rem; margin-bottom: 2rem; max-width: 400px; }
-  .back {
-    display: inline-block;
-    padding: 0.8rem 2rem;
-    border-radius: 2rem;
-    background: rgba(255,255,255,0.12);
-    color: #fff;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: background 0.2s;
-  }
-  .back:hover { background: rgba(255,255,255,0.2); }
-  .hint {
-    margin-top: 2rem;
-    padding: 1rem 1.5rem;
-    border-radius: 1rem;
-    background: rgba(255,200,50,0.1);
-    border: 1px solid rgba(255,200,50,0.2);
-    color: rgba(255,200,80,0.9);
-    font-size: 0.85rem;
-    max-width: 420px;
-  }
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'Fredoka',sans-serif;color:#fff;touch-action:none}
+#wrap{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+#hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:6px 14px;z-index:10;background:rgba(0,0,0,.6)}
+#hud .score{font-size:1.2rem;font-weight:700;color:#ff0}
+#hud .lives{display:flex;gap:5px;align-items:center}
+#hud .title{font-size:1rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:2px}
+.life-dot{width:18px;height:18px;background:radial-gradient(circle,#ffe000 60%,#ffa000);border-radius:50%}
+canvas{display:block}
+#cam{position:absolute;bottom:10px;left:10px;width:120px;height:90px;border-radius:10px;border:2px solid rgba(255,255,255,.25);z-index:20;transform:scaleX(-1);object-fit:cover;opacity:.75}
+#dirArrow{position:absolute;bottom:106px;left:10px;width:120px;text-align:center;z-index:20;font-size:2rem;pointer-events:none;filter:drop-shadow(0 0 6px rgba(255,255,0,.5))}
+#overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:30;background:rgba(0,0,0,.88);text-align:center;padding:2rem;transition:opacity .3s}
+#overlay.hidden{opacity:0;pointer-events:none}
+#overlay h1{font-size:2.8rem;margin-bottom:.4rem}
+#overlay h2{font-size:1.8rem;margin-bottom:.8rem;color:#ff0}
+#overlay p{font-size:1.05rem;color:rgba(255,255,255,.65);margin-bottom:1.2rem;max-width:400px;line-height:1.6}
+.btn{display:inline-block;padding:.7rem 2.2rem;border-radius:2rem;background:#ff0;color:#000;font-weight:700;font-size:1.1rem;border:none;cursor:pointer;font-family:inherit;margin:.4rem;text-decoration:none}
+.btn:hover{background:#ffcc00}
+.btn-back{background:rgba(255,255,255,.13);color:#fff}
+.btn-back:hover{background:rgba(255,255,255,.22)}
+#calibBar{width:200px;height:8px;border-radius:4px;background:rgba(255,255,255,.15);margin:1rem auto;overflow:hidden}
+#calibFill{height:100%;background:#0ff;border-radius:4px;width:0%;transition:width .3s}
+/* d-pad */
+#dpad{position:absolute;bottom:18px;right:18px;width:170px;height:170px;z-index:25;display:none;pointer-events:auto}
+.dpad-btn{position:absolute;width:54px;height:54px;border-radius:12px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.28);display:flex;align-items:center;justify-content:center;font-size:1.6rem;color:rgba(255,255,255,.8);user-select:none;-webkit-user-select:none;cursor:pointer;transition:background .1s}
+.dpad-btn:active,.dpad-btn.active{background:rgba(255,255,0,.35);border-color:rgba(255,255,0,.5)}
+.dpad-up{top:0;left:50%;transform:translateX(-50%)}
+.dpad-down{bottom:0;left:50%;transform:translateX(-50%)}
+.dpad-left{left:0;top:50%;transform:translateY(-50%)}
+.dpad-right{right:0;top:50%;transform:translateY(-50%)}
+#dpadToggle{position:absolute;bottom:22px;right:196px;z-index:26;display:none;padding:6px 14px;border-radius:16px;background:rgba(255,255,255,.13);border:1.5px solid rgba(255,255,255,.22);color:rgba(255,255,255,.6);font-size:.8rem;font-family:inherit;font-weight:600;cursor:pointer;user-select:none;-webkit-user-select:none;pointer-events:auto;transition:background .15s}
+#dpadToggle:active{background:rgba(255,255,255,.25)}
 </style>
 </head>
 <body>
-<div class="content">
-  <div class="icon">🟡</div>
-  <h1>Pac-Chomp</h1>
-  <p>Chomp viruses like Baby Shark!</p>
-  <a class="back" href="../../index.html">← Back to Play Zone</a>
-  <div class="hint">
-    📋 Placeholder — Replace this file with the actual game HTML to activate!
+<div id="wrap">
+  <div id="hud" style="display:none">
+    <div class="score" id="scoreEl">0</div>
+    <div class="title">Pac-Chomp</div>
+    <div class="lives" id="livesEl"></div>
+  </div>
+  <canvas id="game"></canvas>
+  <video id="cam" playsinline autoplay muted></video>
+  <div id="dirArrow"></div>
+  <div id="dpad">
+    <div class="dpad-btn dpad-up" data-dir="U">&#9650;</div>
+    <div class="dpad-btn dpad-down" data-dir="D">&#9660;</div>
+    <div class="dpad-btn dpad-left" data-dir="L">&#9664;</div>
+    <div class="dpad-btn dpad-right" data-dir="R">&#9654;</div>
+  </div>
+  <button id="dpadToggle">Hide Arrows</button>
+  <div id="overlay">
+    <h1>Pac-Chomp</h1>
+    <p>Move your body to control Pac-Man!<br>
+    ⬅️ Lean left &nbsp; ➡️ Lean right<br>
+    ⬆️ Jump up &nbsp; ⬇️ Crouch down<br><br>
+    Eat all the dots and avoid ghosts!<br>
+    Grab power pellets to eat ghosts!</p>
+    <button class="btn" id="btnStart">Camera Mode</button>
+    <button class="btn" id="btnKB" style="background:#0ff;color:#000">Keyboard Mode</button>
+    <button class="btn" id="btnTouch" style="background:#ff80ff;color:#000">Touch Mode</button><br>
+    <a class="btn btn-back" href="../../index.html">← Back</a>
   </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ══════════════════════════════════════════
+   CONSTANTS
+   ══════════════════════════════════════════ */
+const COLS=19, ROWS=21;
+const MAZE_SRC=[
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,3,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,3,1],
+  [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,0,1],
+  [1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1],
+  [1,1,1,1,0,1,1,1,2,1,2,1,1,1,0,1,1,1,1],
+  [1,1,1,1,0,1,2,2,2,2,2,2,2,1,0,1,1,1,1],
+  [1,1,1,1,0,1,2,1,1,8,1,1,2,1,0,1,1,1,1],
+  [2,2,2,2,0,2,2,1,8,8,8,1,2,2,0,2,2,2,2],
+  [1,1,1,1,0,1,2,1,1,1,1,1,2,1,0,1,1,1,1],
+  [1,1,1,1,0,1,2,2,2,2,2,2,2,1,0,1,1,1,1],
+  [1,1,1,1,0,1,2,1,1,1,1,1,2,1,0,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,1,1,0,1,1,1,0,0,0,1,1,1,0,1,1,0,1],
+  [1,3,0,1,0,0,0,0,0,2,0,0,0,0,0,1,0,3,1],
+  [1,1,0,1,0,1,0,1,1,0,1,1,0,1,0,1,0,1,1],
+  [1,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,1],
+  [1,0,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+// 0=dot 1=wall 2=empty 3=power 8=ghost-house
+
+const PAC_HOME={c:9,r:15};
+const GH_DOOR={c:9,r:8};
+const GH_OUT={c:9,r:7};
+const GH_START=[{c:9,r:9},{c:8,r:9},{c:10,r:9},{c:9,r:8}];
+const G_COLORS=['#ff0000','#ffb8ff','#00ffff','#ffb852'];
+
+const PAC_SPD=3.8;
+const G_SPD=2.2;
+const G_FRIGHT_SPD=1.5;
+const G_EYES_SPD=8;
+const FRIGHT_MS=8000;
+const FRIGHT_FLASH_MS=3000;
+const LIVES_START=5;
+const SCORE_DOT=10, SCORE_PWR=50, SCORE_LVL=500;
+const GHOST_PTS=[200,400,800,1600];
+
+const LERP_A=0.45;
+const MOVE_TH=0.07;
+const JUMP_TH=0.055;
+
+const D={N:{x:0,y:0},L:{x:-1,y:0},R:{x:1,y:0},U:{x:0,y:-1},D:{x:0,y:1}};
+const DLIST=[D.L,D.R,D.U,D.D];
+function dEq(a,b){return a.x===b.x&&a.y===b.y}
+function dOpp(d){return{x:-d.x,y:-d.y}}
+
+/* ══════════════════════════════════════════
+   DOM
+   ══════════════════════════════════════════ */
+const cvs=document.getElementById('game');
+const X=cvs.getContext('2d');
+const vid=document.getElementById('cam');
+const olay=document.getElementById('overlay');
+const hudEl=document.getElementById('hud');
+const scoreEl=document.getElementById('scoreEl');
+const livesEl=document.getElementById('livesEl');
+const dirArrow=document.getElementById('dirArrow');
+
+/* ══════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════ */
+let T=0; // tile px
+let maze,dots,totalDots,eaten;
+let score=0,lives=LIVES_START,level=1,ghostCombo=0;
+let pac=null,ghosts=[],frightT=0;
+let state='TITLE',stT=0,cdNum=3;
+
+// pose
+let poseModel=null,poseBusy=false,poseOK=false;
+let smX=0.5,smY=0.4,bX=0.5,bY=0.4;
+let calibBuf=[];
+let camDir=D.N;
+
+// keyboard
+let kbDir=null;
+let kbMode=false;
+let kbDirAge=0; // ms since kbDir was set, auto-clear after timeout
+const KB_DIR_MAX_MS=1200; // auto-clear kbDir after this time
+// sticky input buffer — remember desired turn for up to 800ms
+let buffDir=D.N, buffAge=0;
+const BUFF_MS=800;
+const TURN_TOL=0.6; // how close to tile center to allow turn (was 0.35)
+
+// audio
+let ac=null;
+function aInit(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)()}
+function tone(f,d,t,v){if(!ac)return;const o=ac.createOscillator(),g=ac.createGain();o.type=t||'square';o.frequency.value=f;g.gain.setValueAtTime(v||.1,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}
+function sChomp(){tone(260,.08,'square',.08);setTimeout(()=>tone(330,.08,'square',.08),80)}
+function sPower(){tone(180,.3,'sawtooth',.08);tone(240,.3,'sawtooth',.06)}
+function sEatG(){tone(440,.1);tone(660,.12);setTimeout(()=>tone(880,.18),100)}
+function sDie(){for(let i=0;i<8;i++)setTimeout(()=>tone(400-i*40,.1,'sawtooth',.08),i*90)}
+function sLvl(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.13,'square',.1),i*110))}
+function sCD(){tone(440,.12,'square',.08)}
+function sGo(){tone(523,.1);setTimeout(()=>tone(784,.16),110)}
+
+/* ══════════════════════════════════════════
+   MAZE HELPERS
+   ══════════════════════════════════════════ */
+function buildMaze(){
+  maze=MAZE_SRC.map(r=>[...r]);
+  dots=[];totalDots=0;eaten=0;
+  for(let r=0;r<ROWS;r++){dots[r]=[];for(let c=0;c<COLS;c++){
+    if(maze[r][c]===0){dots[r][c]=1;totalDots++}
+    else if(maze[r][c]===3){dots[r][c]=2;totalDots++}
+    else dots[r][c]=0;
+  }}
+}
+function isWall(c,r){
+  if(r<0||r>=ROWS)return true;
+  if(c<0||c>=COLS)return r!==9?true:false;
+  return maze[r][c]===1;
+}
+function canGo(c,r,ghost){
+  if(r<0||r>=ROWS)return false;
+  if(c<0||c>=COLS)return r===9;
+  const v=maze[r][c];
+  if(v===1)return false;
+  if(v===8&&!ghost)return false;
+  return true;
+}
+function wrapC(c){return c<0?COLS-1:c>=COLS?0:c}
+
+/* ══════════════════════════════════════════
+   ENTITIES
+   ══════════════════════════════════════════ */
+function mkPac(){return{c:PAC_HOME.c,r:PAC_HOME.r,px:PAC_HOME.c,py:PAC_HOME.r,dir:D.N,nxt:D.N,mouth:0,moving:false}}
+function mkGhost(i){const s=GH_START[i];return{c:s.c,r:s.r,px:s.c,py:s.r,dir:D.U,col:G_COLORS[i],st:'HOUSE',relT:3000+i*4000,hT:0,w:Math.random()*6,idx:i}}
+function resetPos(){
+  pac=mkPac();
+  ghosts=[];for(let i=0;i<4;i++)ghosts.push(mkGhost(i));
+  frightT=0;ghostCombo=0;
+  buffDir=D.N;buffAge=0;camDir=D.N;kbDir=null;
+}
+
+/* ══════════════════════════════════════════
+   PAC-MAN UPDATE
+   ══════════════════════════════════════════ */
+function updPac(dt){
+  if(!pac)return;
+  const p=pac, spd=PAC_SPD*dt;
+
+  // ── sticky input buffer: keep desired direction alive for BUFF_MS ──
+  if(!dEq(p.nxt,D.N)){buffDir=p.nxt;buffAge=BUFF_MS}
+  if(buffAge>0){buffAge-=dt*1000;if(buffAge<=0){buffDir=D.N;buffAge=0}}
+  const wantDir=!dEq(buffDir,D.N)?buffDir:p.nxt;
+
+  // ── try turning (generous tolerance) ──
+  if(!dEq(wantDir,D.N)&&!dEq(wantDir,p.dir)){
+    const nc=p.c+wantDir.x, nr=p.r+wantDir.y;
+    if(canGo(wrapC(nc),nr,false)){
+      const d2c=Math.abs(p.px-p.c)+Math.abs(p.py-p.r);
+      if(d2c<TURN_TOL){
+        // pre-snap to tile center so turn is clean
+        p.px=p.c;p.py=p.r;p.dir=wantDir;buffDir=D.N;buffAge=0;
+        kbDir=null;kbDirAge=0;
+      }
+    }
+  }
+
+  // ── look-ahead: approaching an intersection? pre-snap earlier ──
+  if(!dEq(wantDir,D.N)&&!dEq(wantDir,p.dir)){
+    // check the NEXT tile in current direction
+    const aheadC=wrapC(p.c+p.dir.x), aheadR=p.r+p.dir.y;
+    if(canGo(aheadC,aheadR,false)){
+      // at the next tile, could we turn in wantDir?
+      const turnC=wrapC(aheadC+wantDir.x), turnR=aheadR+wantDir.y;
+      if(canGo(turnC,turnR,false)){
+        // approaching that intersection — how far away?
+        const dist=Math.abs(p.px-aheadC)+Math.abs(p.py-aheadR);
+        if(dist<0.3){
+          // snap to intersection and turn
+          p.c=aheadC;p.r=aheadR;p.px=p.c;p.py=p.r;
+          p.dir=wantDir;buffDir=D.N;buffAge=0;
+          kbDir=null;kbDirAge=0;
+        }
+      }
+    }
+  }
+
+  if(dEq(p.dir,D.N)){p.moving=false;return}
+
+  const nc=p.c+p.dir.x, nr=p.r+p.dir.y;
+  if(!canGo(wrapC(nc),nr,false)){
+    p.px=p.c;p.py=p.r;p.moving=false;
+    // ── if player has a buffered direction and it's valid here, use it ──
+    if(!dEq(wantDir,D.N)&&!dEq(wantDir,p.dir)){
+      if(canGo(wrapC(p.c+wantDir.x),p.r+wantDir.y,false)){
+        p.dir=wantDir;p.moving=true;buffDir=D.N;buffAge=0;kbDir=null;kbDirAge=0;
+        return;
+      }
+    }
+    // ── auto-corner: if hitting a wall, check if only one way to go ──
+    const openDirs=DLIST.filter(d=>{
+      if(dEq(d,dOpp(p.dir)))return false; // don't reverse
+      return canGo(wrapC(p.c+d.x),p.r+d.y,false);
+    });
+    if(openDirs.length===1){
+      // dead-end corner: auto-turn
+      p.dir=openDirs[0];p.moving=true;
+    }
+    return;
+  }
+
+  p.moving=true;
+  p.px+=p.dir.x*spd;
+  p.py+=p.dir.y*spd;
+
+  const passX=p.dir.x!==0&&((p.dir.x>0&&p.px>=nc)||(p.dir.x<0&&p.px<=nc));
+  const passY=p.dir.y!==0&&((p.dir.y>0&&p.py>=nr)||(p.dir.y<0&&p.py<=nr));
+  if(passX||passY){
+    p.c=wrapC(nc);p.r=nr;p.px=p.c;p.py=p.r;
+    // eat
+    if(p.r>=0&&p.r<ROWS&&p.c>=0&&p.c<COLS){
+      if(dots[p.r][p.c]===1){dots[p.r][p.c]=0;eaten++;score+=SCORE_DOT;sChomp()}
+      else if(dots[p.r][p.c]===2){dots[p.r][p.c]=0;eaten++;score+=SCORE_PWR;activateFright();sPower()}
+    }
+    // wall ahead? prefer buffered direction, else auto-corner if dead-end
+    const fc=wrapC(p.c+p.dir.x),fr=p.r+p.dir.y;
+    if(!canGo(fc,fr,false)){
+      p.moving=false;
+      // prefer buffered direction
+      if(!dEq(wantDir,D.N)&&!dEq(wantDir,p.dir)){
+        if(canGo(wrapC(p.c+wantDir.x),p.r+wantDir.y,false)){
+          p.dir=wantDir;p.moving=true;buffDir=D.N;buffAge=0;kbDir=null;kbDirAge=0;
+        }
+      }
+      if(!p.moving){
+        const openDirs=DLIST.filter(d=>{
+          if(dEq(d,dOpp(p.dir)))return false;
+          return canGo(wrapC(p.c+d.x),p.r+d.y,false);
+        });
+        if(openDirs.length===1){p.dir=openDirs[0];p.moving=true}
+      }
+    }
+  }
+  // tunnel wrap px
+  if(p.px<-0.5){p.px+=COLS;p.c=COLS-1}
+  if(p.px>COLS-0.5){p.px-=COLS;p.c=0}
+  p.mouth+=dt*12;
+}
+
+function activateFright(){
+  frightT=FRIGHT_MS;ghostCombo=0;
+  for(const g of ghosts){
+    if(g.st==='CHASE'||g.st==='SCATTER'){g.st='FRIGHT';g.dir=dOpp(g.dir)}
+  }
+}
+
+/* ══════════════════════════════════════════
+   GHOST AI
+   ══════════════════════════════════════════ */
+function pickGDir(g,tx,ty){
+  const opp=dOpp(g.dir);
+  const ok=DLIST.filter(d=>{
+    if(dEq(d,opp))return false;
+    return canGo(wrapC(g.c+d.x),g.r+d.y,true);
+  });
+  if(!ok.length){
+    if(canGo(wrapC(g.c+opp.x),g.r+opp.y,true))return opp;
+    return D.N;
+  }
+  if(ok.length===1)return ok[0];
+
+  // best = closest to target
+  let best=ok[0],bd=1e9;
+  for(const d of ok){
+    const dist=Math.hypot(wrapC(g.c+d.x)-tx,g.r+d.y-ty);
+    if(dist<bd){bd=dist;best=d}
+  }
+  // kids: only 25% chase, else random
+  if(Math.random()>0.25)best=ok[Math.floor(Math.random()*ok.length)];
+  return best;
+}
+
+function updGhost(g,dt){
+  g.w+=dt*8;
+
+  if(g.st==='HOUSE'){
+    g.hT+=dt*1000;
+    g.py=GH_START[g.idx].r+Math.sin(g.w)*0.2;
+    g.px=GH_START[g.idx].c;
+    if(g.hT>=g.relT){g.st='LEAVING';g.dir=D.U}
+    return;
+  }
+
+  if(g.st==='LEAVING'){
+    const tx=GH_OUT.c,ty=GH_OUT.r;
+    const dx=tx-g.px,dy=ty-g.py;
+    const dist=Math.hypot(dx,dy);
+    const spd=G_SPD*dt*1.5;
+    if(dist<spd){
+      g.px=tx;g.py=ty;g.c=tx;g.r=ty;
+      g.st=frightT>0?'FRIGHT':'CHASE';
+      g.dir=D.L;
+    } else {g.px+=(dx/dist)*spd;g.py+=(dy/dist)*spd}
+    return;
+  }
+
+  if(g.st==='EYES'){
+    const tx=GH_DOOR.c,ty=GH_DOOR.r;
+    if(Math.hypot(g.px-tx,g.py-ty)<0.5){
+      g.px=GH_START[g.idx].c;g.py=GH_START[g.idx].r;
+      g.c=Math.round(g.px);g.r=Math.round(g.py);
+      g.st='LEAVING';g.hT=g.relT;return;
+    }
+    const nd=pickGDir(g,tx,ty);
+    if(!dEq(nd,D.N))g.dir=nd;
+    moveG(g,dt,G_EYES_SPD);return;
+  }
+
+  let spd=G_SPD+Math.min(level-1,5)*0.15;
+  if(g.st==='FRIGHT')spd=G_FRIGHT_SPD;
+  moveG(g,dt,spd);
+}
+
+function moveG(g,dt,spd){
+  const s=spd*dt;
+  g.px+=g.dir.x*s;g.py+=g.dir.y*s;
+  const nc=g.c+g.dir.x,nr=g.r+g.dir.y,wc=wrapC(nc);
+  const passX=g.dir.x!==0&&((g.dir.x>0&&g.px>=nc)||(g.dir.x<0&&g.px<=nc));
+  const passY=g.dir.y!==0&&((g.dir.y>0&&g.py>=nr)||(g.dir.y<0&&g.py<=nr));
+  if(passX||passY){
+    g.c=wc;g.r=nr;g.px=g.c;g.py=g.r;
+    let tx=pac?pac.c:g.c,ty=pac?pac.r:g.r;
+    if(g.st==='FRIGHT'){tx=g.c*2-(pac?pac.c:g.c);ty=g.r*2-(pac?pac.r:g.r)}
+    const nd=pickGDir(g,tx,ty);
+    if(!dEq(nd,D.N))g.dir=nd;
+    // stuck check
+    const fc=wrapC(g.c+g.dir.x),fr=g.r+g.dir.y;
+    if(!canGo(fc,fr,true)){
+      for(const d of DLIST){if(canGo(wrapC(g.c+d.x),g.r+d.y,true)){g.dir=d;break}}
+    }
+  }
+  if(g.px<-0.5){g.px+=COLS;g.c=COLS-1}
+  if(g.px>COLS-0.5){g.px-=COLS;g.c=0}
+}
+
+/* ══════════════════════════════════════════
+   COLLISION
+   ══════════════════════════════════════════ */
+function checkHit(){
+  if(!pac)return;
+  for(const g of ghosts){
+    if(g.st==='HOUSE'||g.st==='EYES'||g.st==='LEAVING')continue;
+    if(Math.hypot(pac.px-g.px,pac.py-g.py)<0.7){
+      if(g.st==='FRIGHT'){
+        g.st='EYES';
+        score+=GHOST_PTS[Math.min(ghostCombo,3)];
+        ghostCombo++;sEatG();
+      } else { pacDie();return; }
+    }
+  }
+}
+function pacDie(){lives--;sDie();state='DYING';stT=1500}
+
+/* ══════════════════════════════════════════
+   RENDERING
+   ══════════════════════════════════════════ */
+function resize(){
+  const w=window.innerWidth, h=window.innerHeight-40;
+  const aspect=COLS/ROWS;
+  let cw,ch;
+  if(w/h>aspect){ch=h;cw=ch*aspect}else{cw=w;ch=cw/aspect}
+  T=Math.floor(cw/COLS);
+  cvs.width=T*COLS;cvs.height=T*ROWS;
+}
+
+function rrect(x,y,w,h,r){
+  X.beginPath();X.moveTo(x+r,y);X.lineTo(x+w-r,y);X.quadraticCurveTo(x+w,y,x+w,y+r);
+  X.lineTo(x+w,y+h-r);X.quadraticCurveTo(x+w,y+h,x+w-r,y+h);X.lineTo(x+r,y+h);
+  X.quadraticCurveTo(x,y+h,x,y+h-r);X.lineTo(x,y+r);X.quadraticCurveTo(x,y,x+r,y);X.closePath();
+}
+
+function drawMaze(){
+  const wc=level%3===0?'#de21de':level%3===1?'#2121de':'#21de21';
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    if(maze[r][c]!==1)continue;
+    const x=c*T,y=r*T;
+    X.fillStyle=wc;X.globalAlpha=0.25;X.fillRect(x+1,y+1,T-2,T-2);X.globalAlpha=1;
+    X.strokeStyle=wc;X.lineWidth=1.5;rrect(x+2,y+2,T-4,T-4,3);X.stroke();
+  }
+  // ghost house door
+  X.strokeStyle='#ffb8ff';X.lineWidth=3;
+  X.beginPath();X.moveTo((GH_DOOR.c-0.4)*T+T/2,GH_DOOR.r*T+T*0.85);
+  X.lineTo((GH_DOOR.c+0.4)*T+T/2,GH_DOOR.r*T+T*0.85);X.stroke();
+}
+
+function drawVirus(cx,cy,rad,color){
+  const spikes=8;
+  X.fillStyle=color;X.beginPath();
+  for(let i=0;i<spikes*2;i++){
+    const ang=i*Math.PI/spikes-Math.PI/2;
+    const r2=i%2===0?rad:rad*0.6;
+    X.lineTo(cx+Math.cos(ang)*r2,cy+Math.sin(ang)*r2);
+  }
+  X.closePath();X.fill();
+  // eyes
+  const er=rad*0.18;
+  X.fillStyle='#fff';
+  X.beginPath();X.arc(cx-rad*0.22,cy-rad*0.1,er,0,Math.PI*2);X.fill();
+  X.beginPath();X.arc(cx+rad*0.22,cy-rad*0.1,er,0,Math.PI*2);X.fill();
+  // pupils
+  X.fillStyle='#000';
+  X.beginPath();X.arc(cx-rad*0.2,cy-rad*0.08,er*0.55,0,Math.PI*2);X.fill();
+  X.beginPath();X.arc(cx+rad*0.24,cy-rad*0.08,er*0.55,0,Math.PI*2);X.fill();
+  // angry mouth
+  X.strokeStyle='#000';X.lineWidth=Math.max(1,rad*0.1);
+  X.beginPath();X.arc(cx,cy+rad*0.15,rad*0.2,0.15*Math.PI,0.85*Math.PI);X.stroke();
+}
+
+function drawDots(){
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const cx=c*T+T/2, cy=r*T+T/2;
+    if(dots[r][c]===1){drawVirus(cx,cy,T*.18,'#66dd55')}
+    else if(dots[r][c]===2){
+      const p=.85+Math.sin(Date.now()*.006)*.15;
+      const rad=T*.32*p;
+      X.globalAlpha=0.3;X.fillStyle='#ff3333';X.beginPath();X.arc(cx,cy,rad*1.4,0,Math.PI*2);X.fill();X.globalAlpha=1;
+      drawVirus(cx,cy,rad,'#ff4444');
+    }
+  }
+}
+
+function drawPac(){
+  if(!pac)return;
+  const p=pac,cx=p.px*T+T/2,cy=p.py*T+T/2,r=T*.44;
+  const m=p.moving?(Math.abs(Math.sin(p.mouth))*.35+.05):.15;
+  let ang=0;
+  if(dEq(p.dir,D.R))ang=0;else if(dEq(p.dir,D.D))ang=Math.PI/2;
+  else if(dEq(p.dir,D.L))ang=Math.PI;else if(dEq(p.dir,D.U))ang=-Math.PI/2;
+  X.save();X.translate(cx,cy);X.rotate(ang);
+  X.fillStyle='#ffe000';X.beginPath();X.arc(0,0,r,m*Math.PI,-m*Math.PI+Math.PI*2);X.lineTo(0,0);X.closePath();X.fill();
+  X.fillStyle='#000';X.beginPath();X.arc(r*.2,-r*.35,r*.11,0,Math.PI*2);X.fill();
+  X.restore();
+}
+
+function drawGhost(g){
+  const cx=g.px*T+T/2,cy=g.py*T+T/2,r=T*.42;
+  if(g.st==='EYES'){drawGEyes(cx,cy,r,g);return}
+
+  let color=g.col;
+  if(g.st==='FRIGHT'){
+    if(frightT<FRIGHT_FLASH_MS&&Math.floor(frightT/180)%2===0)color='#fff';
+    else color='#2121de';
+  }
+
+  X.save();X.translate(cx,cy);X.fillStyle=color;
+  X.beginPath();X.arc(0,-r*.12,r,Math.PI,0);
+  // wavy bottom
+  const seg=3,sw=r*2/seg,wh=r*.18,wo=Math.sin(g.w)*wh*.5;
+  X.lineTo(r,r*.55);
+  for(let i=0;i<seg;i++){
+    const x2=r-(i+.5)*sw,x3=r-(i+1)*sw,yb=r*.55;
+    X.quadraticCurveTo(x2,yb+wh+wo*(i%2===0?1:-1),x3,yb);
+  }
+  X.closePath();X.fill();X.restore();
+
+  if(g.st!=='FRIGHT'){drawGEyes(cx,cy,r,g)}
+  else{
+    // fright face
+    X.fillStyle='#fff';const er=r*.12;
+    X.beginPath();X.arc(cx-r*.25,cy-r*.22,er,0,Math.PI*2);X.fill();
+    X.beginPath();X.arc(cx+r*.25,cy-r*.22,er,0,Math.PI*2);X.fill();
+    X.strokeStyle='#fff';X.lineWidth=1.5;X.beginPath();
+    for(let i=0;i<5;i++){
+      const mx=cx-r*.35+i*r*.175, my=cy+r*.12+(i%2===0?-2:2);
+      i===0?X.moveTo(mx,my):X.lineTo(mx,my);
+    }X.stroke();
+  }
+}
+
+function drawGEyes(cx,cy,r,g){
+  const ew=r*.26,eh=r*.3;
+  X.fillStyle='#fff';
+  X.beginPath();X.ellipse(cx-r*.28,cy-r*.18,ew,eh,0,0,Math.PI*2);X.fill();
+  X.beginPath();X.ellipse(cx+r*.28,cy-r*.18,ew,eh,0,0,Math.PI*2);X.fill();
+  const dx=pac?pac.px-g.px:0,dy=pac?pac.py-g.py:0,dist=Math.hypot(dx,dy)||1;
+  const po=r*.09,ppx=(dx/dist)*po,ppy=(dy/dist)*po,pr=r*.13;
+  X.fillStyle='#2121de';
+  X.beginPath();X.arc(cx-r*.28+ppx,cy-r*.18+ppy,pr,0,Math.PI*2);X.fill();
+  X.beginPath();X.arc(cx+r*.28+ppx,cy-r*.18+ppy,pr,0,Math.PI*2);X.fill();
+}
+
+function drawDying(prog){
+  if(!pac)return;
+  const p=pac,cx=p.px*T+T/2,cy=p.py*T+T/2,r=T*.44;
+  const sw=Math.PI*2*(1-prog);if(sw<=0)return;
+  X.fillStyle='#ffe000';X.beginPath();X.arc(cx,cy,r,-sw/2+Math.PI/2,sw/2+Math.PI/2);X.lineTo(cx,cy);X.closePath();X.fill();
+}
+
+function drawHUD(){
+  scoreEl.textContent=score.toLocaleString();
+  livesEl.innerHTML='';
+  for(let i=0;i<lives;i++){const d=document.createElement('div');d.className='life-dot';livesEl.appendChild(d)}
+}
+
+function render(){
+  X.fillStyle='#000';X.fillRect(0,0,cvs.width,cvs.height);
+  drawMaze();drawDots();
+  if(state==='DYING'){drawDying(1-stT/1500);ghosts.forEach(drawGhost)}
+  else{drawPac();ghosts.forEach(drawGhost)}
+  drawHUD();
+}
+
+/* ══════════════════════════════════════════
+   WEBCAM + MEDIAPIPE POSE
+   ══════════════════════════════════════════ */
+async function setupCam(){
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:320},height:{ideal:240}}});
+    vid.srcObject=s;await new Promise(r=>vid.onloadedmetadata=r);vid.play();return true;
+  }catch(e){console.warn('No camera:',e);return false}
+}
+
+function setupPose(){
+  poseModel=new window.Pose({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${f}`});
+  poseModel.setOptions({modelComplexity:0,smoothLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
+  poseModel.onResults(onPose);
+}
+
+function onPose(res){
+  if(!res.poseLandmarks)return;
+  poseOK=true;
+  const ls=res.poseLandmarks[11],rs=res.poseLandmarks[12];
+  if(!ls||!rs)return;
+  const rx=(ls.x+rs.x)/2, ry=(ls.y+rs.y)/2;
+  smX+=LERP_A*(rx-smX);smY+=LERP_A*(ry-smY);
+
+  if(state==='CALIBRATING'){calibBuf.push({x:smX,y:smY})}
+  else if(state==='PLAYING'||state==='COUNTDOWN'){
+    const dx=smX-bX, dy=smY-bY;
+    const ax=Math.abs(dx),ay=Math.abs(dy);
+    let arrow='';
+    if(ax>MOVE_TH||ay>JUMP_TH){
+      if(ax>ay&&ax>MOVE_TH){
+        camDir=dx>0?D.L:D.R;
+        arrow=dx>0?'⬅️':'➡️';
+      }else if(ay>JUMP_TH){
+        camDir=dy<0?D.U:D.D;
+        arrow=dy<0?'⬆️':'⬇️';
+      }
+    }
+    dirArrow.textContent=arrow;
+  }
+}
+
+async function sendFrame(){
+  if(!poseBusy&&poseModel&&vid.readyState>=2){
+    poseBusy=true;
+    try{await poseModel.send({image:vid})}catch(e){}
+    poseBusy=false;
+  }
+  requestAnimationFrame(sendFrame);
+}
+
+/* ══════════════════════════════════════════
+   KEYBOARD FALLBACK
+   ══════════════════════════════════════════ */
+window.addEventListener('keydown',e=>{
+  aInit();
+  switch(e.key){
+    case'ArrowLeft':case'a':kbDir=D.L;kbDirAge=0;break;
+    case'ArrowRight':case'd':kbDir=D.R;kbDirAge=0;break;
+    case'ArrowUp':case'w':kbDir=D.U;kbDirAge=0;e.preventDefault();break;
+    case'ArrowDown':case's':kbDir=D.D;kbDirAge=0;e.preventDefault();break;
+    case' ':e.preventDefault();if(state==='TITLE')beginKB();break;
+  }
+});
+
+/* ══════════════════════════════════════════
+   TOUCH / SWIPE CONTROLS
+   ══════════════════════════════════════════ */
+let touchMode=false;
+const dpadEl=document.getElementById('dpad');
+const SWIPE_TH=22; // minimum px to count as swipe (raised for reliability)
+let touchSX=0,touchSY=0,touchId=null;
+let dpadActive=null; // currently held d-pad direction (prevents swipe override)
+let dpadCooldown=0; // ms cooldown after d-pad release to block stray swipes
+const DPAD_COOL_MS=200;
+
+// swipe anywhere on screen
+document.addEventListener('touchstart',e=>{
+  if(dpadActive||dpadCooldown>0)return; // d-pad in use or just released
+  if(touchId!==null)return;
+  // ignore touches on the d-pad area
+  if(e.target.closest('#dpad'))return;
+  const t=e.changedTouches[0];
+  touchSX=t.clientX;touchSY=t.clientY;touchId=t.identifier;
+},{passive:true});
+
+document.addEventListener('touchmove',e=>{
+  if(!touchMode||dpadActive||dpadCooldown>0)return; // skip swipe if d-pad active/cooling
+  for(const t of e.changedTouches){
+    if(t.identifier!==touchId)continue;
+    const dx=t.clientX-touchSX, dy=t.clientY-touchSY;
+    const ax=Math.abs(dx), ay=Math.abs(dy);
+    if(ax>SWIPE_TH||ay>SWIPE_TH){
+      if(ax>ay){kbDir=dx>0?D.R:D.L}
+      else{kbDir=dy>0?D.D:D.U}
+      touchSX=t.clientX;touchSY=t.clientY; // reset for continuous swipe
+    }
+  }
+},{passive:true});
+
+document.addEventListener('touchend',e=>{
+  for(const t of e.changedTouches){
+    if(t.identifier===touchId){touchId=null;break}
+  }
+},{passive:true});
+
+document.addEventListener('touchcancel',e=>{
+  for(const t of e.changedTouches){
+    if(t.identifier===touchId){touchId=null;break}
+  }
+},{passive:true});
+
+// d-pad buttons (tap to set direction, works with multi-touch)
+// direction is re-applied every frame while held via dpadActive
+const DPAD_MAP={U:D.U,D:D.D,L:D.L,R:D.R};
+document.querySelectorAll('.dpad-btn').forEach(btn=>{
+  const dir=DPAD_MAP[btn.dataset.dir];
+  function activate(e){e.preventDefault();e.stopPropagation();aInit();kbDir=dir;dpadActive=dir;dpadCooldown=0;btn.classList.add('active')}
+  function deactivate(e){if(e)e.stopPropagation();btn.classList.remove('active');if(dpadActive===dir){dpadActive=null;dpadCooldown=DPAD_COOL_MS}}
+  btn.addEventListener('touchstart',activate,{passive:false});
+  btn.addEventListener('touchend',deactivate,{passive:false});
+  btn.addEventListener('touchcancel',deactivate,{passive:false});
+  btn.addEventListener('mousedown',e=>{e.preventDefault();aInit();kbDir=dir;dpadActive=dir;dpadCooldown=0;btn.classList.add('active')});
+  btn.addEventListener('mouseup',deactivate);
+  btn.addEventListener('mouseleave',deactivate);
+});
+
+// d-pad show/hide toggle
+const dpadToggleEl=document.getElementById('dpadToggle');
+let dpadHidden=false;
+dpadToggleEl.addEventListener('click',e=>{
+  e.preventDefault();e.stopPropagation();
+  dpadHidden=!dpadHidden;
+  dpadEl.style.display=dpadHidden?'none':'block';
+  dpadToggleEl.textContent=dpadHidden?'Show Arrows':'Hide Arrows';
+  // reposition toggle when d-pad hidden
+  dpadToggleEl.style.right=dpadHidden?'18px':'196px';
+});
+// prevent toggle button from registering as swipe
+dpadToggleEl.addEventListener('touchstart',e=>{e.stopPropagation()},{passive:true});
+dpadToggleEl.addEventListener('touchend',e=>{e.stopPropagation()},{passive:true});
+
+function resetInputs(){
+  kbDir=null;kbDirAge=0;
+  buffDir=D.N;buffAge=0;
+  touchId=null;dpadActive=null;dpadCooldown=0;
+  document.querySelectorAll('.dpad-btn.active').forEach(b=>b.classList.remove('active'));
+}
+
+function beginTouch(){
+  resetInputs();
+  touchMode=true;kbMode=true;
+  aInit();
+  vid.style.display='none';dirArrow.style.display='none';
+  dpadEl.style.display=dpadHidden?'none':'block';
+  dpadToggleEl.style.display='block';
+  dpadToggleEl.style.right=dpadHidden?'18px':'196px';
+  startCD();
+}
+window._touchstart=beginTouch;
+
+/* ══════════════════════════════════════════
+   GAME STATES
+   ══════════════════════════════════════════ */
+function showOL(h){olay.innerHTML=h;olay.classList.remove('hidden')}
+function hideOL(){olay.classList.add('hidden')}
+
+function beginCalib(){
+  resetInputs();
+  kbMode=false;touchMode=false;
+  aInit();state='CALIBRATING';calibBuf=[];stT=3000;
+  dpadEl.style.display='none';dpadToggleEl.style.display='none';
+  vid.style.display='';dirArrow.style.display='';
+  showOL(`<h2>Stand in the center</h2>
+    <p>Stay still for a moment...<br>We're learning your position!</p>
+    <div style="font-size:3.5rem;margin:.5rem 0">🧍</div>
+    <div id="calibBar"><div id="calibFill"></div></div>
+    <p style="font-size:.8rem;color:rgba(255,255,255,.35)">Or use arrow keys / WASD as fallback</p>`);
+}
+
+function beginKB(){
+  resetInputs();
+  kbMode=true;touchMode=false;
+  aInit();
+  vid.style.display='none';dirArrow.style.display='none';dpadEl.style.display='none';dpadToggleEl.style.display='none';
+  startCD();
+}
+
+function finishCalib(){
+  if(calibBuf.length>10){
+    let sx=0,sy=0;for(const s of calibBuf){sx+=s.x;sy+=s.y}
+    bX=sx/calibBuf.length;bY=sy/calibBuf.length;
+  }
+  startCD();
+}
+
+function startCD(){
+  state='COUNTDOWN';cdNum=3;stT=3000;
+  buildMaze();resetPos();score=0;lives=LIVES_START;level=1;
+  hudEl.style.display='flex';
+  showOL(`<div id="cdTxt" style="font-size:5.5rem;font-weight:700;color:#ff0;text-shadow:0 0 30px rgba(255,255,0,.4)">3</div>`);
+  sCD();
+}
+
+function startPlay(){state='PLAYING';hideOL();sGo()}
+
+function nextLvl(){
+  level++;score+=SCORE_LVL;sLvl();
+  state='LVL_DONE';stT=2000;
+  showOL(`<h2>Level ${level-1} Complete!</h2><p>+${SCORE_LVL} bonus points!</p>`);
+}
+
+function startNextLvl(){
+  buildMaze();resetPos();state='COUNTDOWN';cdNum=3;stT=2000;
+  showOL(`<div id="cdTxt" style="font-size:5.5rem;font-weight:700;color:#ff0;text-shadow:0 0 30px rgba(255,255,0,.4)">3</div>`);
+  sCD();
+}
+
+function gameOver(){
+  state='GAMEOVER';
+  showOL(`<h1>Game Over</h1><h2>Score: ${score.toLocaleString()}</h2><p>You reached level ${level}!</p>
+    <button class="btn" onclick="window._recalib()">Camera Mode</button>
+    <button class="btn" style="background:#0ff;color:#000" onclick="window._kbstart()">Keyboard Mode</button>
+    <button class="btn" style="background:#ff80ff;color:#000" onclick="window._touchstart()">Touch Mode</button><br>
+    <a class="btn btn-back" href="../../index.html">← Back</a>`);
+}
+window._recalib=beginCalib;
+window._kbstart=beginKB;
+
+/* ══════════════════════════════════════════
+   MAIN LOOP
+   ══════════════════════════════════════════ */
+let lastT=0;
+function loop(ts){
+  const dt=Math.min((ts-lastT)/1000,0.05);lastT=ts;
+
+  switch(state){
+  case'CALIBRATING':
+    stT-=dt*1000;
+    const cf=document.getElementById('calibFill');
+    if(cf)cf.style.width=Math.min(100,((3000-stT)/3000)*100)+'%';
+    if(stT<=0)finishCalib();
+    break;
+
+  case'COUNTDOWN':
+    stT-=dt*1000;
+    const nn=Math.ceil(stT/1000);
+    if(nn!==cdNum&&nn>0){cdNum=nn;sCD()}
+    const cdE=document.getElementById('cdTxt');
+    if(cdE)cdE.textContent=stT<=0?'GO!':Math.ceil(stT/1000);
+    if(stT<=-400)startPlay();
+    render();break;
+
+  case'PLAYING':{
+    // tick d-pad cooldown
+    if(dpadCooldown>0)dpadCooldown-=dt*1000;
+    // re-apply held d-pad direction (it gets consumed each frame)
+    if(dpadActive)kbDir=dpadActive;
+    // age-out stale kbDir
+    if(kbDir){kbDirAge+=dt*1000;if(kbDirAge>KB_DIR_MAX_MS){kbDir=null;kbDirAge=0}}
+    // input (ignore camera in keyboard/touch mode)
+    const inp=kbDir||(kbMode?null:camDir);
+    if(pac&&inp&&!dEq(inp,D.N)){
+      pac.nxt=inp;
+      if(dEq(pac.dir,D.N)){pac.dir=inp;kbDir=null;kbDirAge=0}
+    }
+    updPac(dt);
+    for(const g of ghosts)updGhost(g,dt);
+    if(frightT>0){frightT-=dt*1000;if(frightT<=0){frightT=0;for(const g of ghosts)if(g.st==='FRIGHT')g.st='CHASE'}}
+    checkHit();
+    if(eaten>=totalDots)nextLvl();
+    render();break;
+  }
+
+  case'DYING':
+    stT-=dt*1000;render();
+    if(stT<=0){
+      if(lives<=0){gameOver()}
+      else{resetPos();state='COUNTDOWN';cdNum=3;stT=2000;
+        showOL(`<div id="cdTxt" style="font-size:5.5rem;font-weight:700;color:#ff0;text-shadow:0 0 30px rgba(255,255,0,.4)">3</div>`);sCD()}
+    }break;
+
+  case'LVL_DONE':
+    stT-=dt*1000;render();
+    if(stT<=0)startNextLvl();
+    break;
+  }
+  requestAnimationFrame(loop);
+}
+
+/* ══════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════ */
+async function init(){
+  resize();window.addEventListener('resize',resize);
+  buildMaze();resetPos();render();
+
+  const hasCam=await setupCam();
+  if(hasCam){setupPose();sendFrame()}
+  else{vid.style.display='none';dirArrow.style.display='none'}
+
+  document.getElementById('btnStart').addEventListener('click',()=>{aInit();beginCalib()});
+  document.getElementById('btnKB').addEventListener('click',()=>beginKB());
+  document.getElementById('btnTouch').addEventListener('click',()=>beginTouch());
+  requestAnimationFrame(loop);
+}
+init();
+
+/* ── Exit confirmation ── */
+document.addEventListener('click',function(e){
+  var a=e.target.closest('a[href*="index.html"]');
+  if(a){e.preventDefault();if(confirm('Leave game? Your progress will be lost!'))location.assign(a.href);}
+});
+
+})();
+</script>
+<a href="../../index.html" id="__hubBack" aria-label="Back to Play Zone">‹</a>
+<style>#__hubBack{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 8px);z-index:99999;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1;font-weight:700;text-decoration:none;border:2px solid rgba(255,255,255,.45);box-shadow:0 2px 8px rgba(0,0,0,.35);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation}#__hubBack:active{background:rgba(0,0,0,.8);transform:scale(.92)}</style>
 </body>
 </html>

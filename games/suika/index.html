@@ -3,66 +3,650 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Suika Game — Play Zone</title>
+<title>Watermelon Chop!</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Fredoka', sans-serif;
-    background: #0f0a2e;
-    color: #fff;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 2rem;
-  }
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(ellipse at 50% 40%, rgba(255,120,80,0.2) 0%, transparent 60%);
-    z-index: 0;
-  }
-  .content { position: relative; z-index: 1; }
-  .icon { font-size: 5rem; margin-bottom: 1rem; }
-  h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
-  p { color: rgba(255,255,255,0.6); font-size: 1.1rem; margin-bottom: 2rem; max-width: 400px; }
-  .back {
-    display: inline-block;
-    padding: 0.8rem 2rem;
-    border-radius: 2rem;
-    background: rgba(255,255,255,0.12);
-    color: #fff;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 1rem;
-    transition: background 0.2s;
-  }
-  .back:hover { background: rgba(255,255,255,0.2); }
-  .hint {
-    margin-top: 2rem;
-    padding: 1rem 1.5rem;
-    border-radius: 1rem;
-    background: rgba(255,200,50,0.1);
-    border: 1px solid rgba(255,200,50,0.2);
-    color: rgba(255,200,80,0.9);
-    font-size: 0.85rem;
-    max-width: 420px;
-  }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #000;
+  overflow: hidden;
+  font-family: 'Segoe UI', sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+}
+canvas { display: block; width: 100vw; height: 100vh; }
+#startScreen {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, #1a4a1a 0%, #0a1a0a 70%, #000 100%);
+  z-index: 100; transition: opacity 0.5s;
+}
+#startScreen.hidden { opacity: 0; pointer-events: none; }
+.title {
+  font-size: clamp(40px, 8vw, 90px);
+  font-weight: 900; color: #ff1744;
+  text-shadow: 0 0 30px rgba(255,23,68,0.6), 0 4px 0 #b71c1c;
+  letter-spacing: -2px; margin-bottom: 10px;
+}
+.subtitle {
+  font-size: clamp(16px, 3vw, 28px); color: #69f0ae;
+  margin-bottom: 40px; text-shadow: 0 0 15px rgba(105,240,174,0.5);
+}
+.start-btn {
+  padding: 18px 60px; font-size: 26px; font-weight: 800;
+  background: linear-gradient(135deg, #ff1744, #d50000);
+  color: #fff; border: none; border-radius: 50px; cursor: pointer;
+  text-transform: uppercase; letter-spacing: 3px;
+  box-shadow: 0 0 30px rgba(255,23,68,0.5), 0 8px 20px rgba(0,0,0,0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.start-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 50px rgba(255,23,68,0.7), 0 12px 30px rgba(0,0,0,0.5);
+}
+.melon-emoji { font-size: clamp(60px, 12vw, 120px); margin-bottom: 20px; }
+.instructions {
+  color: rgba(255,255,255,0.6); font-size: clamp(12px, 2vw, 16px);
+  margin-top: 30px; text-align: center; line-height: 1.8;
+}
+#gameOverScreen {
+  position: fixed; inset: 0;
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.85); z-index: 100;
+}
+#gameOverScreen.show { display: flex; }
+.go-title {
+  font-size: clamp(36px, 7vw, 72px); font-weight: 900; color: #ff1744;
+  text-shadow: 0 0 30px rgba(255,23,68,0.6); margin-bottom: 10px;
+}
+.go-score {
+  font-size: clamp(24px, 5vw, 48px); color: #69f0ae; margin-bottom: 30px;
+  text-shadow: 0 0 15px rgba(105,240,174,0.5);
+}
+#loading {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: #000; z-index: 200;
+  color: #69f0ae; font-size: 22px;
+}
+#loading .spinner {
+  width: 50px; height: 50px;
+  border: 4px solid rgba(105,240,174,0.2);
+  border-top-color: #69f0ae; border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin-bottom: 20px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#hud {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 15px 25px; z-index: 50; pointer-events: none;
+}
+.hud-score {
+  font-size: clamp(28px, 5vw, 48px); font-weight: 900; color: #fff;
+  text-shadow: 0 0 20px rgba(255,255,255,0.5), 0 2px 0 #333;
+}
+.hud-lives { font-size: clamp(24px, 4vw, 40px); }
+.hud-combo {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 60px; font-weight: 900; color: #ffea00;
+  text-shadow: 0 0 30px rgba(255,234,0,0.7), 0 3px 0 #f57f17;
+  z-index: 55; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+}
+.hud-combo.show { opacity: 1; }
 </style>
 </head>
 <body>
-<div class="content">
-  <div class="icon">🍉</div>
-  <h1>Suika Game</h1>
-  <p>Drop and merge fruits!</p>
-  <a class="back" href="../../index.html">← Back to Play Zone</a>
-  <div class="hint">
-    📋 Placeholder — Replace this file with the actual game HTML to activate!
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div>Loading pose detection...</div>
+</div>
+
+<div id="startScreen">
+  <div class="melon-emoji">🍉</div>
+  <div class="title">WATERMELON CHOP!</div>
+  <div class="subtitle">Swing to slice!</div>
+  <button class="start-btn" id="startBtn">START</button>
+  <div class="instructions">
+    Swing with one hand or both!<br>
+    Slice watermelons as they fly up — Don't miss 3!
   </div>
 </div>
+
+<div id="gameOverScreen">
+  <div class="melon-emoji">💥</div>
+  <div class="go-title">GAME OVER</div>
+  <div class="go-score" id="finalScore">Score: 0</div>
+  <button class="start-btn" id="restartBtn">PLAY AGAIN</button>
+</div>
+
+<div id="hud" style="display:none;">
+  <div class="hud-score" id="scoreDisplay">0</div>
+  <div class="hud-lives" id="livesDisplay">❤️❤️❤️</div>
+</div>
+<div class="hud-combo" id="comboDisplay"></div>
+
+<canvas id="gameCanvas"></canvas>
+<video id="webcam" autoplay playsinline style="display:none;"></video>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js"></script>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const video = document.getElementById('webcam');
+const loadingDiv = document.getElementById('loading');
+const startScreen = document.getElementById('startScreen');
+const gameOverScreen = document.getElementById('gameOverScreen');
+const scoreDisplay = document.getElementById('scoreDisplay');
+const livesDisplay = document.getElementById('livesDisplay');
+const comboDisplay = document.getElementById('comboDisplay');
+const hud = document.getElementById('hud');
+
+let W, H;
+function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+resize();
+window.addEventListener('resize', resize);
+
+/* ─── Audio ─── */
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSlice() {
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.connect(g); g.connect(audioCtx.destination); o.type = 'sawtooth';
+  o.frequency.setValueAtTime(800, t);
+  o.frequency.exponentialRampToValueAtTime(200, t + 0.15);
+  g.gain.setValueAtTime(0.3, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+  o.start(); o.stop(t + 0.2);
+  const n = audioCtx.createBufferSource();
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.15, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.15));
+  n.buffer = buf;
+  const gn = audioCtx.createGain(); gn.gain.setValueAtTime(0.25, t);
+  n.connect(gn); gn.connect(audioCtx.destination); n.start(); n.stop(t + 0.15);
+}
+function playMiss() {
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.connect(g); g.connect(audioCtx.destination); o.type = 'sine';
+  o.frequency.setValueAtTime(300, t);
+  o.frequency.exponentialRampToValueAtTime(100, t + 0.4);
+  g.gain.setValueAtTime(0.3, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  o.start(); o.stop(t + 0.4);
+}
+function playCombo() {
+  [0, 0.08, 0.16].forEach((dt, i) => {
+    const t = audioCtx.currentTime + dt;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination); o.type = 'triangle';
+    o.frequency.value = 523 * Math.pow(1.26, i);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.2, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    o.start(t); o.stop(t + 0.15);
+  });
+}
+
+/* ─── Game state ─── */
+let gameRunning = false;
+let score = 0, lives = 3, combo = 0, comboTimer = 0;
+let watermelons = [], slicedPieces = [], particles = [], scorePopups = [];
+let spawnTimer = 0, spawnInterval = 90, difficulty = 1, frameCount = 0;
+
+/* ═══════════════════════════════════════════════════════
+   SMOOTHED SABER TRACKING
+   ─ Each arm has smoothed elbow/wrist/tip positions
+   ─ Exponential moving average removes MediaPipe jitter
+   ─ Lower extension (1.0) = less jitter amplification
+   ─ Each arm has its own independent trail
+   ═══════════════════════════════════════════════════════ */
+const SABER_EXTEND = 1.0;       // reduced from 1.5 — less jitter amplification
+const BLADE_TRAIL_LEN = 22;     // longer trail = more collision surface
+const SMOOTH = 0.45;            // 0 = no smoothing, 1 = frozen. 0.45 = nice and smooth
+const SLASH_SPEED = 4;          // min tip speed to register as a slash (was 8, way too high for kids)
+const TRAIL_SPEED = 2;          // min tip speed to add trail point
+const HIT_RADIUS = 1.6;        // hitbox multiplier on watermelon radius (was 1.3)
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function makeSaber() {
+  return {
+    // Raw from MediaPipe
+    rawElbow: null, rawWrist: null,
+    // Smoothed positions (what we draw & use)
+    elbow: null, wrist: null, tip: null,
+    // For speed calc
+    prevTip: null, speed: 0,
+    // Independent trail
+    trail: []
+  };
+}
+
+let sabers = { left: makeSaber(), right: makeSaber() };
+
+/* ─── Pose detection ─── */
+const pose = new window.Pose({
+  locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${f}`
+});
+pose.setOptions({ modelComplexity: 0, smoothLandmarks: true,
+  minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+
+pose.onResults(results => {
+  if (!results.poseLandmarks) return;
+  const lm = results.poseLandmarks;
+  function toScreen(p) { return { x: (1 - p.x) * W, y: p.y * H, v: p.visibility }; }
+
+  const sides = [
+    { key: 'left',  ei: 13, wi: 15 },
+    { key: 'right', ei: 14, wi: 16 }
+  ];
+
+  for (const s of sides) {
+    const sb = sabers[s.key];
+    const rawE = toScreen(lm[s.ei]), rawW = toScreen(lm[s.wi]);
+
+    if (rawE.v < 0.4 || rawW.v < 0.4) {
+      sb.rawElbow = null; sb.rawWrist = null;
+      sb.elbow = null; sb.wrist = null; sb.tip = null; sb.speed = 0;
+      continue;
+    }
+
+    sb.rawElbow = rawE; sb.rawWrist = rawW;
+
+    // Smooth elbow & wrist with exponential moving average
+    if (sb.elbow) {
+      sb.elbow = {
+        x: lerp(rawE.x, sb.elbow.x, SMOOTH),
+        y: lerp(rawE.y, sb.elbow.y, SMOOTH)
+      };
+      sb.wrist = {
+        x: lerp(rawW.x, sb.wrist.x, SMOOTH),
+        y: lerp(rawW.y, sb.wrist.y, SMOOTH)
+      };
+    } else {
+      // First frame — seed with raw values
+      sb.elbow = { x: rawE.x, y: rawE.y };
+      sb.wrist = { x: rawW.x, y: rawW.y };
+    }
+
+    // Project saber tip from smoothed positions
+    const dx = sb.wrist.x - sb.elbow.x;
+    const dy = sb.wrist.y - sb.elbow.y;
+    const newTip = {
+      x: sb.wrist.x + dx * SABER_EXTEND,
+      y: sb.wrist.y + dy * SABER_EXTEND
+    };
+
+    // Smooth the tip as well
+    if (sb.tip) {
+      sb.tip = {
+        x: lerp(newTip.x, sb.tip.x, SMOOTH * 0.5),  // tip smooths a bit less so it stays responsive
+        y: lerp(newTip.y, sb.tip.y, SMOOTH * 0.5)
+      };
+    } else {
+      sb.tip = newTip;
+    }
+
+    // Speed from smoothed tip
+    if (sb.prevTip) {
+      sb.speed = Math.hypot(sb.tip.x - sb.prevTip.x, sb.tip.y - sb.prevTip.y);
+    }
+    sb.prevTip = { x: sb.tip.x, y: sb.tip.y };
+  }
+
+  loadingDiv.style.display = 'none';
+});
+
+/* Manual frame pump — no camera_utils Camera class (see CLAUDE.md) */
+let poseBusy = false;
+async function sendFrame() {
+  if (!poseBusy && video.readyState >= 2) {
+    poseBusy = true;
+    try { await pose.send({ image: video }); } catch (e) {}
+    poseBusy = false;
+  }
+  requestAnimationFrame(sendFrame);
+}
+
+async function initCamera() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    video.srcObject = stream;
+    await new Promise(res => { video.onloadedmetadata = res; });
+    await video.play();
+    requestAnimationFrame(sendFrame);
+  } catch (e) {
+    loadingDiv.innerHTML = '<div style="color:#ff5252;font-size:20px;text-align:center;padding:20px;">Camera access needed!<br><br>Please allow camera permission and reload.</div>';
+  }
+}
+initCamera();
+
+/* ─── Game objects ─── */
+class Watermelon {
+  constructor() {
+    const S = Math.min(W, H);
+    this.radius = S * 0.07 + Math.random() * S * 0.025;  // slightly bigger melons
+    this.x = W * 0.15 + Math.random() * W * 0.7;
+    this.y = H + this.radius;
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.7;
+    const speed = S * 0.016 + Math.random() * S * 0.007;  // slightly slower arc
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.gravity = S * 0.00032;
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotSpeed = (Math.random() - 0.5) * 0.12;
+    this.sliced = false; this.missed = false;
+  }
+  update() {
+    this.vy += this.gravity; this.x += this.vx; this.y += this.vy;
+    this.rotation += this.rotSpeed;
+    if (this.y > H + this.radius * 2 && this.vy > 0 && !this.sliced) this.missed = true;
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.translate(this.x, this.y); ctx.rotate(this.rotation);
+    ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#2e7d32'; ctx.fill();
+    for (let i = 0; i < 5; i++) {
+      ctx.save(); ctx.rotate(i * Math.PI / 2.5);
+      ctx.beginPath(); ctx.ellipse(0, 0, this.radius * 0.15, this.radius * 0.95, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#1b5e20'; ctx.fill(); ctx.restore();
+    }
+    ctx.beginPath(); ctx.arc(-this.radius * 0.25, -this.radius * 0.25, this.radius * 0.35, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fill();
+    ctx.restore();
+  }
+}
+
+class SlicedPiece {
+  constructor(x, y, radius, rotation, side) {
+    this.x = x; this.y = y; this.radius = radius;
+    this.rotation = rotation; this.side = side;
+    this.vx = side * (3 + Math.random() * 4);
+    this.vy = -(2 + Math.random() * 3);
+    this.rotSpeed = side * (0.05 + Math.random() * 0.1);
+    this.gravity = 0.25; this.alpha = 1; this.life = 120;
+  }
+  update() {
+    this.vy += this.gravity; this.x += this.vx; this.y += this.vy;
+    this.rotation += this.rotSpeed; this.life--;
+    if (this.life < 30) this.alpha = this.life / 30;
+  }
+  draw(ctx) {
+    ctx.save(); ctx.globalAlpha = this.alpha;
+    ctx.translate(this.x, this.y); ctx.rotate(this.rotation);
+    ctx.beginPath(); ctx.arc(0, 0, this.radius, -Math.PI / 2, Math.PI / 2); ctx.closePath();
+    ctx.fillStyle = '#2e7d32'; ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.85, -Math.PI / 2, Math.PI / 2); ctx.closePath();
+    ctx.fillStyle = '#e53935'; ctx.fill();
+    ctx.fillStyle = '#3e2723';
+    [{x:.2,y:-.2},{x:.35,y:.15},{x:.15,y:.35},{x:.45,y:-.05},{x:.1,y:-.45}].forEach(s => {
+      ctx.beginPath();
+      ctx.ellipse(s.x * this.radius, s.y * this.radius, this.radius * 0.04, this.radius * 0.07, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+}
+
+class Particle {
+  constructor(x, y, color) {
+    this.x = x; this.y = y;
+    this.size = 2 + Math.random() * 5;
+    this.vx = (Math.random() - 0.5) * 12;
+    this.vy = (Math.random() - 0.5) * 12;
+    this.gravity = 0.2;
+    this.color = color || (Math.random() > 0.3 ? '#e53935' : '#43a047');
+    this.alpha = 1; this.life = 40 + Math.random() * 30;
+  }
+  update() {
+    this.vy += this.gravity; this.x += this.vx; this.y += this.vy;
+    this.vx *= 0.98; this.life--;
+    if (this.life < 15) this.alpha = this.life / 15;
+  }
+  draw(ctx) {
+    ctx.save(); ctx.globalAlpha = this.alpha;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fillStyle = this.color; ctx.fill(); ctx.restore();
+  }
+}
+
+class ScorePopup {
+  constructor(x, y, text, color) {
+    this.x = x; this.y = y; this.text = text;
+    this.color = color || '#ffea00';
+    this.alpha = 1; this.life = 60; this.vy = -2; this.scale = 0;
+  }
+  update() {
+    this.y += this.vy; this.vy *= 0.97; this.life--;
+    if (this.life > 45) this.scale = Math.min(1, this.scale + 0.15);
+    if (this.life < 20) this.alpha = this.life / 20;
+  }
+  draw(ctx) {
+    ctx.save(); ctx.globalAlpha = this.alpha;
+    ctx.translate(this.x, this.y); ctx.scale(this.scale, this.scale);
+    ctx.font = `900 ${Math.min(W,H)*0.06}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.fillStyle = this.color;
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 8;
+    ctx.fillText(this.text, 0, 0); ctx.restore();
+  }
+}
+
+/* ─── Slice logic ─── */
+function sliceWatermelon(melon) {
+  melon.sliced = true; playSlice();
+  slicedPieces.push(new SlicedPiece(melon.x, melon.y, melon.radius, melon.rotation, -1));
+  slicedPieces.push(new SlicedPiece(melon.x, melon.y, melon.radius, melon.rotation, 1));
+  for (let i = 0; i < 20; i++) particles.push(new Particle(melon.x, melon.y));
+  for (let i = 0; i < 5; i++) particles.push(new Particle(melon.x, melon.y, '#3e2723'));
+  combo++; comboTimer = 90;
+  let pts = 1, color = '#fff';
+  if (combo >= 5) { pts = 5; color = '#ff1744'; playCombo(); }
+  else if (combo >= 3) { pts = 3; color = '#ffea00'; playCombo(); }
+  score += pts; scoreDisplay.textContent = score;
+  scorePopups.push(new ScorePopup(melon.x, melon.y - 40, pts > 1 ? `+${pts} x${combo}!` : `+${pts}`, color));
+  if (combo >= 3) { comboDisplay.textContent = `🔥 x${combo} COMBO!`; comboDisplay.classList.add('show'); }
+}
+
+function missWatermelon() { lives--; playMiss(); updateLives(); if (lives <= 0) gameOver(); }
+function updateLives() {
+  livesDisplay.textContent = '❤️'.repeat(Math.max(0, lives)) + '🖤'.repeat(Math.max(0, 3 - lives));
+}
+function gameOver() {
+  gameRunning = false; hud.style.display = 'none';
+  document.getElementById('finalScore').textContent = `Score: ${score}`;
+  gameOverScreen.classList.add('show');
+}
+function startGame() {
+  score = 0; lives = 3; combo = 0; comboTimer = 0;
+  watermelons = []; slicedPieces = []; particles = []; scorePopups = [];
+  sabers.left.trail = []; sabers.right.trail = [];
+  spawnTimer = 0; spawnInterval = 90; difficulty = 1; frameCount = 0;
+  scoreDisplay.textContent = '0'; updateLives();
+  hud.style.display = 'flex';
+  startScreen.classList.add('hidden');
+  gameOverScreen.classList.remove('show');
+  gameRunning = true;
+}
+document.getElementById('startBtn').addEventListener('click', () => { audioCtx.resume(); startGame(); });
+document.getElementById('restartBtn').addEventListener('click', () => { audioCtx.resume(); startGame(); });
+
+/* ─── Line-circle collision ─── */
+function segCircle(x1, y1, x2, y2, cx, cy, r) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const fx = x1 - cx, fy = y1 - cy;
+  const a = dx*dx + dy*dy;
+  if (a < 0.001) return Math.hypot(fx, fy) <= r;
+  const b = 2*(fx*dx + fy*dy);
+  const c = fx*fx + fy*fy - r*r;
+  let disc = b*b - 4*a*c;
+  if (disc < 0) return false;
+  disc = Math.sqrt(disc);
+  const t1 = (-b - disc) / (2*a);
+  const t2 = (-b + disc) / (2*a);
+  return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1) || (t1 < 0 && t2 > 1);
+}
+
+/* ─── Also check simple point-in-circle for the tip itself ─── */
+function tipHitsMelon(sb, m) {
+  if (!sb.tip) return false;
+  const d = Math.hypot(sb.tip.x - m.x, sb.tip.y - m.y);
+  return d < m.radius * HIT_RADIUS;
+}
+
+/* ─── Check a trail against a melon ─── */
+function trailHitsMelon(trail, m) {
+  if (trail.length < 2) return false;
+  for (let j = 1; j < trail.length; j++) {
+    if (segCircle(trail[j-1].x, trail[j-1].y, trail[j].x, trail[j].y,
+                  m.x, m.y, m.radius * HIT_RADIUS)) return true;
+  }
+  return false;
+}
+
+/* ─── Draw one saber overlay ─── */
+function drawOneSaber(sb) {
+  if (!sb.wrist || !sb.tip || !sb.elbow) return;
+  const { elbow: e, wrist: w, tip: t } = sb;
+
+  // Faint arm
+  ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(w.x, w.y);
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
+
+  // Blade glow
+  ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.lineTo(t.x, t.y);
+  ctx.strokeStyle = 'rgba(255,50,50,0.10)';
+  ctx.lineWidth = 28; ctx.lineCap = 'round'; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.lineTo(t.x, t.y);
+  ctx.strokeStyle = 'rgba(255,200,60,0.25)';
+  ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.lineTo(t.x, t.y);
+  ctx.strokeStyle = 'rgba(255,255,220,0.7)';
+  ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
+
+  // Guard
+  ctx.beginPath(); ctx.arc(w.x, w.y, 7, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,234,0,0.6)'; ctx.fill();
+
+  // Tip glow
+  const grad = ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, 20);
+  grad.addColorStop(0, 'rgba(255,255,200,0.7)');
+  grad.addColorStop(0.5, 'rgba(255,100,50,0.2)');
+  grad.addColorStop(1, 'rgba(255,0,0,0)');
+  ctx.beginPath(); ctx.arc(t.x, t.y, 20, 0, Math.PI * 2);
+  ctx.fillStyle = grad; ctx.fill();
+}
+
+/* ─── Draw one trail ─── */
+function drawOneTrail(trail) {
+  if (trail.length < 2) return;
+  [[22, 'rgba(255,23,68,0.10)'],
+   [10, 'rgba(255,180,50,0.30)'],
+   [3,  'rgba(255,255,255,0.80)']].forEach(([w, col]) => {
+    ctx.beginPath();
+    ctx.moveTo(trail[0].x, trail[0].y);
+    for (let i = 1; i < trail.length; i++) ctx.lineTo(trail[i].x, trail[i].y);
+    ctx.strokeStyle = col;
+    ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.stroke();
+  });
+}
+
+/* ─── Main loop ─── */
+function gameLoop() {
+  requestAnimationFrame(gameLoop);
+
+  // Webcam background (mirrored)
+  if (video.readyState >= 2) {
+    ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0, W, H);
+    ctx.restore();
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, W, H);
+  } else {
+    ctx.fillStyle = '#0a1a0a'; ctx.fillRect(0, 0, W, H);
+  }
+
+  // Update each arm's trail independently
+  for (const key of ['left', 'right']) {
+    const sb = sabers[key];
+    if (sb.tip && sb.speed > TRAIL_SPEED) {
+      sb.trail.push({ x: sb.tip.x, y: sb.tip.y, life: BLADE_TRAIL_LEN, maxLife: BLADE_TRAIL_LEN });
+    }
+    for (let i = sb.trail.length - 1; i >= 0; i--) {
+      sb.trail[i].life--;
+      if (sb.trail[i].life <= 0) sb.trail.splice(i, 1);
+    }
+    drawOneSaber(sb);
+    drawOneTrail(sb.trail);
+  }
+
+  if (!gameRunning) return;
+
+  frameCount++;
+
+  // Difficulty
+  if (frameCount % 600 === 0) {
+    difficulty += 0.2;
+    spawnInterval = Math.max(35, 90 - difficulty * 8);
+  }
+
+  // Spawn
+  spawnTimer++;
+  if (spawnTimer >= spawnInterval) {
+    spawnTimer = 0;
+    watermelons.push(new Watermelon());
+    if (difficulty > 2 && Math.random() < 0.3)
+      setTimeout(() => { if (gameRunning) watermelons.push(new Watermelon()); }, 200);
+    if (difficulty > 3 && Math.random() < 0.2)
+      setTimeout(() => { if (gameRunning) watermelons.push(new Watermelon()); }, 400);
+  }
+
+  // Combo decay
+  if (comboTimer > 0) { comboTimer--; if (comboTimer <= 0) { combo = 0; comboDisplay.classList.remove('show'); } }
+
+  // Update & check watermelons against BOTH arms independently
+  for (let i = watermelons.length - 1; i >= 0; i--) {
+    const m = watermelons[i];
+    m.update();
+
+    if (!m.sliced) {
+      for (const key of ['left', 'right']) {
+        const sb = sabers[key];
+        if (sb.speed > SLASH_SPEED) {
+          // Check trail segments AND direct tip overlap
+          if (trailHitsMelon(sb.trail, m) || tipHitsMelon(sb, m)) {
+            sliceWatermelon(m);
+            break;
+          }
+        }
+      }
+    }
+
+    if (m.missed) { watermelons.splice(i, 1); missWatermelon(); }
+    else if (m.sliced) { watermelons.splice(i, 1); }
+  }
+
+  // Update entities
+  for (let i = slicedPieces.length - 1; i >= 0; i--) { slicedPieces[i].update(); if (slicedPieces[i].life <= 0) slicedPieces.splice(i, 1); }
+  for (let i = particles.length - 1; i >= 0; i--) { particles[i].update(); if (particles[i].life <= 0) particles.splice(i, 1); }
+  for (let i = scorePopups.length - 1; i >= 0; i--) { scorePopups[i].update(); if (scorePopups[i].life <= 0) scorePopups.splice(i, 1); }
+
+  watermelons.forEach(m => m.draw(ctx));
+  slicedPieces.forEach(p => p.draw(ctx));
+  particles.forEach(p => p.draw(ctx));
+  scorePopups.forEach(p => p.draw(ctx));
+}
+
+gameLoop();
+</script>
 </body>
 </html>

@@ -101,6 +101,52 @@ play-zone/
 4. Push to GitHub → Cloudflare Pages auto-deploys.
 5. When adding a new game, also update the hub's game list.
 
+## Tile-Based Maze Games (Pac-Chomp Lessons)
+
+### Maze Design
+- **Always validate start position connectivity**: verify the player can move in all 4 directions from the spawn tile. Walls directly adjacent to the start position = unplayable.
+- When editing maze arrays, trace the path from the player start tile in every direction to ensure connectivity.
+- Ghost house exit should NOT align with a direct path to the player start — ghosts walk straight into the player.
+
+### Kid-Friendly Turn Mechanics
+- **Sticky input buffer** (500ms): remember the kid's desired turn direction and keep trying it. Kids press the key too early/late.
+- **Wide turn tolerance** (0.6 tile-center distance): don't require pixel-perfect alignment to turn.
+- **Look-ahead pre-snap**: when approaching an intersection, snap early so the turn doesn't get missed.
+- **Auto-cornering at dead ends**: if only one non-reverse direction is open, turn automatically.
+- **Reduced speed** (PAC_SPD=3.8): slower = more time to react. Kids can't handle fast tile movement.
+
+### Ghost Difficulty for Kids
+- **Delayed ghost release**: first ghost at 3s, then every 4s (`relT: 3000 + i*4000`). Never release a ghost at t=0 — the kid hasn't started moving yet.
+- **Low chase probability**: 25% chase / 75% random direction keeps ghosts unpredictable but not aggressive.
+- **Slow ghost speed** (G_SPD=2.2): must be noticeably slower than Pac-Man (3.8).
+
+### Dual Input Modes
+- Always offer both **Camera Mode** and **Keyboard Mode** buttons on title and game-over screens.
+- Keyboard mode should skip webcam calibration entirely and go straight to countdown.
+- Hide camera UI (video element, direction arrow) in keyboard mode.
+
+### Initialization Safety
+- Initialize ALL game state variables at declaration: `let score=0, lives=LIVES_START, pac=null, ghosts=[], frightT=0`.
+- Add null guards (`if(!pac)return`) to every render/update function that touches entities — the game loop runs before entities are created.
+
+## Git & Deployment
+
+- **GitHub account**: `jaitips` (SSH key configured)
+- **Remote**: `git@github.com:jaitips/panna-games.git`
+- **Cloudflare deploy command**: `wrangler pages deploy /Users/sutthichai/workplace/personal/panna-games --project-name panna-games --branch main --commit-dirty=true`
+- **Live URL**: `https://panna-games.pages.dev/`
+
+## Testing with agent-browser
+
+- Install: `npm install -g agent-browser && agent-browser install`
+- Use `agent-browser eval "..."` to dispatch keyboard events (not `agent-browser key` which can scroll the page):
+  ```js
+  window.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowUp',code:'ArrowUp',bubbles:true}))
+  ```
+- Use `agent-browser eval "document.getElementById('btn').click()"` to click buttons (text-based click selectors are unreliable).
+- Always check `agent-browser console` after testing for JS errors.
+- Camera permission is always denied in headless — games must handle this gracefully with `try/catch`.
+
 ## Common Bug Patterns to Watch For
 
 - Premature game-over triggers → add grace periods from drop moment
@@ -108,3 +154,6 @@ play-zone/
 - Jittery tracking → apply EMA smoothing (lerp 0.45)
 - Game breaks on mobile → check for fixed-pixel widths, use percentages
 - MediaPipe fails on file:// → ensure globals loading pattern, not ES modules
+- **Uninitialized state variables** → always init at declaration, add null guards in render/update
+- **Maze blocked paths** → always verify player can move in all directions from start position
+- **Ghosts too aggressive for kids** → delay release, reduce speed, lower chase probability

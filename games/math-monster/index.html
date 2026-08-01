@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Math Monster — Play Zone</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#5b4ab8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Play Zone">
+<link rel="apple-touch-icon" href="/shared/apple-touch-icon.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Fredoka',sans-serif;color:#fff;touch-action:none;user-select:none;-webkit-user-select:none}
+body{background:#2a1a3a}
+
+/* ── overlays ── */
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:30;text-align:center;padding:1.5rem;transition:opacity .3s}
+.overlay.hidden{opacity:0;pointer-events:none}
+.overlay-bg{background:rgba(0,0,0,.75)}
+.overlay h1{font-size:clamp(2rem,6vw,3.2rem);margin-bottom:.3rem;text-shadow:2px 2px 8px rgba(0,0,0,.3)}
+.overlay h2{font-size:clamp(1.3rem,4vw,2rem);margin-bottom:.6rem;color:#ce93d8}
+.overlay p{font-size:clamp(.9rem,2.8vw,1.1rem);color:rgba(255,255,255,.75);margin-bottom:1rem;max-width:420px;line-height:1.6}
+.btn{display:inline-block;padding:.65rem 2rem;border-radius:2rem;background:#ce93d8;color:#2a1a3a;font-weight:700;font-size:clamp(1rem,3vw,1.15rem);border:none;cursor:pointer;font-family:inherit;margin:.35rem;text-decoration:none;box-shadow:0 4px 12px rgba(0,0,0,.15);transition:transform .15s,background .15s}
+.btn:hover{transform:scale(1.05)}
+.btn:active{transform:scale(.97)}
+.btn-blue{background:#64b5f6;color:#fff}
+.btn-green{background:#66bb6a;color:#fff}
+.btn-pink{background:#f48fb1;color:#fff}
+.btn-back{background:rgba(255,255,255,.18);color:#fff;box-shadow:none}
+
+/* ── level select grid ── */
+.level-scroll{max-height:clamp(300px,55vh,520px);overflow-y:auto;width:100%;padding:0 1rem;-webkit-overflow-scrolling:touch}
+.level-scroll::-webkit-scrollbar{width:6px}
+.level-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.3);border-radius:3px}
+.level-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(.5rem,1.2vw,.9rem);max-width:clamp(380px,60vw,700px);margin:0 auto;width:100%;padding:.5rem 0}
+.level-card{background:rgba(255,255,255,.1);border-radius:1rem;padding:clamp(.6rem,1.2vw,1rem) .4rem;cursor:pointer;border:2px solid transparent;transition:all .2s;text-align:center}
+.level-card:hover{background:rgba(255,255,255,.2);transform:translateY(-2px)}
+.level-card.locked{opacity:.4;cursor:default;pointer-events:none}
+.level-card .lv-num{font-size:clamp(1.3rem,2.5vw,2rem);font-weight:700}
+.level-card .lv-name{font-size:clamp(.55rem,1.2vw,.8rem);color:rgba(255,255,255,.7);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.level-card .lv-stars{font-size:clamp(.7rem,1.2vw,1rem);margin-top:3px;color:#ce93d8}
+.section-label{grid-column:1/-1;font-size:clamp(.75rem,1.8vw,1rem);color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.1em;padding:.3rem 0 0;text-align:left;border-top:1px solid rgba(255,255,255,.1);margin-top:.3rem}
+
+/* ── game area ── */
+#gameWrap{position:absolute;inset:0;display:none;flex-direction:column;z-index:10;background:linear-gradient(180deg,#1a0a2e 0%,#2a1a4a 30%,#3a2a5a 60%,#4a3a6a 100%)}
+#hud{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;z-index:15;background:rgba(0,0,0,.3)}
+#hud .score{font-size:clamp(1.1rem,2.5vw,1.6rem);font-weight:700;text-shadow:1px 1px 4px rgba(0,0,0,.4)}
+#hud .progress{font-size:clamp(.9rem,2vw,1.3rem);color:rgba(255,255,255,.7)}
+#qArea{text-align:center;padding:clamp(6px,1.5vh,14px) 16px}
+#qArea .q-text{font-size:clamp(1.8rem,5.5vw,3rem);font-weight:700;text-shadow:2px 2px 6px rgba(0,0,0,.4)}
+#qArea .q-hint{font-size:clamp(.7rem,1.8vw,.85rem);color:#ce93d8;margin-top:4px;font-style:italic}
+#monsterArea{flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+#monsterArea canvas{display:block}
+#foodArea{display:flex;justify-content:center;align-items:center;gap:clamp(8px,2vw,20px);padding:clamp(10px,2vh,24px) 16px;flex-wrap:wrap}
+.food-btn{display:inline-flex;align-items:center;justify-content:center;width:clamp(60px,14vw,100px);height:clamp(60px,14vw,100px);border-radius:50%;border:3px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);cursor:pointer;font-size:clamp(1.5rem,4vw,2.4rem);font-weight:700;font-family:inherit;color:#fff;transition:all .15s;box-shadow:0 4px 15px rgba(0,0,0,.2);position:relative}
+.food-btn:hover{transform:scale(1.1);background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.4)}
+.food-btn:active{transform:scale(.95)}
+.food-btn .food-icon{position:absolute;top:-5px;font-size:clamp(1.2rem,2.5vw,1.8rem)}
+.food-btn.correct{animation:foodPop .5s ease-out;border-color:#66bb6a;background:rgba(102,187,106,.2)}
+.food-btn.wrong{animation:foodShake .4s ease-out;border-color:#ef5350;background:rgba(239,83,80,.2)}
+@keyframes foodPop{0%{transform:scale(1)}30%{transform:scale(1.3)}100%{transform:scale(0);opacity:0}}
+@keyframes foodShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+
+/* ── feedback ── */
+#feedback{position:absolute;top:35%;left:50%;transform:translate(-50%,-50%);z-index:20;font-size:clamp(2rem,8vw,4rem);font-weight:700;pointer-events:none;opacity:0;text-shadow:3px 3px 10px rgba(0,0,0,.3)}
+#feedback.show{opacity:1;animation:fbPop .6s ease-out forwards}
+@keyframes fbPop{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}30%{transform:translate(-50%,-50%) scale(1.2);opacity:1}100%{transform:translate(-50%,-80%) scale(1);opacity:0}}
+</style>
+</head>
+<body>
+<div id="wrap" style="width:100%;height:100%;position:relative;overflow:hidden">
+  <!-- GAME AREA -->
+  <div id="gameWrap">
+    <div id="hud">
+      <div class="score" id="hudScore">Score: 0</div>
+      <div class="progress" id="hudProg">1 / 10</div>
+    </div>
+    <div id="qArea">
+      <div class="q-text" id="qText"></div>
+      <div class="q-hint" id="qHint"></div>
+    </div>
+    <div id="monsterArea"><canvas id="cv"></canvas></div>
+    <div id="foodArea" id="foodBtns"></div>
+  </div>
+  <div id="feedback"></div>
+
+  <!-- TITLE -->
+  <div class="overlay overlay-bg" id="scrTitle">
+    <div style="font-size:4.5rem;margin-bottom:.3rem">👾</div>
+    <h1>Math Monster</h1>
+    <p>Feed the hungry monster the right answer! Wrong food makes him sick!</p>
+    <button class="btn" id="btnPlay">Play</button><br>
+    <a class="btn btn-back" href="../../index.html">&larr; Back</a>
+  </div>
+
+  <!-- LEVEL SELECT -->
+  <div class="overlay overlay-bg hidden" id="scrLevels">
+    <h2>Choose a Level</h2>
+    <div class="level-scroll"><div class="level-grid" id="levelGrid"></div></div>
+    <button class="btn btn-back" id="btnBackTitle">&larr; Back</button>
+  </div>
+
+  <!-- LEVEL INTRO -->
+  <div class="overlay overlay-bg hidden" id="scrIntro">
+    <div style="font-size:3.5rem;margin-bottom:.3rem" id="introIcon">👾</div>
+    <h2 id="introTitle"></h2>
+    <p id="introDesc"></p>
+    <button class="btn" id="btnStartLevel">Let's Go!</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="overlay overlay-bg hidden" id="scrResults">
+    <h1 id="resTitle">Great Job!</h1>
+    <div id="resStars" style="font-size:3rem;margin:.5rem 0"></div>
+    <h2 id="resScore"></h2>
+    <p id="resMsg"></p>
+    <div id="resBtns"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ══════════════════════════════════════════
+   LEVEL DEFINITIONS — same 20-level curriculum
+   ══════════════════════════════════════════ */
+const LEVELS=[
+  {id:1,name:'Count Stars',icon:'⭐',section:'Counting',
+   desc:'Count the items and feed the monster!',
+   type:'count',range:[1,5],showDots:true,questions:8},
+  {id:2,name:'Count More',icon:'🌟',section:null,
+   desc:'Count up to 10 and feed the right number!',
+   type:'count',range:[1,10],showDots:true,questions:8},
+
+  {id:3,name:'Plus 1',icon:'1️⃣',section:'Addition Patterns',
+   desc:'Add 1 — the next number! Feed it to the monster!',
+   type:'addN',n:1,aRange:[1,9],questions:10,hint:'Adding 1 = the next number!'},
+  {id:4,name:'Plus 2',icon:'2️⃣',section:null,
+   desc:'Add 2 to any number!',
+   type:'addN',n:2,aRange:[1,8],questions:10,hint:'Hold the big number, count 2 more!'},
+  {id:5,name:'Plus 3',icon:'3️⃣',section:null,
+   desc:'Add 3 to any number!',
+   type:'addN',n:3,aRange:[1,7],questions:10,hint:'Hold the number, count up 3!'},
+  {id:6,name:'Plus 4',icon:'4️⃣',section:null,
+   desc:'Add 4 to any number.',
+   type:'addN',n:4,aRange:[1,6],questions:10,hint:'Think: what is 4 more?'},
+  {id:7,name:'Plus 5',icon:'5️⃣',section:null,
+   desc:'Add 5 — half of 10!',
+   type:'addN',n:5,aRange:[1,5],questions:10,hint:'5 is half of 10!'},
+
+  {id:8,name:'Friends of 10',icon:'🤝',section:'Building Fluency',
+   desc:'Find pairs that make 10!',
+   type:'friends10',questions:10,hint:'1+9, 2+8, 3+7, 4+6, 5+5'},
+  {id:9,name:'Plus 6-9',icon:'💪',section:null,
+   desc:'Add bigger numbers!',
+   type:'add',range:[2,9],minB:6,maxSum:18,questions:10,hint:'Make 10 first, then add the rest!'},
+  {id:10,name:'Sums to 20',icon:'🧠',section:null,
+   desc:'Any addition up to 20!',
+   type:'add',range:[1,15],maxSum:20,questions:10},
+
+  {id:11,name:'2-Digit + 1-Digit',icon:'📐',section:'Bigger Numbers',
+   desc:'Add small to big numbers!',
+   type:'add2d1d',carry:false,questions:10,hint:'Just add the ones digits!'},
+  {id:12,name:'2-Digit + 2-Digit',icon:'📏',section:null,
+   desc:'Add two bigger numbers!',
+   type:'add2d2d',carry:false,questions:10,hint:'Add tens first, then ones!'},
+  {id:13,name:'Carry to 20',icon:'🔥',section:null,
+   desc:'Carrying when ones go over 10!',
+   type:'add',range:[2,9],maxSum:20,minSum:11,questions:10,hint:'Make 10, carry the rest!'},
+  {id:14,name:'2-Digit + Carry',icon:'🏆',section:null,
+   desc:'Two-digit with carrying!',
+   type:'add2d1d',carry:true,questions:10,hint:'When ones go over 9, carry 1 to tens!'},
+  {id:15,name:'Speed Addition',icon:'⚡',section:null,
+   desc:'All types mixed — fast!',
+   type:'mixedAdd',questions:12},
+
+  {id:16,name:'Minus 1',icon:'👇',section:'Subtraction',
+   desc:'Take away 1!',
+   type:'subN',n:1,aRange:[2,10],questions:10,hint:'Minus 1 = the number before!'},
+  {id:17,name:'Minus 2-3',icon:'✌️',section:null,
+   desc:'Take away 2 or 3!',
+   type:'sub',range:[2,3],aRange:[4,10],questions:10,hint:'Count backwards!'},
+  {id:18,name:'From 10',icon:'🔟',section:null,
+   desc:'10 minus something!',
+   type:'subFrom10',questions:10,hint:'10 - 3 = 7 because 3 + 7 = 10!'},
+  {id:19,name:'Subtract to 20',icon:'🎯',section:null,
+   desc:'Subtraction up to 20!',
+   type:'sub',range:[1,9],aRange:[5,20],questions:10,hint:'Think: what + ? = the big number?'},
+  {id:20,name:'Speed Mix!',icon:'🚀',section:null,
+   desc:'Add AND subtract mixed!',
+   type:'mixedAll',questions:12}
+];
+
+const PRAISE=['Great!','Awesome!','Yummy!','Perfect!','Delicious!','Wow!','Nice!','Tasty!','Correct!','Bravo!'];
+const ENCOURAGE=['Yuck!','Almost!','Not that one!','Try again!','Bleh!','Oops!'];
+const FOOD_ICONS=['🍎','🍕','🍩','🧁','🍪','🍬','🍰','🍫','🥤','🍦','🌮','🍔','🍟','🥨','🍿'];
+
+/* ══════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════ */
+const cvs=document.getElementById('cv');
+const C=cvs.getContext('2d');
+let W=0,H=0;
+
+let gameScreen='title';
+let curLevel=null;
+let questions=[];
+let qIdx=0;
+let score=0;
+let firstTries=0;
+let triedThisQ=false;
+let answered=false;
+let answerCooldown=0;
+let correctAnswer=0;
+
+// monster state
+let monsterMood='idle'; // idle, happy, sick, eating
+let monsterMoodTimer=0;
+let mouthOpen=0; // 0-1
+let eyeAnim=0;
+let bounceAnim=0;
+let particles=[];
+let countItems=[]; // items to count for count-type questions
+let countIcon='⭐';
+
+// progress
+let progress={unlocked:1,stars:{}};
+function loadProgress(){try{const d=JSON.parse(localStorage.getItem('mmonster_progress'));if(d){progress=d}}catch(e){}}
+function saveProgress(){try{localStorage.setItem('mmonster_progress',JSON.stringify(progress))}catch(e){}}
+
+// audio
+let ac=null;
+function aInit(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)()}
+function tone(f,dur,type,vol){if(!ac)return;const o=ac.createOscillator(),g=ac.createGain();o.type=type||'sine';o.frequency.value=f;g.gain.setValueAtTime(vol||.12,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+dur);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+dur)}
+function sChomp(){tone(400,.06,'square',.1);setTimeout(()=>tone(300,.05,'square',.08),70);setTimeout(()=>tone(500,.04,'square',.06),130)}
+function sBurp(){tone(120,.2,'triangle',.1);setTimeout(()=>tone(100,.15,'triangle',.08),100)}
+function sWrong(){tone(200,.15,'triangle',.08);setTimeout(()=>tone(160,.2,'sawtooth',.05),100)}
+function sWin(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.12,'square',.08),i*100))}
+function sStar(){tone(880,.1,'sine',.08);setTimeout(()=>tone(1100,.15,'sine',.1),80)}
+
+/* ══════════════════════════════════════════
+   RESIZE
+   ══════════════════════════════════════════ */
+function resize(){
+  const area=document.getElementById('monsterArea');
+  W=area.clientWidth||window.innerWidth;H=area.clientHeight||Math.round(window.innerHeight*0.35);
+  cvs.width=W*devicePixelRatio;cvs.height=H*devicePixelRatio;
+  cvs.style.width=W+'px';cvs.style.height=H+'px';
+  C.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+window.addEventListener('resize',resize);
+
+/* ══════════════════════════════════════════
+   QUESTION GENERATION (shared curriculum)
+   ══════════════════════════════════════════ */
+function randInt(a,b){return a+Math.floor(Math.random()*(b-a+1))}
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
+
+function generateQuestions(lv){
+  const qs=[];const used=new Set();
+  for(let i=0;i<lv.questions;i++){
+    let q,attempts=0;
+    do{q=makeQuestion(lv);attempts++}while(used.has(q.key)&&attempts<80);
+    used.add(q.key);qs.push(q);
+  }
+  return qs;
+}
+
+function makeQuestion(lv){
+  const t=lv.type;
+  if(t==='count'){const n=randInt(lv.range[0],lv.range[1]);
+    return{type:'count',answer:n,text:'How many?',dotCount:n,choices:makeChoices(n,lv.range[0],Math.max(lv.range[1],n+2)),key:'c'+n+'_'+Math.random()};}
+  if(t==='addN'){const a=randInt(lv.aRange[0],lv.aRange[1]),ans=a+lv.n;
+    return{type:'add',a,b:lv.n,answer:ans,text:`${a} + ${lv.n} = ?`,choices:makeChoices(ans,Math.max(1,ans-3),ans+3),key:'an'+a+'_'+lv.n,hint:lv.hint};}
+  if(t==='friends10'){const a=randInt(1,9),b=10-a;
+    return{type:'add',a,b,answer:10,text:`${a} + ? = 10`,choices:makeChoices(b,Math.max(1,b-3),Math.min(9,b+3)),key:'f10_'+a,hint:lv.hint};}
+  if(t==='add'){let a,b;do{a=randInt(lv.range[0],lv.range[1]);b=randInt(lv.minB||lv.range[0],lv.range[1])}while(a+b>(lv.maxSum||20)||a+b<(lv.minSum||2));const ans=a+b;
+    return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,choices:makeChoices(ans,Math.max(1,ans-4),ans+4),key:'a'+a+'_'+b,hint:lv.hint};}
+  if(t==='add2d1d'){let a,b,ans;do{a=randInt(11,89);b=randInt(2,9);ans=a+b;const os=(a%10)+b;
+    if(lv.carry&&os<10)continue;if(!lv.carry&&os>=10)continue;break}while(true);
+    return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,choices:makeChoices(ans,Math.max(1,ans-5),ans+5),key:'2d1d'+a+'_'+b,hint:lv.hint};}
+  if(t==='add2d2d'){let a,b;do{a=randInt(10,49);b=randInt(10,49)}while((a%10)+(b%10)>=10||a+b>99);const ans=a+b;
+    return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,choices:makeChoices(ans,Math.max(10,ans-8),Math.min(99,ans+8)),key:'2d2d'+a+'_'+b,hint:lv.hint};}
+  if(t==='subN'){const a=randInt(lv.aRange[0],lv.aRange[1]),ans=a-lv.n;
+    return{type:'sub',a,b:lv.n,answer:ans,text:`${a} - ${lv.n} = ?`,choices:makeChoices(ans,Math.max(0,ans-3),ans+3),key:'sn'+a+'_'+lv.n,hint:lv.hint};}
+  if(t==='subFrom10'){const b=randInt(1,9),ans=10-b;
+    return{type:'sub',a:10,b,answer:ans,text:`10 - ${b} = ?`,choices:makeChoices(ans,Math.max(1,ans-3),ans+3),key:'sf10_'+b,hint:lv.hint};}
+  if(t==='sub'){let a,b;do{a=randInt(lv.aRange[0],lv.aRange[1]);b=randInt(lv.range[0],lv.range[1])}while(a-b<0||a===b);const ans=a-b;
+    return{type:'sub',a,b,answer:ans,text:`${a} - ${b} = ?`,choices:makeChoices(ans,Math.max(0,ans-4),ans+4),key:'s'+a+'_'+b,hint:lv.hint};}
+  if(t==='mixedAdd'){
+    const types=['add','addN','add2d1d','friends10'];const pick=types[randInt(0,types.length-1)];
+    if(pick==='addN'){const n=randInt(1,5),a=randInt(1,10-n),ans=a+n;return{type:'add',a,b:n,answer:ans,text:`${a} + ${n} = ?`,choices:makeChoices(ans,Math.max(1,ans-3),ans+3),key:'ma'+a+'_'+n};}
+    if(pick==='friends10'){const a=randInt(1,9),b=10-a;return{type:'add',a,b,answer:10,text:`${a} + ${b} = ?`,choices:makeChoices(10,7,13),key:'mf'+a};}
+    if(pick==='add2d1d'){const a=randInt(11,49),b=randInt(2,9);if((a%10)+b<10){const ans=a+b;return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,choices:makeChoices(ans,Math.max(10,ans-5),ans+5),key:'m2d'+a+'_'+b};}}
+    const a=randInt(2,12),b=randInt(2,8),ans=a+b;return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,choices:makeChoices(ans,Math.max(1,ans-4),ans+4),key:'mx'+a+'_'+b};
+  }
+  if(t==='mixedAll'){
+    if(Math.random()<0.5){const a=randInt(2,15),b=randInt(1,9),ans=a+b;return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,choices:makeChoices(ans,Math.max(1,ans-4),ans+4),key:'xa'+a+'_'+b};}
+    else{const a=randInt(5,20),b=randInt(1,Math.min(9,a-1)),ans=a-b;return{type:'sub',a,b,answer:ans,text:`${a} - ${b} = ?`,choices:makeChoices(ans,Math.max(0,ans-4),ans+4),key:'xs'+a+'_'+b};}
+  }
+  const a=randInt(1,5),b=randInt(1,5),ans=a+b;
+  return{type:'add',a,b,answer:ans,text:`${a} + ${b} = ?`,choices:makeChoices(ans,1,10),key:'fb'+a+'_'+b};
+}
+
+function makeChoices(correct,lo,hi){
+  const set=new Set([correct]);let attempts=0;
+  while(set.size<4&&attempts<100){
+    let wrong;if(attempts<20)wrong=correct+randInt(-3,3);
+    else wrong=randInt(Math.max(0,lo),Math.max(hi,correct+3));
+    if(wrong!==correct&&wrong>=0)set.add(wrong);attempts++;
+  }
+  let fill=1;while(set.size<4){if(correct+fill!==correct)set.add(correct+fill);fill++}
+  return shuffle([...set]);
+}
+
+/* ══════════════════════════════════════════
+   MONSTER DRAWING
+   ══════════════════════════════════════════ */
+function render(){
+  C.clearRect(0,0,W,H);
+
+  // stars background
+  const t=Date.now()/1000;
+  C.fillStyle='rgba(255,255,255,.15)';
+  for(let i=0;i<12;i++){
+    const sx=(i*137+50)%W,sy=(i*97+20)%H;
+    const sz=1.5+Math.sin(t*2+i)*1;
+    C.beginPath();C.arc(sx,sy,sz,0,Math.PI*2);C.fill();
+  }
+
+  if(gameScreen!=='playing')return;
+
+  const cx=W/2,cy=H*0.5;
+  const ms=Math.min(W*0.3,H*0.65,140); // monster size
+
+  // bounce
+  const by=Math.sin(t*2)*3+cy;
+  const moodScale=monsterMood==='happy'?1.05:monsterMood==='sick'?0.95:1;
+
+  C.save();C.translate(cx,by);C.scale(moodScale,moodScale);
+
+  // body shadow
+  C.globalAlpha=0.15;C.fillStyle='#000';
+  C.beginPath();C.ellipse(5,ms*0.55,ms*0.6,ms*0.12,0,0,Math.PI*2);C.fill();
+  C.globalAlpha=1;
+
+  // body
+  const bodyGrad=C.createRadialGradient(-ms*0.15,-ms*0.15,ms*0.1,0,0,ms*0.85);
+  bodyGrad.addColorStop(0,'#ab47bc');bodyGrad.addColorStop(0.6,'#8e24aa');bodyGrad.addColorStop(1,'#6a1b9a');
+  C.fillStyle=bodyGrad;
+  C.beginPath();C.ellipse(0,0,ms*0.65,ms*0.55,0,0,Math.PI*2);C.fill();
+
+  // belly
+  C.fillStyle='#ce93d8';
+  C.beginPath();C.ellipse(0,ms*0.1,ms*0.4,ms*0.3,0,0,Math.PI*2);C.fill();
+
+  // horns
+  C.fillStyle='#7b1fa2';
+  C.beginPath();C.moveTo(-ms*0.2,-ms*0.5);C.lineTo(-ms*0.3,-ms*0.8);C.lineTo(-ms*0.05,-ms*0.5);C.closePath();C.fill();
+  C.beginPath();C.moveTo(ms*0.2,-ms*0.5);C.lineTo(ms*0.3,-ms*0.8);C.lineTo(ms*0.05,-ms*0.5);C.closePath();C.fill();
+
+  // eyes
+  const eyeW=ms*0.18,eyeH=ms*0.22;
+  const eyeOffX=ms*0.22;
+  const blinkH=monsterMood==='sick'?eyeH*0.3:eyeH;
+  // white
+  C.fillStyle='#fff';
+  C.beginPath();C.ellipse(-eyeOffX,-ms*0.15,eyeW,blinkH,0,0,Math.PI*2);C.fill();
+  C.beginPath();C.ellipse(eyeOffX,-ms*0.15,eyeW,blinkH,0,0,Math.PI*2);C.fill();
+  // pupil
+  const pupOff=monsterMood==='sick'?-2:Math.sin(t*3)*2;
+  C.fillStyle='#1a0a2e';
+  C.beginPath();C.arc(-eyeOffX+pupOff,-ms*0.15,eyeW*0.5,0,Math.PI*2);C.fill();
+  C.beginPath();C.arc(eyeOffX+pupOff,-ms*0.15,eyeW*0.5,0,Math.PI*2);C.fill();
+  // shine
+  C.fillStyle='#fff';
+  C.beginPath();C.arc(-eyeOffX-2,-ms*0.19,eyeW*0.18,0,Math.PI*2);C.fill();
+  C.beginPath();C.arc(eyeOffX-2,-ms*0.19,eyeW*0.18,0,Math.PI*2);C.fill();
+
+  // mouth
+  const mOpen=monsterMood==='eating'?0.6:monsterMood==='happy'?0.3:monsterMood==='sick'?0.15:0.1+Math.sin(t*1.5)*0.05;
+  C.fillStyle='#4a148c';
+  C.beginPath();
+  C.ellipse(0,ms*0.15,ms*0.25,ms*mOpen,0,0,Math.PI*2);
+  C.fill();
+  // tongue
+  if(mOpen>0.15){
+    C.fillStyle='#e91e63';
+    C.beginPath();C.ellipse(0,ms*0.15+ms*mOpen*0.3,ms*0.1,ms*mOpen*0.3,0,0,Math.PI*2);C.fill();
+  }
+  // teeth
+  if(mOpen>0.2){
+    C.fillStyle='#fff';
+    const tw=ms*0.06;
+    for(let i=-2;i<=2;i++){
+      C.beginPath();C.moveTo(i*tw*1.5-tw/2,ms*0.15-ms*mOpen*0.4);
+      C.lineTo(i*tw*1.5+tw/2,ms*0.15-ms*mOpen*0.4);
+      C.lineTo(i*tw*1.5,ms*0.15-ms*mOpen*0.15);
+      C.closePath();C.fill();
+    }
+  }
+
+  // sick face: green tint
+  if(monsterMood==='sick'){
+    C.globalAlpha=0.3;C.fillStyle='#4caf50';
+    C.beginPath();C.ellipse(0,0,ms*0.65,ms*0.55,0,0,Math.PI*2);C.fill();
+    C.globalAlpha=1;
+    // dizzy eyes
+    C.strokeStyle='#1a0a2e';C.lineWidth=2;
+    C.beginPath();C.moveTo(-eyeOffX-6,-ms*0.2);C.lineTo(-eyeOffX+6,-ms*0.1);C.moveTo(-eyeOffX-6,-ms*0.1);C.lineTo(-eyeOffX+6,-ms*0.2);C.stroke();
+    C.beginPath();C.moveTo(eyeOffX-6,-ms*0.2);C.lineTo(eyeOffX+6,-ms*0.1);C.moveTo(eyeOffX-6,-ms*0.1);C.lineTo(eyeOffX+6,-ms*0.2);C.stroke();
+  }
+
+  // happy: cheek blush
+  if(monsterMood==='happy'){
+    C.globalAlpha=0.3;C.fillStyle='#f48fb1';
+    C.beginPath();C.ellipse(-ms*0.4,ms*0.05,ms*0.1,ms*0.06,0,0,Math.PI*2);C.fill();
+    C.beginPath();C.ellipse(ms*0.4,ms*0.05,ms*0.1,ms*0.06,0,0,Math.PI*2);C.fill();
+    C.globalAlpha=1;
+  }
+
+  // feet
+  C.fillStyle='#7b1fa2';
+  C.beginPath();C.ellipse(-ms*0.35,ms*0.45,ms*0.15,ms*0.08,0,0,Math.PI*2);C.fill();
+  C.beginPath();C.ellipse(ms*0.35,ms*0.45,ms*0.15,ms*0.08,0,0,Math.PI*2);C.fill();
+
+  C.restore();
+
+  // count items
+  if(countItems.length){
+    const iconSize=Math.min(64,Math.max(36,W*0.07));
+    C.font=`${iconSize}px Fredoka,sans-serif`;
+    C.textAlign='center';C.textBaseline='middle';
+    for(let i=0;i<countItems.length;i++){
+      const it=countItems[i];
+      const bob=Math.sin(t*1.6+it.phase)*4;
+      C.globalAlpha=0.3;C.fillStyle='#fff';
+      C.beginPath();C.arc(it.x,it.y+bob,iconSize*0.55,0,Math.PI*2);C.fill();
+      C.globalAlpha=1;
+      C.fillText(countIcon,it.x,it.y+bob);
+    }
+  }
+
+  // particles
+  for(const p of particles){
+    C.globalAlpha=p.life;C.font=`${p.size}px Fredoka`;C.textAlign='center';
+    C.fillText(p.icon,p.x,p.y);
+  }
+  C.globalAlpha=1;
+}
+
+/* ══════════════════════════════════════════
+   UPDATE LOOP
+   ══════════════════════════════════════════ */
+let lastT=0;
+function loop(ts){
+  const dt=Math.min((ts-lastT)/1000,0.05);lastT=ts;
+
+  // monster mood timer
+  if(monsterMoodTimer>0){monsterMoodTimer-=dt;if(monsterMoodTimer<=0)monsterMood='idle'}
+
+  // particles
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];p.x+=p.vx*dt*60;p.y+=p.vy*dt*60;p.vy+=0.08*dt*60;p.life-=dt*1.5;
+    if(p.life<=0)particles.splice(i,1);
+  }
+
+  // answer cooldown
+  if(gameScreen==='playing'&&answerCooldown>0){
+    answerCooldown-=dt;if(answerCooldown<=0&&answered){qIdx++;nextQuestion()}
+  }
+
+  render();requestAnimationFrame(loop);
+}
+
+/* ══════════════════════════════════════════
+   FOOD BUTTONS
+   ══════════════════════════════════════════ */
+function spawnFoodButtons(choices){
+  const area=document.getElementById('foodArea');area.innerHTML='';
+  const icons=shuffle([...FOOD_ICONS]).slice(0,choices.length);
+  choices.forEach((val,i)=>{
+    const btn=document.createElement('button');btn.className='food-btn';
+    btn.innerHTML=`<span class="food-icon">${icons[i]}</span>${val}`;
+    btn.addEventListener('click',()=>handleChoice(val,btn));
+    area.appendChild(btn);
+  });
+}
+
+function handleChoice(val,btn){
+  if(answered||answerCooldown>0)return;
+  aInit();
+
+  if(val===correctAnswer){
+    answered=true;answerCooldown=1.5;score++;
+    if(!triedThisQ)firstTries++;
+    btn.classList.add('correct');
+    monsterMood='eating';monsterMoodTimer=0.3;
+    setTimeout(()=>{monsterMood='happy';monsterMoodTimer=1;sBurp()},300);
+    sChomp();
+    showFeedback(PRAISE[Math.floor(Math.random()*PRAISE.length)],'#ce93d8');
+    // food particles
+    const rect=btn.getBoundingClientRect();const cvRect=cvs.getBoundingClientRect();
+    for(let i=0;i<6;i++){
+      particles.push({x:W/2+randInt(-20,20),y:H*0.3,icon:btn.querySelector('.food-icon').textContent,size:randInt(16,28),vx:randInt(-3,3),vy:randInt(-5,-1),life:1});
+    }
+    updateHUD();
+  }else{
+    triedThisQ=true;
+    btn.classList.add('wrong');
+    monsterMood='sick';monsterMoodTimer=0.8;
+    sWrong();
+    showFeedback(ENCOURAGE[Math.floor(Math.random()*ENCOURAGE.length)],'#ff9999');
+    answerCooldown=0.6;
+    setTimeout(()=>{btn.classList.remove('wrong')},500);
+  }
+}
+
+/* ══════════════════════════════════════════
+   GAME FLOW
+   ══════════════════════════════════════════ */
+function showScreen(id){
+  document.querySelectorAll('.overlay').forEach(el=>el.classList.add('hidden'));
+  if(id)document.getElementById(id).classList.remove('hidden');
+  document.getElementById('gameWrap').style.display=gameScreen==='playing'?'flex':'none';
+}
+function goTitle(){gameScreen='title';showScreen('scrTitle')}
+function goLevels(){gameScreen='levels';buildLevelGrid();showScreen('scrLevels')}
+function goIntro(lv){
+  curLevel=lv;
+  document.getElementById('introIcon').textContent=lv.icon;
+  document.getElementById('introTitle').textContent='Level '+lv.id+': '+lv.name;
+  document.getElementById('introDesc').textContent=lv.desc;
+  showScreen('scrIntro');
+}
+function startLevel(){
+  gameScreen='playing';showScreen(null);
+  document.getElementById('gameWrap').style.display='flex';
+  monsterMood='idle';monsterMoodTimer=0;particles=[];
+  setTimeout(()=>{resize();
+    questions=generateQuestions(curLevel);
+    qIdx=0;score=0;firstTries=0;
+    nextQuestion();
+  },50);
+}
+function nextQuestion(){
+  if(qIdx>=questions.length){finishLevel();return}
+  const q=questions[qIdx];
+  correctAnswer=q.answer;triedThisQ=false;answered=false;answerCooldown=0;
+  document.getElementById('qText').textContent=q.text;
+  document.getElementById('qHint').textContent=q.hint||'';
+  spawnFoodButtons(q.choices);
+  updateHUD();
+  monsterMood='idle';
+  setupCountItems(q);
+}
+function setupCountItems(q){
+  countItems=[];
+  if(q.type!=='count'||!q.dotCount)return;
+  countIcon=curLevel&&curLevel.icon?curLevel.icon:'⭐';
+  const n=q.dotCount;
+  // place items in two columns on either side of the monster
+  const leftX=W*0.15,rightX=W*0.85;
+  const topY=H*0.15,botY=H*0.85;
+  const perSide=Math.ceil(n/2);
+  const rowH=(botY-topY)/Math.max(perSide,1);
+  let idx=0;
+  for(let i=0;i<n;i++){
+    const side=i%2===0?-1:1; // alternate left/right
+    const x=side<0?leftX:rightX;
+    const rowIdx=Math.floor(i/2);
+    const y=topY+rowH*(rowIdx+0.5);
+    countItems.push({x,y,phase:Math.random()*Math.PI*2});
+    idx++;
+  }
+}
+function finishLevel(){
+  gameScreen='results';
+  document.getElementById('gameWrap').style.display='none';
+  const total=questions.length,pct=firstTries/total;
+  let stars=1;if(pct>=7/8)stars=3;else if(pct>=5/8)stars=2;
+  const prev=progress.stars[curLevel.id]||0;
+  if(stars>prev)progress.stars[curLevel.id]=stars;
+  if(curLevel.id>=progress.unlocked&&stars>=1)progress.unlocked=Math.min(LEVELS.length,curLevel.id+1);
+  saveProgress();
+  document.getElementById('resStars').textContent='\u2B50'.repeat(stars)+'\u2606'.repeat(3-stars);
+  document.getElementById('resScore').textContent=`${firstTries} / ${total} first try!`;
+  const msgs=['Keep practicing!','Good job!','Amazing work!'];
+  document.getElementById('resMsg').textContent=msgs[stars-1];
+  let btns='';
+  if(stars<3)btns+=`<button class="btn btn-pink" onclick="window._retry()">Try Again</button>`;
+  if(curLevel.id<LEVELS.length&&progress.unlocked>curLevel.id)
+    btns+=`<button class="btn btn-green" onclick="window._nextLv()">Next Level</button>`;
+  btns+=`<button class="btn btn-blue" onclick="window._goLevels()">Level Select</button>`;
+  document.getElementById('resBtns').innerHTML=btns;
+  showScreen('scrResults');sWin();
+  for(let i=0;i<stars;i++)setTimeout(()=>sStar(),400+i*300);
+}
+function updateHUD(){
+  document.getElementById('hudScore').textContent='Score: '+score;
+  document.getElementById('hudProg').textContent=(qIdx+1)+' / '+questions.length;
+}
+
+/* ══════════════════════════════════════════
+   LEVEL GRID
+   ══════════════════════════════════════════ */
+function buildLevelGrid(){
+  const grid=document.getElementById('levelGrid');grid.innerHTML='';
+  for(const lv of LEVELS){
+    if(lv.section){
+      const label=document.createElement('div');label.className='section-label';label.textContent=lv.section;
+      grid.appendChild(label);
+    }
+    const card=document.createElement('div');
+    card.className='level-card'+(lv.id>progress.unlocked?' locked':'');
+    const st=progress.stars[lv.id]||0;
+    card.innerHTML=`
+      <div class="lv-num">${lv.icon}</div>
+      <div class="lv-name">${lv.name}</div>
+      <div class="lv-stars">${st>0?'\u2B50'.repeat(st)+'\u2606'.repeat(3-st):(lv.id<=progress.unlocked?'\u2606\u2606\u2606':'\uD83D\uDD12')}</div>
+    `;
+    if(lv.id<=progress.unlocked)card.addEventListener('click',()=>{aInit();goIntro(lv)});
+    grid.appendChild(card);
+  }
+}
+
+/* ══════════════════════════════════════════
+   FEEDBACK
+   ══════════════════════════════════════════ */
+const fbEl=document.getElementById('feedback');
+function showFeedback(text,color){
+  fbEl.textContent=text;fbEl.style.color=color||'#fff';
+  fbEl.classList.remove('show');void fbEl.offsetWidth;fbEl.classList.add('show');
+}
+
+/* ══════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════ */
+document.getElementById('btnPlay').addEventListener('click',()=>{aInit();goLevels()});
+document.getElementById('btnBackTitle').addEventListener('click',()=>goTitle());
+document.getElementById('btnStartLevel').addEventListener('click',()=>{aInit();startLevel()});
+window._retry=()=>{aInit();startLevel()};
+window._nextLv=()=>{aInit();const nxt=LEVELS.find(l=>l.id===curLevel.id+1);if(nxt)goIntro(nxt)};
+window._goLevels=()=>goLevels();
+
+loadProgress();resize();requestAnimationFrame(loop);
+
+/* ── Exit confirmation ── */
+document.addEventListener('click',function(e){
+  var a=e.target.closest('a[href*="index.html"]');
+  if(a){e.preventDefault();if(confirm('Leave game? Your progress will be lost!'))location.assign(a.href);}
+});
+
+})();
+</script>
+<a href="../../index.html" id="__hubBack" aria-label="Back to Play Zone">‹</a>
+<style>#__hubBack{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:calc(env(safe-area-inset-left,0px) + 8px);z-index:99999;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;line-height:1;font-weight:700;text-decoration:none;border:2px solid rgba(255,255,255,.45);box-shadow:0 2px 8px rgba(0,0,0,.35);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation}#__hubBack:active{background:rgba(0,0,0,.8);transform:scale(.92)}</style>
+</body>
+</html>
