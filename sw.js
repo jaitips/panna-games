@@ -1,4 +1,4 @@
-const CACHE = 'playzone-v2';
+const CACHE = 'playzone-v3';
 const CORE = [
   '/',
   '/index.html',
@@ -22,7 +22,8 @@ const CORE = [
   '/games/meteor-smasher/index.html',
   '/games/shape-draw-party/index.html',
   '/games/steves-adventure/index.html',
-  '/games/suika/index.html'
+  '/games/suika/index.html',
+  '/games/word-bomb-squad/index.html'
 ];
 
 self.addEventListener('install', e => {

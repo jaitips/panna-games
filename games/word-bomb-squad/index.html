@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>💣 Word Bomb Squad ✂️</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sky1:#2B2350; --sky2:#4A3B8C;
+  --card:#FFF9F0; --ink:#3A2E5C;
+  --sun:#FFD93D; --coral:#FF6B6B; --mint:#5FE3A1; --ice:#7FDBFF;
+  --rope:#C68B4E; --ash:#6E6E7A;
+  --danger:0;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:'Fredoka',sans-serif; color:var(--ink);
+  background:linear-gradient(180deg,var(--sky1) 0%,var(--sky2) 55%,#7A5FC7 100%);
+  overflow:hidden; user-select:none; -webkit-user-select:none; touch-action:manipulation;
+}
+/* twinkles */
+.tw{position:fixed;font-size:14px;opacity:.5;animation:tw 2.6s ease-in-out infinite;pointer-events:none;z-index:0}
+@keyframes tw{0%,100%{opacity:.15;transform:scale(.8)}50%{opacity:.7;transform:scale(1.15)}}
+
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;z-index:10;transition:opacity .35s}
+.hidden{opacity:0;pointer-events:none}
+
+/* ---------------- START ---------------- */
+#startScreen h1{
+  font-size:clamp(2.1rem,7vw,3.6rem);font-weight:700;color:#fff;text-align:center;line-height:1.05;
+  text-shadow:0 4px 0 rgba(0,0,0,.22),0 0 34px rgba(255,217,61,.45);
+  animation:bounceT 2.4s ease-in-out infinite;
+}
+@keyframes bounceT{0%,100%{transform:rotate(-1.5deg) translateY(0)}50%{transform:rotate(1.5deg) translateY(-8px)}}
+#startScreen .sub{color:#FFE9A8;font-size:clamp(1rem,3.4vw,1.3rem);font-weight:500;text-align:center;text-shadow:0 2px 6px rgba(0,0,0,.3)}
+.howCard{
+  background:var(--card);border-radius:22px;padding:14px 18px;box-shadow:0 8px 0 rgba(0,0,0,.18);
+  display:flex;gap:18px;flex-wrap:wrap;justify-content:center;max-width:560px;
+}
+.howCard .step{display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:600;font-size:.95rem}
+.howCard .step .big{font-size:1.9rem}
+.diffRow{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.diffBtn{
+  font-family:'Fredoka',sans-serif;font-weight:700;font-size:clamp(1.05rem,3.6vw,1.3rem);
+  border:none;border-radius:20px;padding:16px 22px;cursor:pointer;color:var(--ink);
+  box-shadow:0 6px 0 rgba(0,0,0,.22);transition:transform .12s;min-width:150px;
+}
+.diffBtn small{display:block;font-weight:500;font-size:.78em;opacity:.85}
+.diffBtn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.22)}
+#dEasy{background:linear-gradient(180deg,#8CF0B8,#5FE3A1)}
+#dMed{background:linear-gradient(180deg,#FFE38A,#FFD93D)}
+#dHard{background:linear-gradient(180deg,#FF9C9C,#FF6B6B);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+#voiceTgl,#backBtn{
+  font-family:'Fredoka',sans-serif;font-weight:600;font-size:1rem;border:none;border-radius:999px;
+  padding:10px 20px;background:rgba(255,255,255,.18);color:#fff;cursor:pointer;box-shadow:inset 0 0 0 2px rgba(255,255,255,.45);
+}
+
+/* category picker */
+.gone{display:none!important}
+#catPhase,#diffPhase{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%}
+#catGrid{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;
+  width:min(560px,94vw);max-height:54vh;overflow-y:auto;padding:6px 4px;
+}
+.catBtn{
+  font-family:'Fredoka',sans-serif;border:none;cursor:pointer;position:relative;
+  background:var(--card);border-radius:18px;padding:10px 6px;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  box-shadow:0 5px 0 rgba(0,0,0,.18);transition:transform .12s;
+}
+.catBtn:active{transform:translateY(3px)}
+.catBtn .ci{font-size:1.7rem}
+.catBtn .cn{font-weight:600;font-size:.8rem;color:var(--ink);line-height:1.1;text-align:center}
+.catBtn .cc{font-size:.68rem;color:var(--ink);opacity:.65;font-weight:500}
+.catBtn .cf{
+  position:absolute;top:-7px;right:-4px;background:var(--sun);border-radius:999px;
+  font-size:.58rem;font-weight:700;padding:2px 7px;box-shadow:0 2px 0 rgba(0,0,0,.2);color:var(--ink);
+}
+.catBtn.mix{background:linear-gradient(180deg,#FFE38A,#FFC94D)}
+#chosenLbl{color:#FFE9A8;font-weight:600;font-size:1.1rem;text-shadow:0 2px 6px rgba(0,0,0,.3)}
+
+/* ---------------- GAME ---------------- */
+#gameScreen{justify-content:flex-start;padding-top:12px;gap:14px}
+#hud{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;z-index:12}
+.hudBox{
+  background:var(--card);border-radius:16px;padding:8px 16px;font-weight:700;
+  font-size:clamp(1rem,3.6vw,1.25rem);box-shadow:0 5px 0 rgba(0,0,0,.18);
+}
+#freezeBtns{display:flex;gap:6px}
+#hudHearts{letter-spacing:2px}
+#hudHearts.bump{animation:hbump .5s}
+@keyframes hbump{30%{transform:scale(1.25) rotate(-4deg)}60%{transform:scale(.95)}}
+#hudHearts.danger{background:#FFD5D5;animation:pulse .6s infinite}
+.frzBtn{
+  font-size:1.5rem;border:none;border-radius:14px;width:48px;height:48px;cursor:pointer;
+  background:linear-gradient(180deg,#CFF3FF,var(--ice));box-shadow:0 5px 0 rgba(0,0,0,.18);
+  transition:transform .12s,filter .2s;
+}
+.frzBtn:active{transform:translateY(3px)}
+.frzBtn.used{filter:grayscale(1) opacity(.4);pointer-events:none}
+
+/* bomb + fuse card */
+#bombCard{
+  position:relative;width:min(680px,94vw);background:var(--card);border-radius:26px;
+  padding:20px 18px;box-shadow:0 10px 0 rgba(0,0,0,.2);
+  display:flex;align-items:center;gap:12px;overflow:visible;
+  transition:box-shadow .3s;
+}
+#bombCard.warn{box-shadow:0 10px 0 rgba(0,0,0,.2),0 0 24px rgba(255,107,107,.55)}
+#bombCard.frozenC{box-shadow:0 10px 0 rgba(0,0,0,.2),0 0 26px rgba(127,219,255,.8)}
+#fuseWrap{position:relative;flex:1;height:16px}
+#fuseTrack{
+  position:absolute;inset:0;border-radius:999px;
+  background:
+    repeating-linear-gradient(90deg,transparent 0,transparent calc(10% - 3px),rgba(58,46,92,.55) calc(10% - 3px),rgba(58,46,92,.55) 10%),
+    repeating-linear-gradient(45deg,var(--rope) 0 7px,#A9703A 7px 14px);
+  box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);
+}
+#bombCard.frozenC #fuseTrack{filter:hue-rotate(160deg) saturate(.6) brightness(1.2)}
+#fuseBurn{
+  position:absolute;left:0;top:0;bottom:0;width:0;border-radius:999px;
+  background:repeating-linear-gradient(45deg,var(--ash) 0 7px,#55555F 7px 14px);opacity:.9;
+}
+#flame{position:absolute;top:50%;left:0;z-index:3;pointer-events:none}
+#flameE{
+  display:block;font-size:2.1rem;transform:translate(-50%,-58%);
+  filter:drop-shadow(0 0 8px rgba(255,150,40,.9));
+  animation:flick .22s ease-in-out infinite alternate;
+}
+@keyframes flick{from{transform:translate(-50%,-58%) scale(1) rotate(-6deg)}to{transform:translate(-50%,-62%) scale(1.14) rotate(6deg)}}
+#bombCard.frozenC #flameE{animation:none;filter:drop-shadow(0 0 10px rgba(127,219,255,1));transform:translate(-50%,-58%)}
+#flameE.hopping{animation:hopA .3s ease-out}
+@keyframes hopA{
+  0%{transform:translate(-50%,-58%) scale(1)}
+  50%{transform:translate(-50%,-130%) scale(1.4) rotate(16deg)}
+  100%{transform:translate(-50%,-58%) scale(1)}
+}
+.spark{position:absolute;font-size:.7rem;z-index:2;pointer-events:none;animation:spk .6s ease-out forwards}
+@keyframes spk{from{opacity:1;transform:translate(-50%,-50%) scale(1)}to{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.3)}}
+
+#bombWrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px}
+#bombBall{
+  position:relative;width:74px;height:74px;border-radius:50%;
+  background:radial-gradient(circle at 30% 28%,#5A5A72 0%,#23232E 62%);
+  box-shadow:0 6px 0 rgba(0,0,0,.25), inset -4px -6px 10px rgba(0,0,0,.5);
+  display:flex;align-items:center;justify-content:center;
+}
+#bombBall::before{ /* fuse nub */
+  content:'';position:absolute;left:-10px;top:50%;transform:translateY(-50%);
+  width:16px;height:10px;background:var(--rope);border-radius:6px;
+}
+#bombFace{font-size:2rem;transform:translateY(1px)}
+#bombCard.warn #bombBall{animation:wob .35s ease-in-out infinite}
+#bombCard.panic #bombBall{animation:wob .16s ease-in-out infinite}
+@keyframes wob{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+#timeLeft{
+  background:var(--ink);color:#fff;border-radius:999px;padding:2px 12px;
+  font-weight:700;font-size:.95rem;min-width:46px;text-align:center;
+}
+#bombCard.panic #timeLeft{background:var(--coral);animation:pulse .5s infinite}
+@keyframes pulse{50%{transform:scale(1.15)}}
+#bombBall.boomed{background:radial-gradient(circle at 50% 50%,#FFB84D,#FF6B6B 70%)}
+
+/* clue */
+#clueRow{display:flex;align-items:center;gap:14px}
+#clueEmoji{
+  font-size:clamp(3.4rem,13vw,5.2rem);background:var(--card);border-radius:24px;
+  padding:8px 22px;box-shadow:0 8px 0 rgba(0,0,0,.18);line-height:1.15;
+  animation:cluePop .45s cubic-bezier(.34,1.56,.64,1);
+  display:flex;align-items:center;justify-content:center;min-width:118px;min-height:96px;
+}
+/* drawn clues: number badges, day chips, shapes, skirt/belt/desk/table/eraser */
+.numBadge{
+  font-weight:700;font-size:clamp(2.6rem,10vw,3.8rem);color:#0F766E;
+  border:4px solid #14B8A6;border-radius:16px;padding:2px 18px;background:#E6FFFA;line-height:1.1;
+}
+.shp{--sc:#F9A8B8}
+.shp.chip{width:66px;height:66px;border-radius:16px;background:var(--sc);box-shadow:0 3px 0 rgba(0,0,0,.15)}
+.shp.circle{width:64px;height:64px;border-radius:50%;background:var(--sc)}
+.shp.oval{width:86px;height:56px;border-radius:50%;background:var(--sc)}
+.shp.square{width:60px;height:60px;border-radius:8px;background:var(--sc)}
+.shp.rect{width:92px;height:48px;border-radius:8px;background:var(--sc)}
+.shp.tri{width:72px;height:62px;background:var(--sc);clip-path:polygon(50% 0,0 100%,100% 100%)}
+.shp.skirt{width:74px;height:58px;background:#F472B6;clip-path:polygon(28% 0,72% 0,100% 100%,0 100%)}
+.shp.belt{width:98px;height:22px;background:#8B5A2B;border-radius:6px;display:flex;align-items:center;justify-content:center}
+.shp.belt i{display:block;width:26px;height:16px;border:4px solid #E8B54A;border-radius:4px;background:#6E441F}
+.shp.eraser{width:86px;height:42px;border-radius:9px;background:linear-gradient(90deg,#4FA3E3 46%,#EDF2F7 46%);box-shadow:0 3px 0 rgba(0,0,0,.12)}
+.shp.desk,.shp.table{position:relative}
+.shp.desk{width:98px;height:56px}
+.shp.desk::before{content:'';position:absolute;top:0;left:0;right:0;height:26px;background:#A9703A;border-radius:5px;box-shadow:inset 0 -9px 0 #8B5A2B}
+.shp.desk i{position:absolute;left:8px;top:26px;width:9px;height:28px;background:#8B5A2B;border-radius:0 0 4px 4px}
+.shp.desk::after{content:'';position:absolute;right:8px;top:26px;width:9px;height:28px;background:#8B5A2B;border-radius:0 0 4px 4px}
+.shp.table{width:98px;height:48px}
+.shp.table::before{content:'';position:absolute;top:0;left:0;right:0;height:13px;background:#C68B4E;border-radius:5px}
+.shp.table i{position:absolute;left:10px;top:13px;width:8px;height:33px;background:#A9703A;border-radius:0 0 4px 4px}
+.shp.table::after{content:'';position:absolute;right:10px;top:13px;width:8px;height:33px;background:#A9703A;border-radius:0 0 4px 4px}
+@keyframes cluePop{from{transform:scale(0) rotate(-12deg)}to{transform:scale(1) rotate(0)}}
+#sayBtn{
+  font-size:2rem;border:none;border-radius:50%;width:64px;height:64px;cursor:pointer;
+  background:linear-gradient(180deg,#B99CFF,#8E6BF0);box-shadow:0 6px 0 rgba(0,0,0,.22);
+  transition:transform .12s;
+}
+#sayBtn:active{transform:translateY(4px)}
+#sayBtn.talking{animation:pulse .4s infinite}
+
+/* word slots — flat cards on a light ANSWER BOARD */
+#wordRow{
+  display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:94vw;
+  background:rgba(255,255,255,.16);border-radius:22px;padding:12px 16px;
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.28);
+}
+.slot{
+  width:clamp(44px,10.5vw,60px);height:clamp(54px,12.5vw,72px);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:clamp(1.7rem,7vw,2.5rem);
+  background:var(--card);border-radius:12px;border:3px solid transparent;
+  box-shadow:0 3px 0 rgba(0,0,0,.12);
+}
+.slot.blank{background:rgba(255,255,255,.45);border:3px dashed #B7A8E8;box-shadow:none;color:transparent}
+.slot.blank::after{content:'';width:60%;height:5px;background:#8E6BF0;border-radius:3px;position:relative;top:16px;margin-left:-60%}
+#wordRow.long{gap:5px}
+#wordRow.long .slot{width:clamp(29px,7.4vw,46px);height:clamp(40px,9.6vw,58px);font-size:clamp(1.1rem,4.6vw,1.8rem)}
+#wordRow.long .slot.blank::after{top:11px;height:4px}
+.slot.cur{outline:4px solid var(--sun);outline-offset:2px;animation:curB 1s ease-in-out infinite}
+@keyframes curB{50%{transform:translateY(-4px)}}
+.slot.filled{color:#1E9E63;animation:slotPop .35s cubic-bezier(.34,1.56,.64,1)}
+.slot.filled::after{display:none}
+.slot.missed{color:#E8590C;animation:slotPop .35s}
+.slot.missed::after{display:none}
+@keyframes slotPop{from{transform:scale(.2)}60%{transform:scale(1.25)}to{transform:scale(1)}}
+
+/* letter bank — dark TRAY with round candy buttons (looks nothing like the board) */
+#bank{
+  display:flex;gap:clamp(14px,4vw,20px);flex-wrap:wrap;justify-content:center;
+  max-width:min(680px,95vw);
+  background:linear-gradient(180deg,rgba(20,14,44,.55),rgba(20,14,44,.75));
+  border-radius:28px;padding:clamp(14px,3.5vw,20px) clamp(16px,4vw,24px);
+  box-shadow:inset 0 4px 10px rgba(0,0,0,.45),0 6px 0 rgba(0,0,0,.25);
+  margin-top:4px;
+}
+.tile{
+  font-family:'Fredoka',sans-serif;font-weight:700;font-size:clamp(1.7rem,7vw,2.4rem);
+  width:clamp(62px,15vw,80px);height:clamp(62px,15vw,80px);
+  border:4px solid #FFF;border-radius:50%;cursor:pointer;color:var(--ink);
+  box-shadow:0 6px 0 rgba(0,0,0,.35);transition:transform .1s,opacity .25s;
+}
+.tile:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.35)}
+.tile.used{opacity:0;transform:scale(.2) rotate(20deg);pointer-events:none}
+.tile.shk{animation:shk .32s}
+@keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px) rotate(-4deg)}75%{transform:translateX(8px) rotate(4deg)}}
+
+/* ---------------- RESULTS ---------------- */
+#resultScreen h2{font-size:clamp(1.9rem,6.5vw,3rem);color:#fff;font-weight:700;text-shadow:0 4px 0 rgba(0,0,0,.22)}
+#starRow{display:flex;gap:10px;font-size:clamp(3rem,12vw,4.6rem)}
+#starRow .st{opacity:.25;filter:grayscale(1)}
+#starRow .st.on{opacity:1;filter:none;animation:starIn .5s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes starIn{from{transform:scale(0) rotate(-40deg)}to{transform:scale(1) rotate(0)}}
+.resCard{background:var(--card);border-radius:22px;padding:16px 28px;box-shadow:0 8px 0 rgba(0,0,0,.18);text-align:center}
+.resCard .big{font-size:clamp(1.6rem,6vw,2.3rem);font-weight:700}
+.resCard .small{font-size:1.05rem;font-weight:500;opacity:.8}
+
+/* fx */
+#fxLayer{position:fixed;inset:0;pointer-events:none;z-index:40;overflow:hidden}
+.confetti{position:absolute;width:12px;height:12px;border-radius:3px;animation:cf linear forwards}
+@keyframes cf{to{transform:translateY(110vh) rotate(720deg)}}
+.floaty{
+  position:absolute;font-weight:700;font-size:clamp(1.3rem,5vw,2rem);color:#fff;
+  text-shadow:0 3px 0 rgba(0,0,0,.3);animation:fl 1.3s ease-out forwards;white-space:nowrap;
+}
+@keyframes fl{from{opacity:1;transform:translate(-50%,0) scale(.6)}30%{transform:translate(-50%,-30px) scale(1.15)}to{opacity:0;transform:translate(-50%,-90px) scale(1)}}
+.smoke{position:absolute;font-size:2rem;animation:smk 1.6s ease-out forwards}
+@keyframes smk{from{opacity:.9;transform:translate(-50%,-50%) scale(.6)}to{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% - 120px)) scale(1.8)}}
+.snowp{position:absolute;font-size:1rem;animation:snw 1.4s ease-out forwards}
+@keyframes snw{from{opacity:1;transform:translate(-50%,-50%)}to{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + 60px)) rotate(180deg)}}
+#boomBig{
+  position:fixed;left:50%;top:38%;transform:translate(-50%,-50%) scale(0);font-size:clamp(6rem,26vw,11rem);
+  z-index:45;pointer-events:none;transition:transform .18s cubic-bezier(.34,1.56,.64,1);
+}
+#boomBig.show{transform:translate(-50%,-50%) scale(1)}
+#flash{
+  position:fixed;inset:0;pointer-events:none;z-index:30;
+  background:radial-gradient(ellipse at center,transparent 45%,rgba(255,60,60,.55) 100%);
+  opacity:calc(var(--danger) * .9);transition:opacity .25s;
+}
+body.shake{animation:bshake .45s}
+@keyframes bshake{0%,100%{transform:translate(0,0)}20%{transform:translate(-10px,6px)}40%{transform:translate(9px,-7px)}60%{transform:translate(-7px,-5px)}80%{transform:translate(6px,7px)}}
+</style>
+</head>
+<body>
+<div id="flash"></div>
+
+<!-- ================= START ================= -->
+<div class="screen" id="startScreen">
+  <h1>💣 Word Bomb Squad ✂️</h1>
+  <div id="catPhase">
+    <div class="sub">Pick a page from your revision book! 📖</div>
+    <div id="catGrid"></div>
+  </div>
+  <div id="diffPhase" class="gone">
+    <div id="chosenLbl">🌟 Mix All</div>
+    <div class="howCard">
+      <div class="step"><span class="big">🔊</span>Listen</div>
+      <div class="step"><span class="big">🖼️</span>Look</div>
+      <div class="step"><span class="big">🔤</span>Tap letters</div>
+      <div class="step"><span class="big">✂️</span>Defuse!</div>
+      <div class="step"><span class="big">❄️</span>Freeze fire</div>
+      <div class="step"><span class="big">❌</span>Miss = 💔 + 🔥</div>
+    </div>
+    <div class="diffRow">
+      <button class="diffBtn" id="dEasy">😊 Easy<small>2 missing letters · ❤️❤️❤️</small></button>
+      <button class="diffBtn" id="dMed">🤔 Medium<small>3 missing letters · ❤️❤️</small></button>
+      <button class="diffBtn" id="dHard">🔥 Hard<small>spell the WHOLE word! · ❤️</small></button>
+    </div>
+    <button id="backBtn">⬅️ Categories</button>
+  </div>
+  <button id="voiceTgl">🔊 Voice: ON</button>
+</div>
+
+<!-- ================= GAME ================= -->
+<div class="screen hidden" id="gameScreen">
+  <div id="hud">
+    <div class="hudBox" id="hudWord">Word 1/10</div>
+    <div class="hudBox" id="hudScore">⭐ 0</div>
+    <div class="hudBox" id="hudHearts">❤️❤️❤️</div>
+    <div id="freezeBtns"></div>
+  </div>
+  <div id="bombCard">
+    <div id="fuseWrap">
+      <div id="fuseTrack"></div>
+      <div id="fuseBurn"></div>
+      <div id="flame"><span id="flameE">🔥</span></div>
+    </div>
+    <div id="bombWrap">
+      <div id="bombBall"><span id="bombFace">🙂</span></div>
+      <div id="timeLeft">--</div>
+    </div>
+  </div>
+  <div id="clueRow">
+    <div id="clueEmoji">🚩</div>
+    <button id="sayBtn">🔊</button>
+  </div>
+  <div id="wordRow"></div>
+  <div id="bank"></div>
+</div>
+
+<!-- ================= RESULTS ================= -->
+<div class="screen hidden" id="resultScreen">
+  <h2 id="resTitle">Mission Complete!</h2>
+  <div id="starRow"><span class="st">⭐</span><span class="st">⭐</span><span class="st">⭐</span></div>
+  <div class="resCard">
+    <div class="big" id="resScore">Score: 0</div>
+    <div class="small" id="resDefused">Bombs defused: 0/10</div>
+  </div>
+  <div class="diffRow">
+    <button class="diffBtn" id="againBtn" style="background:linear-gradient(180deg,#8CF0B8,#5FE3A1)">🔁 Play again</button>
+    <button class="diffBtn" id="menuBtn" style="background:linear-gradient(180deg,#FFE38A,#FFD93D)">🏠 Menu</button>
+  </div>
+</div>
+
+<div id="fxLayer"></div>
+<div id="boomBig">💥</div>
+
+<script>
+/* ============================================================
+   ⚙️ CFG — tune everything here
+   ============================================================ */
+const CFG = {
+  WORDS_PER_GAME: 10,
+  FREEZE_SECONDS: 5,      // ❄️ how long the fire stops
+  FUSE_SEGMENTS: 10,      // fuse is divided into visible steps (notches on the rope)
+  PRAISE: true,           // say "Great job!" after a defuse
+  TTS_RATE: 0.8,          // voice speed (lower = slower/clearer)
+  TTS_LANG: 'en-US',
+};
+
+const DIFF = {
+  easy:   { name:'😊 Easy',   blanks:2,  decoys:2, fuseBase:12, fusePerBlank:8,   wrongSteps:1, freezes:3, misses:3 },
+  medium: { name:'🤔 Medium', blanks:3,  decoys:3, fuseBase:8,  fusePerBlank:5,   wrongSteps:1, freezes:2, misses:2 },
+  hard:   { name:'🔥 Hard',   blanks:99, decoys:4, fuseBase:6,  fusePerBlank:4.5, wrongSteps:1, freezes:2, misses:1 },
+};
+
+/* ============================================================
+   📚 PANNA'S MASTER REVISION BOOK — 133 words · 14 categories
+   (loaded from Master-Revision-Book.pdf)
+   Clue types: e = emoji picture · num = number badge
+               color = Thai day-color chip · shape = drawn picture
+   ============================================================ */
+const CATEGORIES = [
+ {id:'body', icon:'👦', name:'Body Parts', words:[
+   {w:'FACE',e:'👦'},{w:'EYE',e:'👁️'},{w:'EAR',e:'👂'},{w:'NOSE',e:'👃'},{w:'MOUTH',e:'👄'},
+   {w:'HAIR',e:'🦱'},{w:'HAND',e:'✋'},{w:'ARM',e:'💪'},{w:'FOOT',e:'🦶'},{w:'BODY',e:'🧍'}]},
+ {id:'clothes', icon:'👟', name:'Clothes', focus:true, words:[
+   {w:'SHOES',e:'👟'},{w:'SOCKS',e:'🧦'},{w:'SHIRT',e:'👕'},{w:'SHORTS',e:'🩳'},{w:'SKIRT',shape:'skirt'},
+   {w:'HAT',e:'👒'},{w:'CAP',e:'🧢'},{w:'BELT',shape:'belt'},{w:'SCARF',e:'🧣'},{w:'JACKET',e:'🧥'}]},
+ {id:'action', icon:'🏃', name:'Action Words', words:[
+   {w:'DRINK',e:'🥤'},{w:'EAT',e:'😋'},{w:'SIT',e:'🧘'},{w:'SLEEP',e:'😴'},{w:'SPEAK',e:'🗣️'},
+   {w:'PLAY',e:'🎮'},{w:'READ',e:'📖'},{w:'RUN',e:'🏃'},{w:'DANCE',e:'💃'},{w:'WALK',e:'🚶'}]},
+ {id:'numbers', icon:'🔢', name:'Numbers', words:[
+   {w:'ELEVEN',num:'11'},{w:'TWELVE',num:'12'},{w:'THIRTEEN',num:'13'},{w:'FOURTEEN',num:'14'},{w:'FIFTEEN',num:'15'},
+   {w:'SIXTEEN',num:'16'},{w:'SEVENTEEN',num:'17'},{w:'EIGHTEEN',num:'18'},{w:'NINETEEN',num:'19'},{w:'TWENTY',num:'20'}]},
+ {id:'shapes', icon:'⭐', name:'Shapes', focus:true, words:[
+   {w:'CIRCLE',shape:'circle',color:'#F9A8B8'},{w:'OVAL',shape:'oval',color:'#FBBF77'},{w:'SQUARE',shape:'square',color:'#7EB8F7'},
+   {w:'STAR',e:'⭐'},{w:'HEART',e:'🩷'},{w:'TRIANGLE',shape:'tri',color:'#86E3A7'},{w:'RECTANGLE',shape:'rect',color:'#C4B5FD'}]},
+ {id:'animals1', icon:'🦁', name:'Animals 1', words:[
+   {w:'LION',e:'🦁'},{w:'TIGER',e:'🐯'},{w:'ELEPHANT',e:'🐘'},{w:'MONKEY',e:'🐵'},{w:'SNAKE',e:'🐍'},
+   {w:'BEAR',e:'🐻'},{w:'FISH',e:'🐟'},{w:'SHARK',e:'🦈'},{w:'DOG',e:'🐶'},{w:'CAT',e:'🐱'}]},
+ {id:'animals2', icon:'🐷', name:'Animals 2', words:[
+   {w:'PIG',e:'🐷'},{w:'COW',e:'🐮'},{w:'HORSE',e:'🐴'},{w:'DUCK',e:'🦆'},{w:'GOAT',e:'🐐'},
+   {w:'CHICKEN',e:'🐔'},{w:'RABBIT',e:'🐰'},{w:'BIRD',e:'🐦'},{w:'FROG',e:'🐸'},{w:'MOUSE',e:'🐭'}]},
+ {id:'classroom', icon:'📕', name:'Classroom', words:[
+   {w:'BOOK',e:'📕'},{w:'CHAIR',e:'🪑'},{w:'DESK',shape:'desk'},{w:'ERASER',shape:'eraser'},{w:'PEN',e:'🖊️'},
+   {w:'PENCIL',e:'✏️'},{w:'BAG',e:'🎒'},{w:'RULER',e:'📏'},{w:'TABLE',shape:'table'}]},
+ {id:'house', icon:'🏠', name:'House', words:[
+   {w:'PAN',e:'🍳'},{w:'BALL',e:'⚽'},{w:'BOX',e:'📦'},{w:'BED',e:'🛏️'},{w:'CUP',e:'☕'},
+   {w:'BASKET',e:'🧺'},{w:'FAN',e:'🪭'},{w:'DOOR',e:'🚪'},{w:'FORK',e:'🍴'},{w:'SPOON',e:'🥄'}]},
+ {id:'fruits', icon:'🍎', name:'Fruits & Veg', words:[
+   {w:'APPLE',e:'🍎'},{w:'BANANA',e:'🍌'},{w:'ORANGE',e:'🍊'},{w:'CARROT',e:'🥕'},{w:'MANGO',e:'🥭'},
+   {w:'WATERMELON',e:'🍉'},{w:'POTATO',e:'🥔'},{w:'TOMATO',e:'🍅'},{w:'MELON',e:'🍈'}]},
+ {id:'food', icon:'🥚', name:'Food & Drinks', words:[
+   {w:'EGG',e:'🥚'},{w:'CAKE',e:'🎂'},{w:'RICE',e:'🍚'},{w:'FISH',e:'🐟'},{w:'BREAD',e:'🍞'},{w:'WATER',e:'💧'},
+   {w:'MILK',e:'🥛'},{w:'PIZZA',e:'🍕'},{w:'HAM',e:'🍖'},{w:'TEA',e:'🍵'},{w:'JUICE',e:'🧃'}]},
+ {id:'family', icon:'👨', name:'Family', words:[
+   {w:'FATHER',e:'👨'},{w:'MOTHER',e:'👩'},{w:'BROTHER',e:'👦'},{w:'SISTER',e:'👧'},{w:'BABY',e:'👶'},
+   {w:'GRANDFATHER',e:'👴'},{w:'GRANDMOTHER',e:'👵'},{w:'UNCLE',e:'🧔'},{w:'AUNT',e:'👩‍🦱'},{w:'BOY',e:'🙋‍♂️'},{w:'GIRL',e:'🙋‍♀️'}]},
+ {id:'feelings', icon:'😊', name:'Feelings', words:[
+   {w:'HAPPY',e:'😊'},{w:'SAD',e:'😢'},{w:'ANGRY',e:'😠'},{w:'SICK',e:'🤒'},{w:'HOT',e:'🥵'},
+   {w:'COLD',e:'🥶'},{w:'TIRED',e:'🥱'},{w:'THIRSTY',e:'😦💧'},{w:'HUNGRY',e:'😋🍴'}]},
+ {id:'days', icon:'📅', name:'Days of the Week', focus:true, words:[
+   {w:'MONDAY',color:'#FFD93D'},{w:'TUESDAY',color:'#F472B6'},{w:'WEDNESDAY',color:'#22A94E'},{w:'THURSDAY',color:'#F97316'},
+   {w:'FRIDAY',color:'#2E7CF6'},{w:'SATURDAY',color:'#7C3AED'},{w:'SUNDAY',color:'#E12D39'}]},
+];
+const CAT_MAP = Object.fromEntries(CATEGORIES.map(c=>[c.id,c]));
+const ALL_WORDS = CATEGORIES.flatMap(c=>c.words);
+
+/* ============================================================ */
+const $ = s => document.querySelector(s);
+const rnd = (a,b) => a + Math.random()*(b-a);
+const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const TILE_COLORS = ['#FFD93D','#8CF0B8','#FFB3C6','#A8D8FF','#FFC98A','#D8B9FF'];
+const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+let voiceOn = true;
+let S = null;   // game session
+let R = null;   // current round
+let trackW = 0;
+
+/* ---------------- AUDIO (procedural) ---------------- */
+const AC = {
+  ctx:null,
+  ensure(){
+    if(!this.ctx){ const A = window.AudioContext || window.webkitAudioContext; if(A) this.ctx = new A(); }
+    if(this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  }
+};
+function tone(freq, dur, type, vol, glideTo){
+  const c = AC.ctx; if(!c) return;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type || 'sine'; o.frequency.setValueAtTime(freq, c.currentTime);
+  if(glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, c.currentTime + dur);
+  g.gain.setValueAtTime(vol || 0.2, c.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+  o.connect(g).connect(c.destination);
+  o.start(); o.stop(c.currentTime + dur + 0.02);
+}
+function noiseBurst(dur, vol, freq, q){
+  const c = AC.ctx; if(!c) return;
+  const len = Math.max(1, Math.floor(c.sampleRate * dur));
+  const buf = c.createBuffer(1, len, c.sampleRate);
+  const d = buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i] = (Math.random()*2-1) * (1 - i/len);
+  const src = c.createBufferSource(); src.buffer = buf;
+  const f = c.createBiquadFilter(); f.type='bandpass'; f.frequency.value = freq; f.Q.value = q || 1;
+  const g = c.createGain(); g.gain.value = vol;
+  src.connect(f).connect(g).connect(c.destination);
+  src.start();
+}
+const SFX = {
+  pop(){ tone(520, .12, 'triangle', .22, 780); },
+  buzz(){ tone(170, .2, 'square', .14, 120); },
+  snip(){ noiseBurst(.05,.3,2600,3); setTimeout(()=>noiseBurst(.05,.3,3200,3), 90); },
+  splash(){ noiseBurst(.35,.28,900,.8); tone(300,.3,'sine',.12,120); },
+  boom(){ noiseBurst(.6,.5,300,.5); tone(72,.7,'sine',.4,40); setTimeout(()=>noiseBurst(.3,.2,150,.5),120); },
+  tick(){ tone(1050,.05,'square',.1); },
+  crackle(hot){ noiseBurst(.04, .05 + hot*.07, rnd(1800,4200), 2); },
+  freeze(){ tone(1400,.45,'sine',.16,500); setTimeout(()=>tone(1800,.25,'triangle',.1,900),120); },
+  whoosh(){ noiseBurst(.2,.24,1500,1); tone(280,.28,'sawtooth',.1,760); },
+  fanfare(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.22,'triangle',.2),i*110)); },
+  match(){ noiseBurst(.12,.2,2400,1.5); },
+};
+
+/* ---------------- TTS ---------------- */
+const ttsOK = 'speechSynthesis' in window;
+function speak(text, cancel){
+  if(!ttsOK || !voiceOn) return;
+  if(cancel) speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = CFG.TTS_LANG; u.rate = CFG.TTS_RATE; u.pitch = 1.1;
+  const btn = $('#sayBtn');
+  u.onstart = ()=>btn.classList.add('talking');
+  u.onend = ()=>btn.classList.remove('talking');
+  speechSynthesis.speak(u);
+}
+const PRAISES = ['Great job!','Awesome!','Super!','You did it!','Amazing!'];
+
+/* ---------------- FX helpers ---------------- */
+function floaty(txt, x, y){
+  const el = document.createElement('div');
+  el.className='floaty'; el.textContent=txt;
+  el.style.left=x+'px'; el.style.top=y+'px';
+  $('#fxLayer').appendChild(el);
+  setTimeout(()=>el.remove(),1300);
+}
+function confetti(n){
+  const cols=['#FFD93D','#FF6B6B','#5FE3A1','#7FDBFF','#B99CFF','#FFB3C6'];
+  for(let i=0;i<n;i++){
+    const el=document.createElement('div');
+    el.className='confetti';
+    el.style.left=rnd(0,100)+'vw';
+    el.style.top='-3vh';
+    el.style.background=cols[Math.floor(rnd(0,cols.length))];
+    el.style.animationDuration=rnd(1.4,2.6)+'s';
+    el.style.animationDelay=rnd(0,.4)+'s';
+    $('#fxLayer').appendChild(el);
+    setTimeout(()=>el.remove(),3200);
+  }
+}
+function sparkAt(px){
+  const el=document.createElement('span');
+  el.className='spark'; el.textContent='✨';
+  el.style.left=px+'px'; el.style.top='50%';
+  el.style.setProperty('--dx', rnd(-24,24)+'px');
+  el.style.setProperty('--dy', rnd(-34,-6)+'px');
+  $('#fuseWrap').appendChild(el);
+  setTimeout(()=>el.remove(),620);
+}
+function flashRedTick(){
+  document.body.style.setProperty('--danger', Math.max(getDanger(), .6));
+  setTimeout(()=>document.body.style.setProperty('--danger', getDanger()), 180);
+}
+
+/* ---------------- SESSION ---------------- */
+let chosenCat = 'mix';
+function buildCatGrid(){
+  const g = $('#catGrid'); g.innerHTML='';
+  const mk = (id, icon, name, count, focus)=>{
+    const b=document.createElement('button');
+    b.className='catBtn'+(id==='mix'?' mix':'');
+    b.innerHTML=`<span class="ci">${icon}</span><span class="cn">${name}</span><span class="cc">${count} words</span>${focus?'<span class="cf">⭐ focus</span>':''}`;
+    b.addEventListener('click', ()=>{
+      AC.ensure(); SFX.pop();
+      chosenCat=id;
+      $('#chosenLbl').textContent = `${icon} ${name} · ${count} words`;
+      showPhase(2);
+    });
+    g.appendChild(b);
+  };
+  mk('mix','🌟','Mix All',ALL_WORDS.length,false);
+  CATEGORIES.forEach(c=>mk(c.id,c.icon,c.name,c.words.length,!!c.focus));
+}
+function showPhase(n){
+  $('#catPhase').classList.toggle('gone', n!==1);
+  $('#diffPhase').classList.toggle('gone', n!==2);
+}
+function pickWords(){
+  if(chosenCat==='mix') return shuffle(ALL_WORDS.slice()).slice(0, CFG.WORDS_PER_GAME);
+  return shuffle(CAT_MAP[chosenCat].words.slice());   // the whole book page, like a real test
+}
+function startGame(diffKey){
+  AC.ensure();
+  const diff = DIFF[diffKey];
+  const isMix = chosenCat==='mix';
+  S = { diffKey, diff, idx:0, score:0, defused:0, freezes:diff.freezes,
+        words:pickWords(), catIcon: isMix?'🌟':CAT_MAP[chosenCat].icon };
+  $('#startScreen').classList.add('hidden');
+  $('#resultScreen').classList.add('hidden');
+  $('#gameScreen').classList.remove('hidden');
+  renderFreezes();
+  updateHUD();
+  buildRound();
+}
+function renderFreezes(){
+  const box = $('#freezeBtns'); box.innerHTML='';
+  for(let i=0;i<S.diff.freezes;i++){
+    const b=document.createElement('button');
+    b.className='frzBtn'; b.textContent='❄️';
+    if(i >= S.freezes) b.classList.add('used');
+    b.addEventListener('click', useFreeze);
+    box.appendChild(b);
+  }
+}
+function updateHUD(){
+  $('#hudWord').textContent = `${S.catIcon} ${Math.min(S.idx+1,S.words.length)}/${S.words.length}`;
+  $('#hudScore').textContent = `⭐ ${S.score}`;
+}
+function renderClue(x){
+  const c = $('#clueEmoji');
+  if(x.num){
+    c.innerHTML = `<span class="numBadge">${x.num}</span>`;
+  } else if(x.shape){
+    const st = x.color ? ` style="--sc:${x.color}"` : '';
+    const inner = (x.shape==='belt'||x.shape==='desk'||x.shape==='table') ? '<i></i>' : '';
+    c.innerHTML = `<div class="shp ${x.shape}"${st}>${inner}</div>`;
+  } else if(x.color){
+    c.innerHTML = `<div class="shp chip" style="--sc:${x.color}"></div>`;
+  } else {
+    c.textContent = x.e;
+  }
+  c.style.animation='none'; void c.offsetWidth; c.style.animation='';
+}
+function renderHearts(justLost){
+  const el = $('#hudHearts');
+  const max = S.diff.misses;
+  let h = '';
+  for(let i=0;i<max;i++){
+    if(i < R.missesLeft) h += '❤️';
+    else if(justLost === i) h += '💔';
+    else h += '🖤';
+  }
+  el.textContent = h;
+  el.classList.toggle('danger', R.missesLeft === 0);
+  if(justLost !== undefined){
+    el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+    setTimeout(()=>{ if(R) renderHearts(); }, 650);
+  }
+}
+
+/* ---------------- ROUND ---------------- */
+function buildRound(){
+  const entry = S.words[S.idx];
+  const w = entry.w;
+  const nBlank = S.diff.blanks >= 99 ? w.length : Math.min(S.diff.blanks, Math.max(1, w.length-1));
+  const idxs = shuffle([...Array(w.length).keys()]).slice(0, nBlank).sort((a,b)=>a-b);
+  const blankSet = new Set(idxs);
+
+  // letter tiles: needed + decoys (decoys never use letters in the word)
+  const needed = idxs.map(i=>w[i]);
+  const pool = shuffle(ALPHA.split('').filter(ch => !w.includes(ch)));
+  const tiles = shuffle(needed.concat(pool.slice(0, S.diff.decoys)));
+
+  R = {
+    word:w, emoji:entry.e, order:idxs, pos:0,
+    total: S.diff.fuseBase + S.diff.fusePerBlank * nBlank,
+    elapsed:0, frozenUntil:0, active:false, last:0, nextCrackle:0, lastTickSec:-1, jumpTarget:null,
+    missesLeft: S.diff.misses,
+  };
+  renderHearts();
+
+  // render clue (emoji / number badge / day chip / drawn shape)
+  renderClue(entry);
+
+  // render slots
+  const row = $('#wordRow'); row.innerHTML='';
+  row.classList.toggle('long', w.length >= 9);
+  w.split('').forEach((ch,i)=>{
+    const sp=document.createElement('div');
+    sp.className='slot'+(blankSet.has(i)?' blank':'');
+    sp.dataset.i=i; sp.textContent=ch;
+    row.appendChild(sp);
+  });
+  markCurrent();
+
+  // render bank
+  const bank = $('#bank'); bank.innerHTML='';
+  tiles.forEach((ch,ti)=>{
+    const b=document.createElement('button');
+    b.className='tile'; b.textContent=ch;
+    b.style.background=`linear-gradient(180deg,rgba(255,255,255,.5) 0%,rgba(255,255,255,0) 45%), ${TILE_COLORS[ti % TILE_COLORS.length]}`;
+    b.addEventListener('click', ()=>tapTile(b,ch));
+    bank.appendChild(b);
+  });
+
+  // reset bomb visuals
+  const card=$('#bombCard');
+  card.classList.remove('warn','panic','frozenC');
+  $('#bombBall').classList.remove('boomed');
+  $('#bombFace').textContent='🙂';
+  $('#flameE').textContent='🔥';
+  document.body.style.setProperty('--danger',0);
+  cacheTrack();
+  renderFuse(0);
+  updateHUD();
+
+  // light the fuse!
+  SFX.match();
+  setTimeout(()=>{
+    R.active=true; R.last=performance.now();
+    speak(R.word.toLowerCase(), true);
+  }, 550);
+}
+function markCurrent(){
+  document.querySelectorAll('.slot').forEach(s=>s.classList.remove('cur'));
+  if(R && R.pos < R.order.length){
+    const s=document.querySelector(`.slot[data-i="${R.order[R.pos]}"]`);
+    if(s) s.classList.add('cur');
+  }
+}
+
+/* ---------------- INPUT ---------------- */
+function tapTile(btn, ch){
+  if(!R || !R.active || btn.classList.contains('used')) return;
+  AC.ensure();
+  const needIdx = R.order[R.pos];
+  if(ch === R.word[needIdx]){
+    btn.classList.add('used');
+    const slot=document.querySelector(`.slot[data-i="${needIdx}"]`);
+    slot.classList.remove('blank','cur'); slot.classList.add('filled');
+    R.pos++; S.score+=10; updateHUD(); SFX.pop();
+    const rc=slot.getBoundingClientRect();
+    floaty('+10', rc.left+rc.width/2, rc.top-8);
+    markCurrent();
+    if(R.pos >= R.order.length) defuse();
+  } else {
+    btn.classList.add('shk'); setTimeout(()=>btn.classList.remove('shk'),340);
+    if(R.missesLeft <= 0){          // no hearts left — that miss sets it off!
+      SFX.buzz();
+      explode(true);
+      return;
+    }
+    R.missesLeft--;
+    renderHearts(R.missesLeft);     // the heart at this index just broke
+    SFX.buzz();
+    flashRedTick();
+    const frozen = performance.now() < R.frozenUntil;
+    const stepSec = (R.total / CFG.FUSE_SEGMENTS) * S.diff.wrongSteps;
+    if(!frozen && stepSec > 0 && R.elapsed < R.total - 0.45){
+      const base = R.jumpTarget != null ? R.jumpTarget : R.elapsed;
+      R.jumpTarget = Math.min(base + stepSec, R.total - 0.35);
+      SFX.whoosh();
+      const f=$('#flameE');
+      f.classList.remove('hopping'); void f.offsetWidth; f.classList.add('hopping');
+      const wrapRc = $('#fuseWrap').getBoundingClientRect();
+      floaty('🔥💨', wrapRc.left + burnPx(), wrapRc.top - 4);
+    }
+  }
+}
+function useFreeze(ev){
+  if(!R || !R.active || S.freezes<=0) return;
+  AC.ensure();
+  S.freezes--;
+  ev.currentTarget.classList.add('used');
+  const now=performance.now();
+  R.frozenUntil = Math.max(now, R.frozenUntil) + CFG.FREEZE_SECONDS*1000;
+  SFX.freeze();
+  $('#bombCard').classList.add('frozenC');
+  $('#flameE').textContent='🧊';
+  $('#bombFace').textContent='🥶';
+  const px=burnPx();
+  for(let i=0;i<6;i++){
+    const el=document.createElement('span');
+    el.className='snowp'; el.textContent='❄️';
+    el.style.left=px+'px'; el.style.top='50%';
+    el.style.setProperty('--dx', rnd(-40,40)+'px');
+    $('#fuseWrap').appendChild(el);
+    setTimeout(()=>el.remove(),1450);
+  }
+}
+
+/* ---------------- FUSE LOOP ---------------- */
+function cacheTrack(){ trackW = $('#fuseWrap').clientWidth; }
+window.addEventListener('resize', cacheTrack);
+function burnPx(){ return Math.min(1, R ? R.elapsed/R.total : 0) * trackW; }
+function getDanger(){
+  if(!R) return 0;
+  const p = R.elapsed/R.total;
+  return Math.max(0, Math.min(1, (p-0.55)/0.45));
+}
+function renderFuse(p){
+  const px = p * trackW;
+  $('#fuseBurn').style.width = px+'px';
+  $('#flame').style.transform = `translateX(${px}px)`;
+  $('#flame').style.top = '50%';
+  const remain = Math.max(0, Math.ceil(R.total - R.elapsed));
+  $('#timeLeft').textContent = remain;
+  const card=$('#bombCard');
+  const d=getDanger();
+  document.body.style.setProperty('--danger', d);
+  card.classList.toggle('warn', d>0 && d<=0.6);
+  card.classList.toggle('panic', d>0.6);
+  const frozen = performance.now() < R.frozenUntil;
+  if(!frozen){
+    $('#bombFace').textContent = d>0.6 ? '😱' : d>0 ? '😬' : '🙂';
+  }
+}
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(!R || !R.active) return;
+  const now = performance.now();
+  const dt = Math.min(0.1, (now - R.last)/1000);
+  R.last = now;
+  const frozen = now < R.frozenUntil;
+  if(frozen){
+    if(!$('#bombCard').classList.contains('frozenC')){
+      $('#bombCard').classList.add('frozenC'); $('#flameE').textContent='🧊';
+    }
+  } else {
+    if($('#bombCard').classList.contains('frozenC')){
+      $('#bombCard').classList.remove('frozenC'); $('#flameE').textContent='🔥';
+    }
+    if(R.jumpTarget != null){
+      const rate = (R.total / CFG.FUSE_SEGMENTS) / 0.3;   // slide one step in ~0.3s
+      R.elapsed = Math.min(R.jumpTarget, R.elapsed + rate * dt);
+      if(R.elapsed >= R.jumpTarget - 0.001){
+        R.jumpTarget = null;
+        $('#flameE').classList.remove('hopping');
+        sparkAt(burnPx()); sparkAt(burnPx()); SFX.crackle(1);
+      }
+    } else {
+      R.elapsed += dt;
+    }
+    // crackle sparks
+    if(now > R.nextCrackle){
+      const d=getDanger();
+      SFX.crackle(d);
+      sparkAt(burnPx());
+      R.nextCrackle = now + (d>0.6 ? 110 : 200) + rnd(0,80);
+    }
+    // last-seconds tick
+    const remain = R.total - R.elapsed;
+    if(remain <= 5){
+      const sec = Math.ceil(remain);
+      if(sec !== R.lastTickSec){ R.lastTickSec = sec; SFX.tick(); }
+    }
+  }
+  renderFuse(Math.min(1, R.elapsed/R.total));
+  if(R.elapsed >= R.total) explode();
+}
+requestAnimationFrame(loop);
+
+/* ---------------- OUTCOMES ---------------- */
+function defuse(){
+  R.active=false;
+  if(ttsOK) speechSynthesis.cancel();
+  SFX.snip();
+  $('#bombCard').classList.remove('frozenC');
+  const wrapRc = $('#fuseWrap').getBoundingClientRect();
+  const fx = wrapRc.left + burnPx();
+  floaty('✂️', fx, wrapRc.top-6);
+  setTimeout(()=>{ SFX.splash(); floaty('💦', fx, wrapRc.top-6); }, 220);
+  $('#flameE').textContent='💨';
+  $('#bombFace').textContent='😄';
+  $('#bombCard').classList.remove('warn','panic');
+  document.body.style.setProperty('--danger',0);
+  const bonus = Math.ceil(R.total - R.elapsed) * 5;
+  S.score += bonus; S.defused++; updateHUD();
+  const bRc = $('#bombBall').getBoundingClientRect();
+  floaty('+'+bonus+' ⭐', bRc.left+bRc.width/2, bRc.top-10);
+  SFX.fanfare();
+  confetti(26);
+  if(CFG.PRAISE) setTimeout(()=>speak(PRAISES[Math.floor(rnd(0,PRAISES.length))], false), 350);
+  setTimeout(next, 1800);
+}
+function explode(byMiss){
+  if(!R.active) return;
+  R.active=false;
+  SFX.boom();
+  document.body.classList.add('shake');
+  setTimeout(()=>document.body.classList.remove('shake'), 480);
+  $('#bombBall').classList.add('boomed');
+  $('#bombFace').textContent='😵';
+  $('#flameE').textContent='';
+  const big=$('#boomBig'); big.classList.add('show');
+  setTimeout(()=>big.classList.remove('show'), 700);
+  const bRc = $('#bombBall').getBoundingClientRect();
+  for(let i=0;i<5;i++){
+    const el=document.createElement('span');
+    el.className='smoke'; el.textContent='☁️';
+    el.style.left=(bRc.left+bRc.width/2)+'px';
+    el.style.top=(bRc.top+bRc.height/2)+'px';
+    el.style.setProperty('--dx', rnd(-70,70)+'px');
+    $('#fxLayer').appendChild(el);
+    setTimeout(()=>el.remove(),1650);
+  }
+  // reveal the missing letters so Panna learns the word
+  for(let k=R.pos; k<R.order.length; k++){
+    const slot=document.querySelector(`.slot[data-i="${R.order[k]}"]`);
+    slot.classList.remove('blank','cur'); slot.classList.add('missed');
+  }
+  floaty((byMiss?'💔 ':'')+'BOOM! It was '+R.word, window.innerWidth/2, window.innerHeight*0.32);
+  speak(R.word.toLowerCase(), true);
+  setTimeout(next, 2400);
+}
+function next(){
+  S.idx++;
+  if(S.idx >= S.words.length) showResults();
+  else buildRound();
+}
+
+/* ---------------- RESULTS ---------------- */
+function showResults(){
+  R=null;
+  $('#gameScreen').classList.add('hidden');
+  $('#resultScreen').classList.remove('hidden');
+  document.body.style.setProperty('--danger',0);
+  const n=S.words.length, d=S.defused, ratio=d/n;
+  const stars = ratio>=0.9?3 : ratio>=0.6?2 : ratio>=0.3?1 : 0;
+  $('#resTitle').textContent = stars===3?'🏆 Super Bomb Squad!' : stars>=1?'Mission Complete!' : 'Good try, hero!';
+  $('#resScore').textContent = 'Score: '+S.score;
+  $('#resDefused').textContent = `Bombs defused: ${d}/${n} ✂️`;
+  const sts=document.querySelectorAll('#starRow .st');
+  sts.forEach(s=>s.classList.remove('on'));
+  for(let i=0;i<stars;i++){
+    setTimeout(()=>{ sts[i].classList.add('on'); tone(700+i*200,.25,'triangle',.2); }, 400+i*450);
+  }
+  if(stars>=2) confetti(70);
+  SFX.fanfare();
+}
+
+/* ---------------- WIRING ---------------- */
+$('#dEasy').addEventListener('click', ()=>startGame('easy'));
+$('#dMed').addEventListener('click', ()=>startGame('medium'));
+$('#dHard').addEventListener('click', ()=>startGame('hard'));
+$('#backBtn').addEventListener('click', ()=>showPhase(1));
+$('#againBtn').addEventListener('click', ()=>startGame(S.diffKey));
+$('#menuBtn').addEventListener('click', ()=>{
+  $('#resultScreen').classList.add('hidden');
+  $('#gameScreen').classList.add('hidden');
+  $('#startScreen').classList.remove('hidden');
+  showPhase(1);
+});
+buildCatGrid();
+$('#sayBtn').addEventListener('click', ()=>{ AC.ensure(); if(R) speak(R.word.toLowerCase(), true); });
+$('#voiceTgl').addEventListener('click', (e)=>{
+  voiceOn=!voiceOn;
+  e.currentTarget.textContent = voiceOn ? '🔊 Voice: ON' : '🔇 Voice: OFF';
+});
+if(!ttsOK){ $('#voiceTgl').style.display='none'; $('#sayBtn').style.display='none'; }
+
+// audio unlock on first touch (iOS)
+window.addEventListener('pointerdown', ()=>AC.ensure(), {once:true});
+
+// decorative twinkles
+for(let i=0;i<14;i++){
+  const t=document.createElement('div');
+  t.className='tw'; t.textContent=Math.random()<0.5?'✦':'✨';
+  t.style.left=rnd(2,96)+'vw'; t.style.top=rnd(2,94)+'vh';
+  t.style.animationDelay=rnd(0,2.5)+'s';
+  document.body.appendChild(t);
+}
+</script>
+</body>
+</html>
