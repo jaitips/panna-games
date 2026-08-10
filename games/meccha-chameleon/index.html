@@ -536,13 +536,25 @@ function drawChameleon(x, y, size, colH, colS, colL, opts) {
    SEEK MODE — find the camouflaged chameleons
    ============================================================ */
 const SEEK_LEVELS = [
-  { count: 3, blend: 26, time: 90 },
-  { count: 4, blend: 18, time: 90 },
-  { count: 5, blend: 13, time: 75 },
-  { count: 6, blend: 9,  time: 75 },
-  { count: 7, blend: 6,  time: 75 },
+  { count: 3,  blend: 20, time: 75, sizeMul: 1.0,  wiggleGap: [4000, 9000] },
+  { count: 4,  blend: 14, time: 70, sizeMul: 1.0,  wiggleGap: [5000, 10000] },
+  { count: 5,  blend: 10, time: 60, sizeMul: 0.9,  wiggleGap: [6000, 12000] },
+  { count: 6,  blend: 7,  time: 60, sizeMul: 0.85, wiggleGap: [8000, 14000] },
+  { count: 7,  blend: 5,  time: 50, sizeMul: 0.8,  wiggleGap: [10000, 16000] },
+  { count: 8,  blend: 4,  time: 45, sizeMul: 0.72, wiggleGap: [12000, 20000] },
+  { count: 9,  blend: 3,  time: 40, sizeMul: 0.66, wiggleGap: [14000, 22000] },
+  { count: 10, blend: 2,  time: 35, sizeMul: 0.6,  wiggleGap: [16000, 26000] },
 ];
-let seekLevel = 0;
+const LEVEL_KEY = 'meccha-chameleon-seek-level';
+function loadSeekLevel() {
+  try { return clamp(parseInt(localStorage.getItem(LEVEL_KEY), 10) || 0, 0, SEEK_LEVELS.length - 1); }
+  catch (e) { return 0; }
+}
+function saveSeekLevel(lv) {
+  try { localStorage.setItem(LEVEL_KEY, lv); } catch (e) {}
+}
+let seekLevel = loadSeekLevel();
+let seekCfg = SEEK_LEVELS[0];
 let panels = [];        // wall tiles
 let lizards = [];       // hidden chameleons
 let seekTimeLeft = 0, seekTimeTotal = 0, foundCount = 0;
@@ -551,7 +563,7 @@ let hintCooldown = 0;
 let seekOver = false;
 
 function buildSeekLevel(li, keepProgress) {
-  const cfg = SEEK_LEVELS[Math.min(li, SEEK_LEVELS.length - 1)];
+  const cfg = seekCfg = SEEK_LEVELS[Math.min(li, SEEK_LEVELS.length - 1)];
   // Wall of colored panels
   const cols = W > H ? 7 : 5;
   const rows = W > H ? 5 : 7;
@@ -585,7 +597,7 @@ function buildSeekLevel(li, keepProgress) {
       foundAt: 0,
       blinkAt: now + rand(1000, 4000),
       blink: 0,
-      wiggleAt: now + rand(2500, 7000),
+      wiggleAt: now + rand(cfg.wiggleGap[0], cfg.wiggleGap[1]),
       wigglePhase: 0,
       facing: Math.random() < 0.5 ? 1 : -1,
       hintUntil: 0,
@@ -604,7 +616,7 @@ function buildSeekLevel(li, keepProgress) {
 
 function placeLizard(lz, cfg, panel) {
   const p = panel || panels[randi(0, panels.length - 1)];
-  const size = clamp(Math.min(p.w, p.h) * 0.85, 60, 130);
+  const size = clamp(Math.min(p.w, p.h) * 0.85 * (cfg.sizeMul || 1), 44, 130);
   lz.x = p.x + p.w / 2 + rand(-p.w * 0.12, p.w * 0.12);
   lz.y = clamp(p.y + p.h / 2 + rand(-p.h * 0.1, p.h * 0.1), H * 0.16, H - size * 0.4);
   lz.size = size;
@@ -630,7 +642,7 @@ function startSeek() {
   document.getElementById('hintBtn').classList.remove('hidden');
   hintCooldown = 0;
   updateHUD();
-  banner(`Find ${lizards.length} chameleons! 🔍`);
+  banner(`Level ${seekLevel + 1} — find ${lizards.length}! 🔍`);
   sfx.click();
 }
 
@@ -672,7 +684,7 @@ function drawSeek(dt) {
         if (t < 0.05) sfx.wiggle();
       } else {
         lz.wigglePhase = 0;
-        lz.wiggleAt = now + rand(4000, 9000);
+        lz.wiggleAt = now + rand(seekCfg.wiggleGap[0], seekCfg.wiggleGap[1]);
       }
     }
     if (lz.found) {
@@ -742,7 +754,7 @@ function useHint() {
   if (!hidden.length) return;
   const lz = hidden[randi(0, hidden.length - 1)];
   lz.hintUntil = now + 2200;
-  hintCooldown = 6;
+  hintCooldown = 8;
   sfx.giggle();
 }
 
@@ -755,8 +767,10 @@ function endSeek(won) {
     const frac = seekTimeLeft / seekTimeTotal;
     const stars = frac > 0.5 ? 3 : frac > 0.2 ? 2 : 1;
     setTimeout(() => {
-      showResult('🏆', 'You found them all!', '⭐'.repeat(stars),
-        `Level ${seekLevel + 1} complete!`, () => { seekLevel = Math.min(seekLevel + 1, SEEK_LEVELS.length - 1); startSeek(); });
+      const maxed = seekLevel >= SEEK_LEVELS.length - 1;
+      showResult('🏆', maxed ? 'Master Spotter!' : 'You found them all!', '⭐'.repeat(stars),
+        maxed ? 'You beat the hardest level!' : `Level ${seekLevel + 1} complete!`,
+        () => { seekLevel = Math.min(seekLevel + 1, SEEK_LEVELS.length - 1); saveSeekLevel(seekLevel); startSeek(); });
     }, 1200);
   } else {
     // Gentle: reveal the rest, no scary fail
@@ -775,7 +789,9 @@ function endSeek(won) {
    ============================================================ */
 const HIDE_ROUNDS = 5;
 let hideRound = 0, hideWins = 0, hideTries = 0;
-let wallIdx = 0;           // palette index of the wall
+let wallColor = { ...PALETTE[3] };   // color of the wall this round
+let roundPalette = [];     // buckets offered this round (correct + decoys)
+let correctIdx = 0;        // index of the matching bucket in roundPalette
 let myColorIdx = -1;       // what the kid painted
 let myColor = { h: 0, s: 0, l: 62 };     // displayed color (animates)
 let myTarget = { h: 0, s: 0, l: 62 };
@@ -785,14 +801,14 @@ let hunter = { x: 0 };
 let hideWallPanels = [];
 let myLz = { x: 0, y: 0, size: 0, blinkAt: 0, blink: 0 };
 
-const PAINT_TIME = 10;   // seconds to paint before hunter comes
+let paintTime = 10;      // seconds to paint before hunter comes (shrinks per round)
 
 function layoutHide() {
   myLz.size = clamp(Math.min(W, H) * 0.3, 110, 200);
   myLz.x = W * 0.62;
   myLz.y = H * 0.58;
   // wall = brick-ish grid of one palette color with slight variation
-  const base = PALETTE[wallIdx];
+  const base = wallColor;
   hideWallPanels = [];
   const cols = 6, rows = 8;
   const pw = W / cols, ph = H / rows;
@@ -811,33 +827,56 @@ function startHide() {
   state = 'hide';
   hideRound = 0;
   hideWins = 0;
+  hideTries = 0;
   showHUD(true);
   document.getElementById('hintBtn').classList.add('hidden');
-  buildPalette();
   nextHideRound();
   sfx.click();
 }
 
+/* Build this round's buckets: the wall color plus decoys.
+   Round 1 = classic distinct colors; later rounds swap in more
+   "tricky twin" shades of the wall color (near-hue / near-lightness). */
+function makeRoundPalette() {
+  const base = PALETTE[randi(0, PALETTE.length - 1)];
+  wallColor = { ...base };
+  const correct = { ...base };
+  const twins = [
+    { name: base.name + ' twin', h: base.h + 24, s: base.s, l: base.l },
+    { name: base.name + ' twin', h: base.h - 24, s: base.s, l: base.l },
+    { name: base.name + ' light', h: base.h, s: base.s, l: clamp(base.l + 16, 25, 82) },
+    { name: base.name + ' dark', h: base.h, s: base.s, l: clamp(base.l - 16, 25, 82) },
+  ];
+  shuffle(twins);
+  const decoys = twins.slice(0, Math.min(hideRound, 4));
+  const others = PALETTE.filter(c => c.name !== base.name).map(c => ({ ...c }));
+  shuffle(others);
+  while (decoys.length < 5) decoys.push(others.pop());
+  roundPalette = [correct, ...decoys];
+  shuffle(roundPalette);
+  correctIdx = roundPalette.indexOf(correct);
+}
+
 function nextHideRound() {
-  wallIdx = randi(0, PALETTE.length - 1);
+  makeRoundPalette();
+  paintTime = clamp(10 - hideRound * 1.5, 5, 10);
   myColorIdx = -1;
   myColor = { h: 0, s: 5, l: 65 };   // unpainted grey — clearly "not hiding yet"
   myTarget = { ...myColor };
   hidePhase = 'paint';
   phaseT = 0;
-  hideTries = 0;
   hunter.x = -200;
   layoutHide();
+  buildPalette();
   document.getElementById('palette').classList.remove('hidden');
-  document.querySelectorAll('.bucket').forEach(b => b.classList.remove('picked'));
   updateHUD();
-  banner('Paint yourself to hide! 🎨');
+  banner(hideRound >= 1 ? 'Look closely — tricky colors! 👀' : 'Paint yourself to hide! 🎨');
 }
 
 function buildPalette() {
   const pal = document.getElementById('palette');
   pal.innerHTML = '';
-  PALETTE.forEach((c, i) => {
+  roundPalette.forEach((c, i) => {
     const b = document.createElement('button');
     b.className = 'bucket';
     b.style.background = `radial-gradient(circle at 35% 30%, ${hsl(c.h, c.s, c.l + 12)}, ${hsl(c.h, c.s, c.l - 8)})`;
@@ -850,7 +889,7 @@ function buildPalette() {
 function pickColor(i, btn) {
   if (state !== 'hide' || hidePhase === 'scan' || hidePhase === 'verdict') return;
   myColorIdx = i;
-  myTarget = { ...PALETTE[i] };
+  myTarget = { ...roundPalette[i] };
   document.querySelectorAll('.bucket').forEach(b => b.classList.remove('picked'));
   btn.classList.add('picked');
   burstConfetti(myLz.x, myLz.y, 12);
@@ -862,7 +901,7 @@ function drawHide(dt) {
 
   // Wall
   hideWallPanels.forEach(p => {
-    ctx.fillStyle = hsl(PALETTE[wallIdx].h, p.s, p.l);
+    ctx.fillStyle = hsl(wallColor.h, p.s, p.l);
     ctx.fillRect(p.x - 0.5, p.y - 0.5, p.w + 1, p.h + 1);
     ctx.fillStyle = 'rgba(255,255,255,0.05)';
     ctx.fillRect(p.x + 3, p.y + 3, p.w - 6, 4);
@@ -899,8 +938,8 @@ function drawHide(dt) {
 
   // Phase logic
   if (hidePhase === 'paint') {
-    const left = PAINT_TIME - phaseT;
-    document.getElementById('timerBar').style.width = clamp(left / PAINT_TIME * 100, 0, 100) + '%';
+    const left = paintTime - phaseT;
+    document.getElementById('timerBar').style.width = clamp(left / paintTime * 100, 0, 100) + '%';
     if (left <= 3.2 && left > 0) {
       const sec = Math.ceil(left);
       if (sec !== lastTickSec) { lastTickSec = sec; sfx.tick(); banner(`Hunter coming in ${sec}... 🤖`); }
@@ -917,7 +956,7 @@ function drawHide(dt) {
     if (phaseT >= 2) { hidePhase = 'scan'; phaseT = 0; sfx.scan(); }
   } else if (hidePhase === 'scan') {
     if (phaseT >= 2.2) {
-      verdictSafe = myColorIdx === wallIdx;
+      verdictSafe = myColorIdx === correctIdx;
       hidePhase = 'verdict';
       phaseT = 0;
       if (verdictSafe) {
@@ -1053,7 +1092,7 @@ function showHUD(show) {
 }
 function updateHUD() {
   const info = document.getElementById('hudInfo');
-  if (state === 'seek') info.textContent = `🦎 ${foundCount}/${lizards.length}`;
+  if (state === 'seek') info.textContent = `🦎 ${foundCount}/${lizards.length} · Lv${seekLevel + 1}`;
   else if (state === 'hide') info.textContent = `🛡️ ${hideWins}/${HIDE_ROUNDS}`;
 }
 function banner(msg) {
@@ -1113,7 +1152,7 @@ canvas.addEventListener('pointerdown', e => {
 document.getElementById('seekModeBtn').addEventListener('click', () => {
   audio();
   document.getElementById('titleScreen').classList.add('hidden');
-  seekLevel = 0;
+  seekLevel = loadSeekLevel();   // resume where he left off
   startSeek();
 });
 document.getElementById('hideModeBtn').addEventListener('click', () => {
