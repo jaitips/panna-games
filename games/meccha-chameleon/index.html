@@ -417,9 +417,12 @@ function drawChameleon(x, y, size, colH, colS, colL, opts) {
   const o = opts || {};
   const f = o.facing || 1;
   const wig = o.wigglePhase ? Math.sin(o.wigglePhase) * 0.12 : 0;
+  // camo 0..1: how strongly the markings (crest, belly, eye, spots) fade
+  // into the body color. At 1 only a faint silhouette remains.
+  const camo = clamp(o.camo || 0, 0, 1);
   const body = hsl(colH, colS, colL);
-  const dark = hsl(colH, colS, Math.max(colL - 14, 8));
-  const light = hsl(colH, Math.max(colS - 10, 0), Math.min(colL + 12, 92));
+  const dark = hsl(colH, colS, Math.max(colL - lerp(14, 2.5, camo), 8));
+  const light = hsl(colH, Math.max(colS - lerp(10, 3, camo), 0), Math.min(colL + lerp(12, 2.5, camo), 92));
 
   ctx.save();
   ctx.translate(x, y);
@@ -487,21 +490,24 @@ function drawChameleon(x, y, size, colH, colS, colL, opts) {
   ctx.fillStyle = dark;
   ctx.fill();
 
-  // Eye (big googly, blinks)
+  // Eye (big googly, blinks) — tints toward the body color as camo rises
   const blink = clamp(o.blink || 0, 0, 1); // 1 = closed
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = hsl(colH, colS * lerp(0.06, 0.6, camo), lerp(97, Math.min(colL + 14, 88), camo));
   ctx.beginPath();
   ctx.ellipse(38, -12, 10, 10 * (1 - blink * 0.92), 0, 0, Math.PI * 2);
   ctx.fill();
   if (blink < 0.7) {
-    ctx.fillStyle = '#222';
+    ctx.fillStyle = hsl(colH, colS, lerp(13, Math.max(colL - 20, 10), camo));
     ctx.beginPath();
     ctx.arc(40, -12, 4.5, 0, Math.PI * 2);
     ctx.fill();
+    const ga = ctx.globalAlpha;
+    ctx.globalAlpha = ga * (1 - camo * 0.85);
     ctx.fillStyle = '#fff';
     ctx.beginPath();
     ctx.arc(41.5, -13.5, 1.6, 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalAlpha = ga;
   } else {
     ctx.strokeStyle = dark;
     ctx.lineWidth = 2.5;
@@ -522,7 +528,7 @@ function drawChameleon(x, y, size, colH, colS, colL, opts) {
   ctx.stroke();
 
   // Spots
-  ctx.fillStyle = hsl(colH, colS, colL + 8, 0.7);
+  ctx.fillStyle = hsl(colH, colS, colL + lerp(8, 3, camo), lerp(0.7, 0.25, camo));
   [[-24, -4], [-4, -8], [12, 2]].forEach(([sx, sy]) => {
     ctx.beginPath();
     ctx.arc(sx, sy, 4.5, 0, Math.PI * 2);
@@ -535,15 +541,17 @@ function drawChameleon(x, y, size, colH, colS, colL, opts) {
 /* ============================================================
    SEEK MODE — find the camouflaged chameleons
    ============================================================ */
+/* camo: how much the chameleon's markings fade into its body color (0..1)
+   hues: how many different wall colors — fewer = monochrome wall = brutal */
 const SEEK_LEVELS = [
-  { count: 3,  blend: 20, time: 75, sizeMul: 1.0,  wiggleGap: [4000, 9000] },
-  { count: 4,  blend: 14, time: 70, sizeMul: 1.0,  wiggleGap: [5000, 10000] },
-  { count: 5,  blend: 10, time: 60, sizeMul: 0.9,  wiggleGap: [6000, 12000] },
-  { count: 6,  blend: 7,  time: 60, sizeMul: 0.85, wiggleGap: [8000, 14000] },
-  { count: 7,  blend: 5,  time: 50, sizeMul: 0.8,  wiggleGap: [10000, 16000] },
-  { count: 8,  blend: 4,  time: 45, sizeMul: 0.72, wiggleGap: [12000, 20000] },
-  { count: 9,  blend: 3,  time: 40, sizeMul: 0.66, wiggleGap: [14000, 22000] },
-  { count: 10, blend: 2,  time: 35, sizeMul: 0.6,  wiggleGap: [16000, 26000] },
+  { count: 3,  blend: 16, time: 75, sizeMul: 1.0,  camo: 0.3,  hues: 6, wiggleGap: [5000, 10000] },
+  { count: 4,  blend: 12, time: 70, sizeMul: 0.95, camo: 0.45, hues: 5, wiggleGap: [6000, 11000] },
+  { count: 5,  blend: 9,  time: 65, sizeMul: 0.9,  camo: 0.55, hues: 4, wiggleGap: [7000, 13000] },
+  { count: 6,  blend: 7,  time: 60, sizeMul: 0.85, camo: 0.65, hues: 3, wiggleGap: [9000, 15000] },
+  { count: 7,  blend: 5,  time: 55, sizeMul: 0.8,  camo: 0.75, hues: 3, wiggleGap: [11000, 17000] },
+  { count: 8,  blend: 4,  time: 50, sizeMul: 0.72, camo: 0.85, hues: 2, wiggleGap: [13000, 21000] },
+  { count: 9,  blend: 3,  time: 45, sizeMul: 0.66, camo: 0.92, hues: 1, wiggleGap: [15000, 23000] },
+  { count: 10, blend: 2,  time: 40, sizeMul: 0.6,  camo: 1.0,  hues: 1, wiggleGap: [17000, 27000] },
 ];
 const LEVEL_KEY = 'meccha-chameleon-seek-level';
 function loadSeekLevel() {
@@ -569,10 +577,13 @@ function buildSeekLevel(li, keepProgress) {
   const rows = W > H ? 5 : 7;
   const pw = W / cols, ph = H / rows;
   const oldLizards = keepProgress ? lizards : null;
+  const wallHues = PALETTE.slice();
+  shuffle(wallHues);
+  wallHues.length = clamp(cfg.hues || PALETTE.length, 1, wallHues.length);
   panels = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const base = PALETTE[randi(0, PALETTE.length - 1)];
+      const base = wallHues[randi(0, wallHues.length - 1)];
       panels.push({
         x: c * pw, y: r * ph, w: pw, h: ph,
         h1: base.h + randi(-10, 10),
@@ -617,8 +628,8 @@ function buildSeekLevel(li, keepProgress) {
 function placeLizard(lz, cfg, panel) {
   const p = panel || panels[randi(0, panels.length - 1)];
   const size = clamp(Math.min(p.w, p.h) * 0.85 * (cfg.sizeMul || 1), 44, 130);
-  lz.x = p.x + p.w / 2 + rand(-p.w * 0.12, p.w * 0.12);
-  lz.y = clamp(p.y + p.h / 2 + rand(-p.h * 0.1, p.h * 0.1), H * 0.16, H - size * 0.4);
+  lz.x = p.x + p.w / 2 + rand(-p.w * 0.22, p.w * 0.22);
+  lz.y = clamp(p.y + p.h / 2 + rand(-p.h * 0.18, p.h * 0.18), H * 0.16, H - size * 0.4);
   lz.size = size;
   lz.r = size * 0.62; // generous tap radius
   // Camouflage: panel color shifted slightly (less shift = harder)
@@ -713,6 +724,7 @@ function drawSeek(dt) {
       drawChameleon(lz.x, lz.y, lz.size, lz.h, lz.s, lz.l, {
         facing: lz.facing,
         blink: lz.blink,
+        camo: hinting ? seekCfg.camo * 0.4 : seekCfg.camo,   // hint makes them stand out more
         wigglePhase: hinting ? now / 90 : lz.wigglePhase,
       });
     }
@@ -834,21 +846,23 @@ function startHide() {
   sfx.click();
 }
 
-/* Build this round's buckets: the wall color plus decoys.
-   Round 1 = classic distinct colors; later rounds swap in more
-   "tricky twin" shades of the wall color (near-hue / near-lightness). */
+/* Build this round's buckets: the wall color plus "tricky twin" decoys —
+   shades of the wall color shifted in hue or lightness. Every round has
+   decoys; each round they get closer to the real color and more numerous. */
 function makeRoundPalette() {
   const base = PALETTE[randi(0, PALETTE.length - 1)];
   wallColor = { ...base };
   const correct = { ...base };
+  const gap = [26, 20, 15, 12, 9][clamp(hideRound, 0, 4)];
+  const lGap = Math.max(gap * 0.7, 7);
   const twins = [
-    { name: base.name + ' twin', h: base.h + 24, s: base.s, l: base.l },
-    { name: base.name + ' twin', h: base.h - 24, s: base.s, l: base.l },
-    { name: base.name + ' light', h: base.h, s: base.s, l: clamp(base.l + 16, 25, 82) },
-    { name: base.name + ' dark', h: base.h, s: base.s, l: clamp(base.l - 16, 25, 82) },
+    { name: base.name + ' twin', h: base.h + gap, s: base.s, l: base.l },
+    { name: base.name + ' twin', h: base.h - gap, s: base.s, l: base.l },
+    { name: base.name + ' light', h: base.h, s: base.s, l: clamp(base.l + lGap, 25, 82) },
+    { name: base.name + ' dark', h: base.h, s: base.s, l: clamp(base.l - lGap, 25, 82) },
   ];
   shuffle(twins);
-  const decoys = twins.slice(0, Math.min(hideRound, 4));
+  const decoys = twins.slice(0, Math.min(2 + hideRound, 4));
   const others = PALETTE.filter(c => c.name !== base.name).map(c => ({ ...c }));
   shuffle(others);
   while (decoys.length < 5) decoys.push(others.pop());
@@ -870,7 +884,7 @@ function nextHideRound() {
   buildPalette();
   document.getElementById('palette').classList.remove('hidden');
   updateHUD();
-  banner(hideRound >= 1 ? 'Look closely — tricky colors! 👀' : 'Paint yourself to hide! 🎨');
+  banner(hideRound >= 1 ? 'Even trickier colors! 👀' : 'Match the wall EXACTLY! 🎨');
 }
 
 function buildPalette() {
@@ -929,10 +943,15 @@ function drawHide(dt) {
   }
 
   const caught = hidePhase === 'verdict' && !verdictSafe;
+  // Realistic blending: the closer your paint is to the wall color,
+  // the more your markings melt away. Exact match ≈ invisible.
+  const hd = Math.abs(((myColor.h - wallColor.h + 540) % 360) - 180);
+  const blendCamo = clamp(1 - (hd / 25 + Math.abs(myColor.l - wallColor.l) / 30 + Math.abs(myColor.s - wallColor.s) / 60), 0, 1);
   drawChameleon(myLz.x, myLz.y, myLz.size, myColor.h, myColor.s, myColor.l, {
     facing: -1,
     blink: hidePhase === 'scan' ? 0.15 : myLz.blink,   // eyes wide during the scan!
     happy: hidePhase === 'verdict' && verdictSafe,
+    camo: caught || (hidePhase === 'verdict' && verdictSafe) ? 0 : blendCamo,
     wigglePhase: caught ? now / 100 : 0,
   });
 
@@ -1076,6 +1095,7 @@ function drawHunter(x, y, ref) {
 }
 
 function endHide() {
+  hidePhase = 'done';   // stop the verdict branch re-firing while the result is delayed
   document.getElementById('palette').classList.add('hidden');
   sfx.win();
   burstConfetti(W / 2, H / 2, 90, true);
