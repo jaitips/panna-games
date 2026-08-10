@@ -15,6 +15,7 @@
     font-family: 'Fredoka', sans-serif;
     background: #14351f;
     touch-action: manipulation;
+    overscroll-behavior: none;
     user-select: none;
     -webkit-user-select: none;
   }
@@ -25,6 +26,7 @@
     width: 100vw;
     height: 100vh;
     display: block;
+    touch-action: none;   /* keep drag strokes — no browser pan/zoom hijack */
   }
 
   /* ---------- Screens ---------- */
@@ -563,6 +565,8 @@ const SEEK_LEVELS = [
   { count: 8,  blend: 4,  time: 50, sizeMul: 0.72, camo: 0.85, hues: 2, wiggleGap: [13000, 21000] },
   { count: 9,  blend: 3,  time: 45, sizeMul: 0.66, camo: 0.92, hues: 1, wiggleGap: [15000, 23000] },
   { count: 10, blend: 2,  time: 40, sizeMul: 0.6,  camo: 1.0,  hues: 1, wiggleGap: [17000, 27000] },
+  { count: 11, blend: 1,  time: 35, sizeMul: 0.55, camo: 1.0,  hues: 1, wiggleGap: [20000, 30000] },
+  { count: 12, blend: 0,  time: 30, sizeMul: 0.5,  camo: 1.0,  hues: 1, wiggleGap: [24000, 34000] },
 ];
 const LEVEL_KEY = 'meccha-chameleon-seek-level';
 function loadSeekLevel() {
@@ -810,7 +814,7 @@ function endSeek(won) {
 /* ============================================================
    HIDE MODE — paint your chameleon to match the wall
    ============================================================ */
-const HIDE_ROUNDS = 5;
+const HIDE_ROUNDS = 8;
 let hideRound = 0, hideWins = 0, hideTries = 0;
 let wallColor = { h: 125, s: 60, l: 56 };  // color of the wall this round
 let wallRecipe = [];       // pigment mix that produces the wall color exactly
@@ -820,7 +824,7 @@ let pigments = [];         // what the kid has mixed in the bowl
    the chameleon. Strokes live on an offscreen canvas in chameleon-local
    space, masked by the body silhouette. Unpainted skin stays grey. */
 const SIL_W = 600, SIL_H = 480, SIL_CX = 300, SIL_CY = 240, SIL_SIZE = 300;
-const BRUSH_R = 48;        // brush radius in silhouette pixels
+const BRUSH_R = 32;        // brush radius in silhouette pixels — small enough to shade regions
 const silCv = document.createElement('canvas');
 const strokesCv = document.createElement('canvas');
 const overlayCv = document.createElement('canvas');
@@ -901,7 +905,7 @@ const MIX_CAP = 8;
 const HIDE_PASS = 0.7;   // how blended you must be to fool the hunter
 // Wall lightness spread per round: later walls mix distinctly light and dark
 // tiles, so one flat color can't blend — shade regions like real camouflage.
-const HIDE_SHADES = [4, 6, 9, 13, 20];
+const HIDE_SHADES = [4, 6, 9, 13, 20, 22, 24, 26];
 
 /* Mix on an artist's RYB wheel (primaries 120° apart), then map the wheel
    angle back to a display hue through paint-wheel anchor points. */
@@ -1074,6 +1078,9 @@ const RECIPES = [
   [['red', 'white'], ['blue', 'white'], ['red', 'black'], ['blue', 'black'], ['red', 'yellow'], ['yellow', 'blue']],
   [['red', 'yellow', 'white'], ['yellow', 'blue', 'black'], ['red', 'blue', 'white'], ['yellow', 'blue', 'white'], ['red', 'yellow', 'black']],
   [['red', 'red', 'yellow'], ['yellow', 'yellow', 'blue'], ['red', 'blue', 'blue'], ['red', 'red', 'blue'], ['yellow', 'blue', 'blue']],
+  [['red', 'red', 'yellow', 'white'], ['yellow', 'yellow', 'blue', 'black'], ['red', 'blue', 'blue', 'white'], ['red', 'red', 'blue', 'black'], ['yellow', 'blue', 'blue', 'white']],
+  [['red', 'yellow', 'yellow', 'black'], ['red', 'red', 'blue', 'white'], ['yellow', 'yellow', 'blue', 'white'], ['red', 'blue', 'blue', 'black'], ['red', 'red', 'yellow', 'black']],
+  [['red', 'red', 'yellow', 'white', 'white'], ['yellow', 'blue', 'blue', 'black', 'black'], ['red', 'red', 'blue', 'white', 'white'], ['yellow', 'yellow', 'blue', 'black', 'black'], ['red', 'blue', 'blue', 'white', 'white']],
 ];
 
 function nextHideRound() {
@@ -1081,7 +1088,8 @@ function nextHideRound() {
   wallRecipe = options[randi(0, options.length - 1)].slice();
   wallColor = mixPigments(wallRecipe);
   pigments = [];
-  paintTime = clamp(22 - hideRound * 2, 14, 22);
+  // later rounds need MORE time, not less — shading regions is slow, careful work
+  paintTime = Math.min(30 + hideRound * 4, 48);
   strokesCv.getContext('2d').clearRect(0, 0, SIL_W, SIL_H);  // fresh grey skin
   blendScore = 0;
   meanPaint = null;
@@ -1222,11 +1230,20 @@ function drawHide(dt) {
     drawChameleon(myLz.x, myLz.y, myLz.size, eyeCol.h, eyeCol.s, eyeCol.l, {
       facing: -1, blink: blinkNow, camo: blendScore, eyeOnly: true,
     });
-    // Brush cursor while painting
-    if (painting && brushScreen) {
-      ctx.font = `${myLz.size * 0.3}px sans-serif`;
+    // Brush cursor: dashed ring showing EXACTLY where paint will land
+    if (hidePhase === 'paint' && brushScreen) {
+      const br = BRUSH_R * (myLz.size / SIL_SIZE);
+      ctx.strokeStyle = painting ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.45)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([6, 5]);
+      ctx.beginPath();
+      ctx.arc(brushScreen.x, brushScreen.y, br, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // brush emoji sits outside the ring so the finger never hides it
+      ctx.font = `${myLz.size * 0.2}px sans-serif`;
       ctx.textAlign = 'center';
-      ctx.fillText('🖌️', brushScreen.x + myLz.size * 0.1, brushScreen.y - myLz.size * 0.08);
+      ctx.fillText('🖌️', brushScreen.x + br + myLz.size * 0.11, brushScreen.y - br - myLz.size * 0.02);
     }
     if (hidePhase === 'paint') drawHideGauge();
   }
@@ -1376,7 +1393,7 @@ function endHide() {
   document.getElementById('palette').classList.add('hidden');
   sfx.win();
   burstConfetti(W / 2, H / 2, 90, true);
-  const stars = hideTries === 0 ? 3 : hideTries <= 2 ? 2 : 1;
+  const stars = hideTries === 0 ? 3 : hideTries <= 3 ? 2 : 1;
   setTimeout(() => {
     showResult('🥳', 'Master of Disguise!', '⭐'.repeat(clamp(stars, 1, 3)),
       `You hid from the hunter ${HIDE_ROUNDS} times!`, startHide);
@@ -1447,12 +1464,16 @@ canvas.addEventListener('pointerdown', e => {
     const { x, y } = tapAt(e);
     painting = true;
     lastBrush = null;
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
     brushAt(x, y);
     if (pigments.length) sfx.paint();
   }
 });
 window.addEventListener('pointermove', e => {
-  if (painting && state === 'hide' && hidePhase === 'paint') brushAt(e.clientX, e.clientY);
+  if (state === 'hide' && hidePhase === 'paint') {
+    brushScreen = { x: e.clientX, y: e.clientY };
+    if (painting) brushAt(e.clientX, e.clientY);
+  }
 });
 ['pointerup', 'pointercancel'].forEach(ev => window.addEventListener(ev, () => {
   painting = false;
