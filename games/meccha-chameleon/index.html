@@ -230,6 +230,11 @@
     transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
     box-shadow: 0 4px 12px rgba(0,0,0,0.35), inset 0 -6px 10px rgba(0,0,0,0.2);
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(1.2rem, 5vw, 1.8rem);
+    padding: 0;
   }
   .bucket:active { transform: scale(0.85); }
   .bucket.picked {
@@ -801,10 +806,9 @@ function endSeek(won) {
    ============================================================ */
 const HIDE_ROUNDS = 5;
 let hideRound = 0, hideWins = 0, hideTries = 0;
-let wallColor = { ...PALETTE[3] };   // color of the wall this round
-let roundPalette = [];     // buckets offered this round (correct + decoys)
-let correctIdx = 0;        // index of the matching bucket in roundPalette
-let myColorIdx = -1;       // what the kid painted
+let wallColor = { h: 125, s: 60, l: 56 };  // color of the wall this round
+let wallRecipe = [];       // pigment mix that produces the wall color exactly
+let pigments = [];         // what the kid has mixed so far
 let myColor = { h: 0, s: 0, l: 62 };     // displayed color (animates)
 let myTarget = { h: 0, s: 0, l: 62 };
 let hidePhase = 'paint';   // paint | approach | scan | verdict
@@ -846,35 +850,60 @@ function startHide() {
   sfx.click();
 }
 
-/* Build this round's buckets: the wall color plus "tricky twin" decoys —
-   shades of the wall color shifted in hue or lightness. Every round has
-   decoys; each round they get closer to the real color and more numerous. */
-function makeRoundPalette() {
-  const base = PALETTE[randi(0, PALETTE.length - 1)];
-  wallColor = { ...base };
-  const correct = { ...base };
-  const gap = [26, 20, 15, 12, 9][clamp(hideRound, 0, 4)];
-  const lGap = Math.max(gap * 0.7, 7);
-  const twins = [
-    { name: base.name + ' twin', h: base.h + gap, s: base.s, l: base.l },
-    { name: base.name + ' twin', h: base.h - gap, s: base.s, l: base.l },
-    { name: base.name + ' light', h: base.h, s: base.s, l: clamp(base.l + lGap, 25, 82) },
-    { name: base.name + ' dark', h: base.h, s: base.s, l: clamp(base.l - lGap, 25, 82) },
-  ];
-  shuffle(twins);
-  const decoys = twins.slice(0, Math.min(2 + hideRound, 4));
-  const others = PALETTE.filter(c => c.name !== base.name).map(c => ({ ...c }));
-  shuffle(others);
-  while (decoys.length < 5) decoys.push(others.pop());
-  roundPalette = [correct, ...decoys];
-  shuffle(roundPalette);
-  correctIdx = roundPalette.indexOf(correct);
+/* ---- Paint mixing: no more picking a ready-made color. The kid only has
+   Red, Yellow, Blue, White, Black and must MIX the wall color like real
+   paint (red+yellow=orange, red+blue=purple, +white=lighter...). ---- */
+const PIGMENTS = {
+  red:    { name: 'Red',    wheel: 0,   h: 4,   s: 82, l: 55 },
+  yellow: { name: 'Yellow', wheel: 120, h: 50,  s: 90, l: 58 },
+  blue:   { name: 'Blue',   wheel: 240, h: 212, s: 78, l: 55 },
+};
+const MIX_CAP = 6;
+const HIDE_PASS = 0.7;   // how blended you must be to fool the hunter
+
+/* Mix on an artist's RYB wheel (primaries 120° apart), then map the wheel
+   angle back to a display hue through paint-wheel anchor points. */
+const WHEEL_TO_HUE = [[0, 4], [60, 32], [120, 50], [180, 125], [240, 212], [300, 280], [360, 364]];
+function mixPigments(list) {
+  let vx = 0, vy = 0, n = 0, dl = 0;
+  list.forEach(k => {
+    if (k === 'white') { dl += 12; return; }
+    if (k === 'black') { dl -= 12; return; }
+    const a = PIGMENTS[k].wheel * Math.PI / 180;
+    vx += Math.cos(a); vy += Math.sin(a); n++;
+  });
+  if (!n) return { h: 0, s: 5, l: clamp(65 + dl, 20, 90) };  // only white/black = grey
+  const ang = (Math.atan2(vy / n, vx / n) * 180 / Math.PI + 360) % 360;
+  const r = Math.hypot(vx / n, vy / n);  // 1 = pure pigment, near 0 = muddy mix
+  let h = 4;
+  for (let i = 0; i < WHEEL_TO_HUE.length - 1; i++) {
+    const [a0, h0] = WHEEL_TO_HUE[i], [a1, h1] = WHEEL_TO_HUE[i + 1];
+    if (ang >= a0 && ang <= a1) { h = lerp(h0, h1, (ang - a0) / (a1 - a0)) % 360; break; }
+  }
+  return { h, s: clamp(30 + 58 * r, 15, 92), l: clamp(56 + dl, 20, 88) };
 }
 
+function closeness(a, b) {
+  const hd = Math.abs(((a.h - b.h + 540) % 360) - 180);
+  return clamp(1 - (hd / 25 + Math.abs(a.l - b.l) / 30 + Math.abs(a.s - b.s) / 60), 0, 1);
+}
+
+/* Wall recipes per round: single pigments, then secondaries, then
+   tints/shades, then weighted mixes (2 parts red + 1 yellow...). */
+const RECIPES = [
+  [['red'], ['yellow'], ['blue']],
+  [['red', 'yellow'], ['yellow', 'blue'], ['red', 'blue']],
+  [['red', 'white'], ['blue', 'white'], ['red', 'black'], ['blue', 'black'], ['red', 'yellow'], ['yellow', 'blue']],
+  [['red', 'yellow', 'white'], ['yellow', 'blue', 'black'], ['red', 'blue', 'white'], ['yellow', 'blue', 'white'], ['red', 'yellow', 'black']],
+  [['red', 'red', 'yellow'], ['yellow', 'yellow', 'blue'], ['red', 'blue', 'blue'], ['red', 'red', 'blue'], ['yellow', 'blue', 'blue']],
+];
+
 function nextHideRound() {
-  makeRoundPalette();
-  paintTime = clamp(10 - hideRound * 1.5, 5, 10);
-  myColorIdx = -1;
+  const options = RECIPES[clamp(hideRound, 0, RECIPES.length - 1)];
+  wallRecipe = options[randi(0, options.length - 1)].slice();
+  wallColor = mixPigments(wallRecipe);
+  pigments = [];
+  paintTime = clamp(14 - hideRound * 1.5, 8, 14);
   myColor = { h: 0, s: 5, l: 65 };   // unpainted grey — clearly "not hiding yet"
   myTarget = { ...myColor };
   hidePhase = 'paint';
@@ -884,30 +913,44 @@ function nextHideRound() {
   buildPalette();
   document.getElementById('palette').classList.remove('hidden');
   updateHUD();
-  banner(hideRound >= 1 ? 'Even trickier colors! 👀' : 'Match the wall EXACTLY! 🎨');
+  banner(hideRound === 0 ? 'Tap paint to match the wall! 🎨' : 'MIX paints to match the wall! 🎨');
 }
 
 function buildPalette() {
   const pal = document.getElementById('palette');
   pal.innerHTML = '';
-  roundPalette.forEach((c, i) => {
+  ['red', 'yellow', 'blue', 'white', 'black', 'rinse'].forEach(key => {
     const b = document.createElement('button');
     b.className = 'bucket';
-    b.style.background = `radial-gradient(circle at 35% 30%, ${hsl(c.h, c.s, c.l + 12)}, ${hsl(c.h, c.s, c.l - 8)})`;
-    b.setAttribute('aria-label', c.name);
-    b.addEventListener('click', () => pickColor(i, b));
+    if (key === 'rinse') {
+      b.style.background = 'radial-gradient(circle at 35% 30%, #9adcff, #3a86c9)';
+      b.textContent = '🚿';
+      b.setAttribute('aria-label', 'Rinse off');
+      b.addEventListener('click', rinse);
+    } else {
+      const c = key === 'white' ? { h: 0, s: 0, l: 96 } : key === 'black' ? { h: 0, s: 0, l: 16 } : PIGMENTS[key];
+      b.style.background = `radial-gradient(circle at 35% 30%, ${hsl(c.h, c.s, Math.min(c.l + 12, 98))}, ${hsl(c.h, c.s, Math.max(c.l - 8, 6))})`;
+      b.setAttribute('aria-label', key === 'white' ? 'White' : key === 'black' ? 'Black' : PIGMENTS[key].name);
+      b.addEventListener('click', () => addPigment(key));
+    }
     pal.appendChild(b);
   });
 }
 
-function pickColor(i, btn) {
-  if (state !== 'hide' || hidePhase === 'scan' || hidePhase === 'verdict') return;
-  myColorIdx = i;
-  myTarget = { ...roundPalette[i] };
-  document.querySelectorAll('.bucket').forEach(b => b.classList.remove('picked'));
-  btn.classList.add('picked');
-  burstConfetti(myLz.x, myLz.y, 12);
+function addPigment(key) {
+  if (state !== 'hide' || hidePhase !== 'paint') return;
+  if (pigments.length >= MIX_CAP) { sfx.wrong(); banner('Bucket full — rinse off! 🚿'); return; }
+  pigments.push(key);
+  myTarget = mixPigments(pigments);
+  burstConfetti(myLz.x, myLz.y, 10);
   sfx.paint();
+}
+
+function rinse() {
+  if (state !== 'hide' || hidePhase !== 'paint') return;
+  pigments = [];
+  myTarget = { h: 0, s: 5, l: 65 };
+  sfx.pop();
 }
 
 function drawHide(dt) {
@@ -943,10 +986,9 @@ function drawHide(dt) {
   }
 
   const caught = hidePhase === 'verdict' && !verdictSafe;
-  // Realistic blending: the closer your paint is to the wall color,
+  // Realistic blending: the closer your mix is to the wall color,
   // the more your markings melt away. Exact match ≈ invisible.
-  const hd = Math.abs(((myColor.h - wallColor.h + 540) % 360) - 180);
-  const blendCamo = clamp(1 - (hd / 25 + Math.abs(myColor.l - wallColor.l) / 30 + Math.abs(myColor.s - wallColor.s) / 60), 0, 1);
+  const blendCamo = closeness(myColor, wallColor);
   drawChameleon(myLz.x, myLz.y, myLz.size, myColor.h, myColor.s, myColor.l, {
     facing: -1,
     blink: hidePhase === 'scan' ? 0.15 : myLz.blink,   // eyes wide during the scan!
@@ -975,7 +1017,7 @@ function drawHide(dt) {
     if (phaseT >= 2) { hidePhase = 'scan'; phaseT = 0; sfx.scan(); }
   } else if (hidePhase === 'scan') {
     if (phaseT >= 2.2) {
-      verdictSafe = myColorIdx === correctIdx;
+      verdictSafe = closeness(myTarget, wallColor) >= HIDE_PASS;
       hidePhase = 'verdict';
       phaseT = 0;
       if (verdictSafe) {
@@ -1003,7 +1045,7 @@ function drawHide(dt) {
       phaseT = 0;
       hunter.x = -200;
       document.getElementById('palette').classList.remove('hidden');
-      banner('Try another color! 🎨');
+      banner('Rinse off and mix again! 🚿🎨');
     }
   }
 
