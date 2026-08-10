@@ -417,9 +417,11 @@ function updateDrawParticles() {
 
 /* ---------------- Chameleon drawing ----------------
    Draws a cute cartoon chameleon at (x,y), body length ~size.
-   opts: { blink 0..1, wigglePhase, facing (1|-1), happy, alpha } */
+   opts: { blink 0..1, wigglePhase, facing (1|-1), happy, alpha,
+           camo 0..1, g (target 2d context), eyeOnly } */
 function drawChameleon(x, y, size, colH, colS, colL, opts) {
   const o = opts || {};
+  const g = o.g || ctx;
   const f = o.facing || 1;
   const wig = o.wigglePhase ? Math.sin(o.wigglePhase) * 0.12 : 0;
   // camo 0..1: how strongly the markings (crest, belly, eye, spots) fade
@@ -429,118 +431,122 @@ function drawChameleon(x, y, size, colH, colS, colL, opts) {
   const dark = hsl(colH, colS, Math.max(colL - lerp(14, 2.5, camo), 8));
   const light = hsl(colH, Math.max(colS - lerp(10, 3, camo), 0), Math.min(colL + lerp(12, 2.5, camo), 92));
 
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(f, 1);
-  ctx.rotate(wig);
-  if (o.alpha !== undefined) ctx.globalAlpha = o.alpha;
+  g.save();
+  g.translate(x, y);
+  g.scale(f, 1);
+  g.rotate(wig);
+  if (o.alpha !== undefined) g.globalAlpha = o.alpha;
   const s = size / 100; // normalize: body drawn in ~100-unit space
-  ctx.scale(s, s);
+  g.scale(s, s);
 
+  if (!o.eyeOnly) {
   // Tail: spiral curl behind the body
-  ctx.strokeStyle = body;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.lineWidth = 13;
-  ctx.arc(-52, 6, 16, Math.PI * 0.5, Math.PI * 1.9, false);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.lineWidth = 8;
-  ctx.arc(-52, 6, 7, Math.PI * 1.2, Math.PI * 2.6, false);
-  ctx.stroke();
+  g.strokeStyle = body;
+  g.lineCap = 'round';
+  g.beginPath();
+  g.lineWidth = 13;
+  g.arc(-52, 6, 16, Math.PI * 0.5, Math.PI * 1.9, false);
+  g.stroke();
+  g.beginPath();
+  g.lineWidth = 8;
+  g.arc(-52, 6, 7, Math.PI * 1.2, Math.PI * 2.6, false);
+  g.stroke();
 
   // Legs (little stubs with toes)
-  ctx.strokeStyle = dark;
-  ctx.lineWidth = 9;
+  g.strokeStyle = dark;
+  g.lineWidth = 9;
   [[-22, 26], [18, 26]].forEach(([lx, ly]) => {
-    ctx.beginPath();
-    ctx.moveTo(lx, 10);
-    ctx.lineTo(lx - 4, ly);
-    ctx.stroke();
+    g.beginPath();
+    g.moveTo(lx, 10);
+    g.lineTo(lx - 4, ly);
+    g.stroke();
   });
 
   // Body
-  ctx.fillStyle = body;
-  ctx.beginPath();
-  ctx.ellipse(-8, 0, 44, 28, 0, 0, Math.PI * 2);
-  ctx.fill();
+  g.fillStyle = body;
+  g.beginPath();
+  g.ellipse(-8, 0, 44, 28, 0, 0, Math.PI * 2);
+  g.fill();
 
   // Back crest zigzag
-  ctx.fillStyle = dark;
-  ctx.beginPath();
-  ctx.moveTo(-44, -12);
+  g.fillStyle = dark;
+  g.beginPath();
+  g.moveTo(-44, -12);
   for (let i = 0; i < 5; i++) {
-    ctx.lineTo(-38 + i * 16, -30 + (i % 2) * 4);
-    ctx.lineTo(-30 + i * 16, -14);
+    g.lineTo(-38 + i * 16, -30 + (i % 2) * 4);
+    g.lineTo(-30 + i * 16, -14);
   }
-  ctx.closePath();
-  ctx.fill();
+  g.closePath();
+  g.fill();
 
   // Belly highlight
-  ctx.fillStyle = light;
-  ctx.beginPath();
-  ctx.ellipse(-8, 10, 32, 14, 0, 0, Math.PI * 2);
-  ctx.fill();
+  g.fillStyle = light;
+  g.beginPath();
+  g.ellipse(-8, 10, 32, 14, 0, 0, Math.PI * 2);
+  g.fill();
 
   // Head
-  ctx.fillStyle = body;
-  ctx.beginPath();
-  ctx.ellipse(34, -8, 22, 19, -0.15, 0, Math.PI * 2);
-  ctx.fill();
+  g.fillStyle = body;
+  g.beginPath();
+  g.ellipse(34, -8, 22, 19, -0.15, 0, Math.PI * 2);
+  g.fill();
   // Head casque (little crest)
-  ctx.beginPath();
-  ctx.moveTo(22, -22);
-  ctx.quadraticCurveTo(34, -38, 46, -20);
-  ctx.closePath();
-  ctx.fillStyle = dark;
-  ctx.fill();
+  g.beginPath();
+  g.moveTo(22, -22);
+  g.quadraticCurveTo(34, -38, 46, -20);
+  g.closePath();
+  g.fillStyle = dark;
+  g.fill();
+  } // end body parts (skipped when eyeOnly)
 
   // Eye (big googly, blinks) — tints toward the body color as camo rises
   const blink = clamp(o.blink || 0, 0, 1); // 1 = closed
-  ctx.fillStyle = hsl(colH, colS * lerp(0.06, 0.6, camo), lerp(97, Math.min(colL + 14, 88), camo));
-  ctx.beginPath();
-  ctx.ellipse(38, -12, 10, 10 * (1 - blink * 0.92), 0, 0, Math.PI * 2);
-  ctx.fill();
+  g.fillStyle = hsl(colH, colS * lerp(0.06, 0.6, camo), lerp(97, Math.min(colL + 14, 88), camo));
+  g.beginPath();
+  g.ellipse(38, -12, 10, 10 * (1 - blink * 0.92), 0, 0, Math.PI * 2);
+  g.fill();
   if (blink < 0.7) {
-    ctx.fillStyle = hsl(colH, colS, lerp(13, Math.max(colL - 20, 10), camo));
-    ctx.beginPath();
-    ctx.arc(40, -12, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-    const ga = ctx.globalAlpha;
-    ctx.globalAlpha = ga * (1 - camo * 0.85);
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(41.5, -13.5, 1.6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = ga;
+    g.fillStyle = hsl(colH, colS, lerp(13, Math.max(colL - 20, 10), camo));
+    g.beginPath();
+    g.arc(40, -12, 4.5, 0, Math.PI * 2);
+    g.fill();
+    const ga = g.globalAlpha;
+    g.globalAlpha = ga * (1 - camo * 0.85);
+    g.fillStyle = '#fff';
+    g.beginPath();
+    g.arc(41.5, -13.5, 1.6, 0, Math.PI * 2);
+    g.fill();
+    g.globalAlpha = ga;
   } else {
-    ctx.strokeStyle = dark;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(31, -12); ctx.lineTo(45, -12);
-    ctx.stroke();
+    g.strokeStyle = dark;
+    g.lineWidth = 2.5;
+    g.beginPath();
+    g.moveTo(31, -12); g.lineTo(45, -12);
+    g.stroke();
   }
 
+  if (!o.eyeOnly) {
   // Mouth — happy smile
-  ctx.strokeStyle = dark;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
+  g.strokeStyle = dark;
+  g.lineWidth = 3;
+  g.beginPath();
   if (o.happy) {
-    ctx.arc(44, -2, 8, 0.15, Math.PI * 0.75);
+    g.arc(44, -2, 8, 0.15, Math.PI * 0.75);
   } else {
-    ctx.arc(46, -4, 6, 0.3, Math.PI * 0.6);
+    g.arc(46, -4, 6, 0.3, Math.PI * 0.6);
   }
-  ctx.stroke();
+  g.stroke();
 
   // Spots
-  ctx.fillStyle = hsl(colH, colS, colL + lerp(8, 3, camo), lerp(0.7, 0.25, camo));
+  g.fillStyle = hsl(colH, colS, colL + lerp(8, 3, camo), lerp(0.7, 0.25, camo));
   [[-24, -4], [-4, -8], [12, 2]].forEach(([sx, sy]) => {
-    ctx.beginPath();
-    ctx.arc(sx, sy, 4.5, 0, Math.PI * 2);
-    ctx.fill();
+    g.beginPath();
+    g.arc(sx, sy, 4.5, 0, Math.PI * 2);
+    g.fill();
   });
+  } // end mouth+spots (skipped when eyeOnly)
 
-  ctx.restore();
+  g.restore();
 }
 
 /* ============================================================
@@ -808,10 +814,25 @@ const HIDE_ROUNDS = 5;
 let hideRound = 0, hideWins = 0, hideTries = 0;
 let wallColor = { h: 125, s: 60, l: 56 };  // color of the wall this round
 let wallRecipe = [];       // pigment mix that produces the wall color exactly
-let pigments = [];         // what the kid has mixed so far
-let myColor = { h: 0, s: 0, l: 62 };     // displayed color (animates)
-let myTarget = { h: 0, s: 0, l: 62 };
-let hidePhase = 'paint';   // paint | approach | scan | verdict
+let pigments = [];         // what the kid has mixed in the bowl
+
+/* Brush painting: the kid mixes a color in the bowl, then BRUSHES it onto
+   the chameleon. Strokes live on an offscreen canvas in chameleon-local
+   space, masked by the body silhouette. Unpainted skin stays grey. */
+const SIL_W = 600, SIL_H = 480, SIL_CX = 300, SIL_CY = 240, SIL_SIZE = 300;
+const BRUSH_R = 48;        // brush radius in silhouette pixels
+const silCv = document.createElement('canvas');
+const strokesCv = document.createElement('canvas');
+const overlayCv = document.createElement('canvas');
+const sampleCv = document.createElement('canvas');
+silCv.width = strokesCv.width = overlayCv.width = SIL_W;
+silCv.height = strokesCv.height = overlayCv.height = SIL_H;
+sampleCv.width = 60; sampleCv.height = 48;
+let blendScore = 0;        // 0..1 — how well the whole body blends (color × coverage)
+let meanPaint = null;      // average applied paint color (hsl), for verdict poses
+let lastSampleAt = 0;
+let painting = false, lastBrush = null, brushScreen = null, warnedEmpty = false;
+let hidePhase = 'paint';   // paint | approach | scan | verdict | done
 let phaseT = 0;            // seconds in current phase
 let hunter = { x: 0 };
 let hideWallPanels = [];
@@ -823,6 +844,10 @@ function layoutHide() {
   myLz.size = clamp(Math.min(W, H) * 0.3, 110, 200);
   myLz.x = W * 0.62;
   myLz.y = H * 0.58;
+  // body silhouette mask for clipping brush strokes
+  const sg = silCv.getContext('2d');
+  sg.clearRect(0, 0, SIL_W, SIL_H);
+  drawChameleon(SIL_CX, SIL_CY, SIL_SIZE, 0, 0, 50, { g: sg, facing: -1 });
   // wall = brick-ish grid of one palette color with slight variation
   const base = wallColor;
   hideWallPanels = [];
@@ -888,6 +913,80 @@ function closeness(a, b) {
   return clamp(1 - (hd / 25 + Math.abs(a.l - b.l) / 30 + Math.abs(a.s - b.s) / 60), 0, 1);
 }
 
+function rgbToHsl(r, gg, b) {
+  r /= 255; gg /= 255; b /= 255;
+  const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), d = mx - mn;
+  let h = 0;
+  if (d) {
+    if (mx === r) h = ((gg - b) / d) % 6;
+    else if (mx === gg) h = (b - r) / d + 2;
+    else h = (r - gg) / d + 4;
+    h *= 60; if (h < 0) h += 360;
+  }
+  const l = (mx + mn) / 2;
+  const sat = d ? d / (1 - Math.abs(2 * l - 1)) : 0;
+  return { h, s: sat * 100, l: l * 100 };
+}
+
+/* Brush a stroke of the bowl color onto the chameleon (screen coords). */
+function brushAt(px, py) {
+  if (!pigments.length) {
+    if (!warnedEmpty) { warnedEmpty = true; banner('Mix a color first! 🎨'); sfx.wrong(); }
+    return;
+  }
+  const k = SIL_SIZE / myLz.size;
+  const lx = (px - myLz.x) * k + SIL_CX;
+  const ly = (py - myLz.y) * k + SIL_CY;
+  const c = mixPigments(pigments);
+  const sg = strokesCv.getContext('2d');
+  sg.fillStyle = hsl(c.h, c.s, c.l);
+  const from = lastBrush || { x: lx, y: ly };
+  const steps = Math.max(1, Math.ceil(Math.hypot(lx - from.x, ly - from.y) / (BRUSH_R * 0.4)));
+  for (let i = 0; i <= steps; i++) {
+    const bx = lerp(from.x, lx, i / steps), by = lerp(from.y, ly, i / steps);
+    sg.beginPath();
+    sg.arc(bx, by, BRUSH_R, 0, Math.PI * 2);
+    sg.fill();
+  }
+  lastBrush = { x: lx, y: ly };
+  brushScreen = { x: px, y: py };
+}
+
+/* strokes ∧ silhouette → paint that sits only on the body */
+function renderOverlay() {
+  const og = overlayCv.getContext('2d');
+  og.clearRect(0, 0, SIL_W, SIL_H);
+  og.drawImage(strokesCv, 0, 0);
+  og.globalCompositeOperation = 'destination-in';
+  og.drawImage(silCv, 0, 0);
+  og.globalCompositeOperation = 'source-over';
+}
+
+/* Score the paint job: mean per-pixel closeness to the wall color over the
+   whole body. Unpainted pixels score 0, so coverage matters as much as hue. */
+function sampleBlend() {
+  renderOverlay();
+  const sc = sampleCv.getContext('2d', { willReadFrequently: true });
+  sc.clearRect(0, 0, 60, 48);
+  sc.drawImage(silCv, 0, 0, 60, 48);
+  const silD = sc.getImageData(0, 0, 60, 48).data;
+  sc.clearRect(0, 0, 60, 48);
+  sc.drawImage(overlayCv, 0, 0, 60, 48);
+  const ovD = sc.getImageData(0, 0, 60, 48).data;
+  let n = 0, sum = 0, pr = 0, pg = 0, pb = 0, np = 0;
+  for (let i = 0; i < silD.length; i += 4) {
+    if (silD[i + 3] > 128) {
+      n++;
+      if (ovD[i + 3] > 128) {
+        sum += closeness(rgbToHsl(ovD[i], ovD[i + 1], ovD[i + 2]), wallColor);
+        pr += ovD[i]; pg += ovD[i + 1]; pb += ovD[i + 2]; np++;
+      }
+    }
+  }
+  blendScore = n ? sum / n : 0;
+  meanPaint = np ? rgbToHsl(pr / np, pg / np, pb / np) : null;
+}
+
 /* Wall recipes per round: single pigments, then secondaries, then
    tints/shades, then weighted mixes (2 parts red + 1 yellow...). */
 const RECIPES = [
@@ -903,9 +1002,11 @@ function nextHideRound() {
   wallRecipe = options[randi(0, options.length - 1)].slice();
   wallColor = mixPigments(wallRecipe);
   pigments = [];
-  paintTime = clamp(14 - hideRound * 1.5, 8, 14);
-  myColor = { h: 0, s: 5, l: 65 };   // unpainted grey — clearly "not hiding yet"
-  myTarget = { ...myColor };
+  paintTime = clamp(22 - hideRound * 2, 14, 22);
+  strokesCv.getContext('2d').clearRect(0, 0, SIL_W, SIL_H);  // fresh grey skin
+  blendScore = 0;
+  meanPaint = null;
+  painting = false; lastBrush = null; brushScreen = null; warnedEmpty = false;
   hidePhase = 'paint';
   phaseT = 0;
   hunter.x = -200;
@@ -913,12 +1014,32 @@ function nextHideRound() {
   buildPalette();
   document.getElementById('palette').classList.remove('hidden');
   updateHUD();
-  banner(hideRound === 0 ? 'Tap paint to match the wall! 🎨' : 'MIX paints to match the wall! 🎨');
+  banner(hideRound === 0 ? 'Mix a color, then paint yourself! 🖌️' : 'Mix and paint — cover ALL of you! 🖌️');
+}
+
+function updateBowl() {
+  const bowl = document.getElementById('bowlView');
+  if (!bowl) return;
+  if (pigments.length) {
+    const c = mixPigments(pigments);
+    bowl.style.background = `radial-gradient(circle at 35% 30%, ${hsl(c.h, c.s, Math.min(c.l + 12, 96))}, ${hsl(c.h, c.s, Math.max(c.l - 8, 8))})`;
+    bowl.style.borderStyle = 'solid';
+  } else {
+    bowl.style.background = 'radial-gradient(circle at 35% 30%, #d8d8d8, #9a9a9a)';
+    bowl.style.borderStyle = 'dashed';
+  }
 }
 
 function buildPalette() {
   const pal = document.getElementById('palette');
   pal.innerHTML = '';
+  // mixing bowl first — shows the color the brush will paint with
+  const bowl = document.createElement('div');
+  bowl.className = 'bucket';
+  bowl.id = 'bowlView';
+  bowl.textContent = '🖌️';
+  bowl.style.marginRight = '0.6rem';
+  pal.appendChild(bowl);
   ['red', 'yellow', 'blue', 'white', 'black', 'rinse'].forEach(key => {
     const b = document.createElement('button');
     b.className = 'bucket';
@@ -935,21 +1056,23 @@ function buildPalette() {
     }
     pal.appendChild(b);
   });
+  updateBowl();
 }
 
 function addPigment(key) {
   if (state !== 'hide' || hidePhase !== 'paint') return;
-  if (pigments.length >= MIX_CAP) { sfx.wrong(); banner('Bucket full — rinse off! 🚿'); return; }
+  if (pigments.length >= MIX_CAP) { sfx.wrong(); banner('Bowl full — rinse it! 🚿'); return; }
   pigments.push(key);
-  myTarget = mixPigments(pigments);
-  burstConfetti(myLz.x, myLz.y, 10);
+  updateBowl();
+  const r = document.getElementById('bowlView').getBoundingClientRect();
+  burstConfetti(r.left + r.width / 2, r.top + r.height / 2, 8);
   sfx.paint();
 }
 
 function rinse() {
   if (state !== 'hide' || hidePhase !== 'paint') return;
   pigments = [];
-  myTarget = { h: 0, s: 5, l: 65 };
+  updateBowl();
   sfx.pop();
 }
 
@@ -973,11 +1096,6 @@ function drawHide(dt) {
   ctx.quadraticCurveTo(myLz.x, myLz.y + myLz.size * 0.42, myLz.x + myLz.size, myLz.y + myLz.size * 0.3);
   ctx.stroke();
 
-  // Animate paint color toward target
-  myColor.h = lerp(myColor.h, myTarget.h, 0.12);
-  myColor.s = lerp(myColor.s, myTarget.s, 0.12);
-  myColor.l = lerp(myColor.l, myTarget.l, 0.12);
-
   // Blink
   if (now >= myLz.blinkAt) {
     const t = (now - myLz.blinkAt) / 260;
@@ -985,17 +1103,41 @@ function drawHide(dt) {
     if (t >= 1) { myLz.blink = 0; myLz.blinkAt = now + rand(1500, 4500); }
   }
 
+  // Re-score the paint job a few times a second while painting
+  if (hidePhase === 'paint' && now - lastSampleAt > 400) {
+    lastSampleAt = now;
+    sampleBlend();
+    document.getElementById('hudInfo').textContent =
+      `🛡️ ${hideWins}/${HIDE_ROUNDS} · ${Math.round(blendScore * 100)}% hidden`;
+  }
+
   const caught = hidePhase === 'verdict' && !verdictSafe;
-  // Realistic blending: the closer your mix is to the wall color,
-  // the more your markings melt away. Exact match ≈ invisible.
-  const blendCamo = closeness(myColor, wallColor);
-  drawChameleon(myLz.x, myLz.y, myLz.size, myColor.h, myColor.s, myColor.l, {
-    facing: -1,
-    blink: hidePhase === 'scan' ? 0.15 : myLz.blink,   // eyes wide during the scan!
-    happy: hidePhase === 'verdict' && verdictSafe,
-    camo: caught || (hidePhase === 'verdict' && verdictSafe) ? 0 : blendCamo,
-    wigglePhase: caught ? now / 100 : 0,
-  });
+  const blinkNow = hidePhase === 'scan' ? 0.15 : myLz.blink;  // eyes wide during the scan!
+  if (hidePhase === 'verdict') {
+    // Verdict pose: solid chameleon in whatever color he painted overall
+    const col = meanPaint || { h: 0, s: 5, l: 65 };
+    drawChameleon(myLz.x, myLz.y, myLz.size, col.h, col.s, col.l, {
+      facing: -1, blink: 0, happy: verdictSafe,
+      wigglePhase: caught ? now / 100 : 0,
+    });
+  } else {
+    // Grey unpainted body, then the kid's brush strokes clipped to it
+    drawChameleon(myLz.x, myLz.y, myLz.size, 0, 5, 65, { facing: -1, blink: blinkNow });
+    renderOverlay();
+    const k = myLz.size / SIL_SIZE;
+    ctx.drawImage(overlayCv, myLz.x - SIL_CX * k, myLz.y - SIL_CY * k, SIL_W * k, SIL_H * k);
+    // The eye can't be painted over — it stays on top, tinting as you blend
+    const eyeCol = meanPaint || { h: 0, s: 5, l: 65 };
+    drawChameleon(myLz.x, myLz.y, myLz.size, eyeCol.h, eyeCol.s, eyeCol.l, {
+      facing: -1, blink: blinkNow, camo: blendScore, eyeOnly: true,
+    });
+    // Brush cursor while painting
+    if (painting && brushScreen) {
+      ctx.font = `${myLz.size * 0.3}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('🖌️', brushScreen.x + myLz.size * 0.1, brushScreen.y - myLz.size * 0.08);
+    }
+  }
 
   // Phase logic
   if (hidePhase === 'paint') {
@@ -1017,7 +1159,8 @@ function drawHide(dt) {
     if (phaseT >= 2) { hidePhase = 'scan'; phaseT = 0; sfx.scan(); }
   } else if (hidePhase === 'scan') {
     if (phaseT >= 2.2) {
-      verdictSafe = closeness(myTarget, wallColor) >= HIDE_PASS;
+      sampleBlend();   // judge the actual paint job: color match × coverage
+      verdictSafe = blendScore >= HIDE_PASS;
       hidePhase = 'verdict';
       phaseT = 0;
       if (verdictSafe) {
@@ -1045,7 +1188,7 @@ function drawHide(dt) {
       phaseT = 0;
       hunter.x = -200;
       document.getElementById('palette').classList.remove('hidden');
-      banner('Rinse off and mix again! 🚿🎨');
+      banner('Fix your colors and cover up! 🖌️');
     }
   }
 
@@ -1208,8 +1351,21 @@ canvas.addEventListener('pointerdown', e => {
   if (state === 'seek') {
     const { x, y } = tapAt(e);
     seekTap(x, y);
+  } else if (state === 'hide' && hidePhase === 'paint') {
+    const { x, y } = tapAt(e);
+    painting = true;
+    lastBrush = null;
+    brushAt(x, y);
+    if (pigments.length) sfx.paint();
   }
 });
+window.addEventListener('pointermove', e => {
+  if (painting && state === 'hide' && hidePhase === 'paint') brushAt(e.clientX, e.clientY);
+});
+['pointerup', 'pointercancel'].forEach(ev => window.addEventListener(ev, () => {
+  painting = false;
+  lastBrush = null;
+}));
 
 document.getElementById('seekModeBtn').addEventListener('click', () => {
   audio();
