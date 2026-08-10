@@ -832,6 +832,7 @@ let blendScore = 0;        // 0..1 — how well the whole body blends (color × 
 let meanPaint = null;      // average applied paint color (hsl), for verdict poses
 let lastSampleAt = 0;
 let painting = false, lastBrush = null, brushScreen = null, warnedEmpty = false;
+let gaugePop = 0, gaugePrevPct = 0, gaugePassed = false;  // the big % popup
 let hidePhase = 'paint';   // paint | approach | scan | verdict | done
 let phaseT = 0;            // seconds in current phase
 let hunter = { x: 0 };
@@ -1008,6 +1009,63 @@ function sampleBlend() {
   meanPaint = np ? rgbToHsl(pr / np, pg / np, pb / np) : null;
 }
 
+/* Big popup gauge above the chameleon: live % hidden, ring fill,
+   goal notch at HIDE_PASS, pops on change, celebrates crossing it. */
+function drawHideGauge() {
+  const pct = Math.round(blendScore * 100);
+  const passed = blendScore >= HIDE_PASS;
+  const R = clamp(myLz.size * 0.28, 36, 58);
+  const gx = clamp(myLz.x - myLz.size * 1.15, R + 10, W - R - 10);
+  const gy = myLz.y - myLz.size * 0.45;
+  const scale = 1 + gaugePop * 0.18;
+  ctx.save();
+  ctx.translate(gx, gy);
+  ctx.scale(scale, scale);
+  // backdrop
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.beginPath();
+  ctx.arc(0, 0, R, 0, Math.PI * 2);
+  ctx.fill();
+  if (passed) {
+    ctx.strokeStyle = 'rgba(95,224,122,0.9)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+  // track + progress ring (starts at 12 o'clock)
+  const rw = R * 0.16, rr = R - rw;
+  ctx.lineWidth = rw;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.beginPath();
+  ctx.arc(0, 0, rr, 0, Math.PI * 2);
+  ctx.stroke();
+  const a0 = -Math.PI / 2;
+  ctx.strokeStyle = passed ? '#5fe07a' : blendScore >= 0.4 ? '#ffd94f' : '#ff7a6b';
+  if (blendScore > 0.01) {
+    ctx.beginPath();
+    ctx.arc(0, 0, rr, a0, a0 + blendScore * Math.PI * 2);
+    ctx.stroke();
+  }
+  // goal notch
+  const ga = a0 + HIDE_PASS * Math.PI * 2;
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(Math.cos(ga) * (rr - rw * 0.9), Math.sin(ga) * (rr - rw * 0.9));
+  ctx.lineTo(Math.cos(ga) * (rr + rw * 0.9), Math.sin(ga) * (rr + rw * 0.9));
+  ctx.stroke();
+  // numbers
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `700 ${R * 0.56}px Fredoka, sans-serif`;
+  ctx.fillText(pct + '%', 0, -R * 0.1);
+  ctx.font = `600 ${R * 0.24}px Fredoka, sans-serif`;
+  ctx.fillStyle = passed ? '#aef7be' : 'rgba(255,255,255,0.75)';
+  ctx.fillText(passed ? 'SAFE! 🥳' : 'hidden', 0, R * 0.36);
+  ctx.restore();
+}
+
 /* Wall recipes per round: single pigments, then secondaries, then
    tints/shades, then weighted mixes (2 parts red + 1 yellow...). */
 const RECIPES = [
@@ -1028,6 +1086,7 @@ function nextHideRound() {
   blendScore = 0;
   meanPaint = null;
   painting = false; lastBrush = null; brushScreen = null; warnedEmpty = false;
+  gaugePop = 0; gaugePrevPct = 0; gaugePassed = false;
   hidePhase = 'paint';
   phaseT = 0;
   hunter.x = -200;
@@ -1127,13 +1186,21 @@ function drawHide(dt) {
     if (t >= 1) { myLz.blink = 0; myLz.blinkAt = now + rand(1500, 4500); }
   }
 
-  // Re-score the paint job a few times a second while painting
-  if (hidePhase === 'paint' && now - lastSampleAt > 400) {
+  // Re-score the paint job several times a second while painting
+  if (hidePhase === 'paint' && now - lastSampleAt > 150) {
     lastSampleAt = now;
     sampleBlend();
-    document.getElementById('hudInfo').textContent =
-      `🛡️ ${hideWins}/${HIDE_ROUNDS} · ${Math.round(blendScore * 100)}% hidden`;
+    const pct = Math.round(blendScore * 100);
+    if (pct !== gaugePrevPct) { gaugePrevPct = pct; gaugePop = 1; }
+    if (blendScore >= HIDE_PASS && !gaugePassed) {
+      gaugePassed = true;
+      sfx.found();
+      burstConfetti(clamp(myLz.x - myLz.size * 1.15, 50, W - 50), myLz.y - myLz.size * 0.45, 25);
+    } else if (blendScore < HIDE_PASS) {
+      gaugePassed = false;
+    }
   }
+  gaugePop = Math.max(0, gaugePop - dt * 3);
 
   const caught = hidePhase === 'verdict' && !verdictSafe;
   const blinkNow = hidePhase === 'scan' ? 0.15 : myLz.blink;  // eyes wide during the scan!
@@ -1161,6 +1228,7 @@ function drawHide(dt) {
       ctx.textAlign = 'center';
       ctx.fillText('🖌️', brushScreen.x + myLz.size * 0.1, brushScreen.y - myLz.size * 0.08);
     }
+    if (hidePhase === 'paint') drawHideGauge();
   }
 
   // Phase logic
