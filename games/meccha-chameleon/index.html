@@ -848,8 +848,11 @@ function layoutHide() {
   const sg = silCv.getContext('2d');
   sg.clearRect(0, 0, SIL_W, SIL_H);
   drawChameleon(SIL_CX, SIL_CY, SIL_SIZE, 0, 0, 50, { g: sg, facing: -1 });
-  // wall = brick-ish grid of one palette color with slight variation
+  // wall = brick-ish grid in one color family, tiles stepping through
+  // distinct light/dark shades (more shades on later rounds)
   const base = wallColor;
+  const spread = HIDE_SHADES[clamp(hideRound, 0, HIDE_SHADES.length - 1)];
+  const steps = [-spread, -spread / 2, 0, spread / 2, spread];
   hideWallPanels = [];
   const cols = 6, rows = 8;
   const pw = W / cols, ph = H / rows;
@@ -857,11 +860,21 @@ function layoutHide() {
     for (let c = 0; c < cols; c++) {
       hideWallPanels.push({
         x: c * pw, y: r * ph, w: pw, h: ph,
-        l: clamp(base.l + randi(-6, 6), 30, 75),
-        s: clamp(base.s + randi(-6, 4), 30, 95),
+        hue: base.h + randi(-3, 3),
+        l: clamp(base.l + steps[randi(0, steps.length - 1)] + randi(-1, 1), 20, 88),
+        s: clamp(base.s + randi(-5, 3), 12, 95),
       });
     }
   }
+}
+
+/* The wall shade behind a given screen point — painting is judged locally,
+   so the body must match the tiles it actually sits in front of. */
+function wallShadeAt(px, py) {
+  const ci = clamp(Math.floor(px / (W / 6)), 0, 5);
+  const ri = clamp(Math.floor(py / (H / 8)), 0, 7);
+  const p = hideWallPanels[ri * 6 + ci];
+  return p ? { h: p.hue, s: p.s, l: p.l } : wallColor;
 }
 
 function startHide() {
@@ -883,8 +896,11 @@ const PIGMENTS = {
   yellow: { name: 'Yellow', wheel: 120, h: 50,  s: 90, l: 58 },
   blue:   { name: 'Blue',   wheel: 240, h: 212, s: 78, l: 55 },
 };
-const MIX_CAP = 6;
+const MIX_CAP = 8;
 const HIDE_PASS = 0.7;   // how blended you must be to fool the hunter
+// Wall lightness spread per round: later walls mix distinctly light and dark
+// tiles, so one flat color can't blend — shade regions like real camouflage.
+const HIDE_SHADES = [4, 6, 9, 13, 20];
 
 /* Mix on an artist's RYB wheel (primaries 120° apart), then map the wheel
    angle back to a display hue through paint-wheel anchor points. */
@@ -974,11 +990,16 @@ function sampleBlend() {
   sc.drawImage(overlayCv, 0, 0, 60, 48);
   const ovD = sc.getImageData(0, 0, 60, 48).data;
   let n = 0, sum = 0, pr = 0, pg = 0, pb = 0, np = 0;
+  const k = myLz.size / SIL_SIZE;
   for (let i = 0; i < silD.length; i += 4) {
     if (silD[i + 3] > 128) {
       n++;
       if (ovD[i + 3] > 128) {
-        sum += closeness(rgbToHsl(ovD[i], ovD[i + 1], ovD[i + 2]), wallColor);
+        // judge this pixel against the wall tile actually behind it
+        const px = i / 4, sx = px % 60, sy = (px / 60) | 0;
+        const scrX = myLz.x + (sx * 10 + 5 - SIL_CX) * k;
+        const scrY = myLz.y + (sy * 10 + 5 - SIL_CY) * k;
+        sum += closeness(rgbToHsl(ovD[i], ovD[i + 1], ovD[i + 2]), wallShadeAt(scrX, scrY));
         pr += ovD[i]; pg += ovD[i + 1]; pb += ovD[i + 2]; np++;
       }
     }
@@ -1014,7 +1035,10 @@ function nextHideRound() {
   buildPalette();
   document.getElementById('palette').classList.remove('hidden');
   updateHUD();
-  banner(hideRound === 0 ? 'Mix a color, then paint yourself! 🖌️' : 'Mix and paint — cover ALL of you! 🖌️');
+  banner(hideRound === 0 ? 'Mix a color, then paint yourself! 🖌️'
+    : HIDE_SHADES[clamp(hideRound, 0, HIDE_SHADES.length - 1)] >= 9
+      ? 'Match the light AND dark tiles! 🖌️'
+      : 'Mix and paint — cover ALL of you! 🖌️');
 }
 
 function updateBowl() {
@@ -1081,7 +1105,7 @@ function drawHide(dt) {
 
   // Wall
   hideWallPanels.forEach(p => {
-    ctx.fillStyle = hsl(wallColor.h, p.s, p.l);
+    ctx.fillStyle = hsl(p.hue, p.s, p.l);
     ctx.fillRect(p.x - 0.5, p.y - 0.5, p.w + 1, p.h + 1);
     ctx.fillStyle = 'rgba(255,255,255,0.05)';
     ctx.fillRect(p.x + 3, p.y + 3, p.w - 6, 4);
