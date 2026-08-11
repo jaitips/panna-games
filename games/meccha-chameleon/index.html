@@ -427,7 +427,7 @@ const THEMES = [
     hues: [{ h: 125, s: 55, l: 42 }, { h: 100, s: 50, l: 50 }, { h: 75, s: 45, l: 45 }, { h: 150, s: 40, l: 45 }, { h: 28, s: 45, l: 40 }, { h: 170, s: 35, l: 40 }],
     props: [{ t: 'tree', zone: 'bottom', n: [2, 4] }, { t: 'bush', zone: 'bottom', n: [2, 4] }, { t: 'vine', zone: 'top', n: [2, 4] }, { t: 'mushroom', zone: 'bottom', n: [1, 3] }] },
   { key: 'farm', name: 'Farm', emoji: '🌾', hueRange: [345, 65],
-    hues: [{ h: 48, s: 80, l: 60 }, { h: 40, s: 85, l: 55 }, { h: 5, s: 70, l: 50 }, { h: 110, s: 45, l: 45 }, { h: 205, s: 60, l: 65 }, { h: 25, s: 85, l: 55 }],
+    hues: [{ h: 48, s: 80, l: 60 }, { h: 40, s: 85, l: 55 }, { h: 5, s: 70, l: 50 }, { h: 110, s: 45, l: 45 }, { h: 25, s: 85, l: 55 }],
     props: [{ t: 'barn', zone: 'mid', n: [1, 1] }, { t: 'fence', zone: 'bottom', n: [2, 3] }, { t: 'hay', zone: 'bottom', n: [1, 3] }, { t: 'sun', zone: 'top', n: [1, 1] }] },
   { key: 'room', name: 'Play Room', emoji: '🛋️', hueRange: [0, 360],
     hues: [{ h: 45, s: 50, l: 78 }, { h: 340, s: 55, l: 74 }, { h: 270, s: 45, l: 72 }, { h: 210, s: 55, l: 74 }, { h: 150, s: 40, l: 72 }, { h: 20, s: 70, l: 74 }],
@@ -808,7 +808,6 @@ let seekLevel = loadSeekLevel();
 let seekCfg = SEEK_LEVELS[0];
 let seekTheme = THEMES[0];
 let seekProps = [];
-let panels = [];        // wall tiles
 let lizards = [];       // hidden chameleons
 let seekTimeLeft = 0, seekTimeTotal = 0, foundCount = 0;
 let lastTickSec = -1;
@@ -817,22 +816,11 @@ let seekOver = false;
 
 function buildSeekLevel(li, keepProgress) {
   const cfg = seekCfg = SEEK_LEVELS[Math.min(li, SEEK_LEVELS.length - 1)];
-  // Wall of colored panels in a randomly chosen pattern and scene
   const oldLizards = keepProgress ? lizards : null;
   if (!keepProgress) seekTheme = THEMES[randi(0, THEMES.length - 1)];
-  const wallHues = seekTheme.hues.map(c => ({ ...c }));
-  shuffle(wallHues);
-  wallHues.length = clamp(cfg.hues || wallHues.length, 1, wallHues.length);
+  const base = seekTheme.hues[randi(0, seekTheme.hues.length - 1)];
+  renderBackground(seekTheme, base, 10, null);
   seekProps = makeProps(seekTheme, null);
-  panels = buildWallRects(PATTERNS[randi(0, PATTERNS.length - 1)], li < 2).map(r => {
-    const base = wallHues[randi(0, wallHues.length - 1)];
-    return {
-      ...r,
-      h1: base.h + randi(-10, 10),
-      s1: clamp(base.s + randi(-12, 8), 30, 95),
-      l1: clamp(base.l + randi(-10, 10), 30, 75),
-    };
-  });
   if (oldLizards && oldLizards.length) {
     // Re-place existing lizards after resize, keep found state
     oldLizards.forEach(lz => placeLizard(lz, cfg));
@@ -840,13 +828,6 @@ function buildSeekLevel(li, keepProgress) {
     return;
   }
   lizards = [];
-  // Pick distinct panels big enough for a lizard, away from the HUD area
-  let usable = panels.filter(p => p.y + p.h > H * 0.2 && Math.min(p.w, p.h) >= 60);
-  if (usable.length < cfg.count) {
-    usable = panels.slice().sort((a, b) => Math.min(b.w, b.h) - Math.min(a.w, a.h))
-      .slice(0, Math.max(cfg.count, 8));
-  }
-  shuffle(usable);
   for (let i = 0; i < cfg.count; i++) {
     const lz = {
       found: false,
@@ -858,8 +839,9 @@ function buildSeekLevel(li, keepProgress) {
       facing: Math.random() < 0.5 ? 1 : -1,
       hintUntil: 0,
       bounce: 0,
+      x: 0, y: 0,
     };
-    placeLizard(lz, cfg, usable[i % usable.length]);
+    placeLizard(lz, cfg);
     lizards.push(lz);
   }
   seekTimeTotal = cfg.time;
@@ -870,18 +852,24 @@ function buildSeekLevel(li, keepProgress) {
   }
 }
 
-function placeLizard(lz, cfg, panel) {
-  const p = panel || panels[randi(0, panels.length - 1)];
-  const size = clamp(Math.min(p.w, p.h) * 0.85 * (cfg.sizeMul || 1), 44, 130);
-  lz.x = p.x + p.w / 2 + rand(-p.w * 0.22, p.w * 0.22);
-  lz.y = clamp(p.y + p.h / 2 + rand(-p.h * 0.18, p.h * 0.18), H * 0.16, H - size * 0.4);
+function placeLizard(lz, cfg) {
+  const size = clamp(Math.min(W, H) * 0.22 * (cfg.sizeMul || 1), 44, 130);
+  let x = W / 2, y = H / 2;
+  for (let tries = 0; tries < 40; tries++) {
+    x = rand(0.06, 0.94) * W;
+    y = rand(0.2, 0.88) * H;
+    if (lizards.every(o => o === lz || !o.x || Math.hypot(o.x - x, o.y - y) > size * 1.1)) break;
+  }
+  lz.x = x;
+  lz.y = y;
   lz.size = size;
   lz.r = size * 0.62; // generous tap radius
-  // Camouflage: panel color shifted slightly (less shift = harder)
+  // Camouflage: take on the scene color right behind you (less shift = harder)
+  const c = bgColorAt(x, y);
   const d = cfg.blend;
-  lz.h = p.h1 + randi(-d, d);
-  lz.s = clamp(p.s1 + randi(-d, d) * 0.6, 25, 95);
-  lz.l = clamp(p.l1 + randi(-d, d) * 0.6, 25, 80);
+  lz.h = c.h + randi(-d, d);
+  lz.s = clamp(c.s + randi(-d, d) * 0.6, 10, 95);
+  lz.l = clamp(c.l + randi(-d, d) * 0.6, 12, 92);
 }
 
 function shuffle(a) {
@@ -891,65 +879,200 @@ function shuffle(a) {
   }
 }
 
-/* ---- Wall pattern generators ----
-   Each play randomly picks a pattern so no two games look the same.
-   All return a list of rects covering the screen; callers color them. */
-const PATTERNS = ['grid', 'bricks', 'stripesV', 'stripesH', 'patchwork'];
-function buildWallRects(kind, coarse) {
-  const rects = [];
-  const cs = coarse ? 1.4 : 1;   // coarse = bigger cells for early levels
-  if (kind === 'bricks') {
-    const bh = clamp(H / randi(5, 7) * cs, 50, 170);
-    let y = 0, row = 0;
-    while (y < H) {
-      const h = Math.min(bh * rand(0.85, 1.15), H - y);
-      let x = row % 2 ? -bh * rand(0.4, 0.9) : 0;
-      while (x < W) {
-        const w = bh * rand(1.4, 2.2);
-        const x0 = Math.max(x, 0);
-        rects.push({ x: x0, y, w: Math.min(x + w, W) - x0 + 1, h: h + 1 });
-        x += w;
+/* ---------------- Painterly scene backgrounds ----------------
+   Real scenery instead of color blocks. Each theme paints a full scene
+   around a base color; soft dappled patches supply the light/dark
+   matching challenge. Scoring samples the actual scene pixels. */
+const bgCv = document.createElement('canvas');
+let bgData = null;
+const BG_SCALE = 8;
+
+function softBlob(b, x, y, r, fillHsla) {
+  const g2 = b.createRadialGradient(x, y, r * 0.15, x, y, r);
+  g2.addColorStop(0, fillHsla);
+  g2.addColorStop(1, fillHsla.replace(/[\d.]+\)$/, '0)'));
+  b.fillStyle = g2;
+  b.beginPath(); b.arc(x, y, r, 0, Math.PI * 2); b.fill();
+}
+
+const SCENES = {
+  forest(b, base, avoid) {
+    const sky = b.createLinearGradient(0, 0, 0, H * 0.5);
+    sky.addColorStop(0, hsl(base.h, clamp(base.s * 0.55, 10, 90), clamp(base.l + 30, 20, 92)));
+    sky.addColorStop(1, hsl(base.h, base.s, clamp(base.l + 8, 15, 88)));
+    b.fillStyle = sky; b.fillRect(0, 0, W, H * 0.5);
+    const fol = b.createLinearGradient(0, H * 0.3, 0, H);
+    fol.addColorStop(0, hsl(base.h, base.s, base.l));
+    fol.addColorStop(1, hsl(base.h, base.s, clamp(base.l - 10, 10, 85)));
+    b.fillStyle = fol; b.fillRect(0, H * 0.3, W, H * 0.7);
+    for (let i = 0; i < 14; i++) {
+      softBlob(b, rand(0, W), H * rand(0.25, 0.45), Math.min(W, H) * rand(0.08, 0.16),
+        hsl(base.h + randi(-8, 8), base.s, clamp(base.l + randi(-8, 6), 12, 88), 0.55));
+    }
+    b.fillStyle = 'rgba(74,48,26,0.85)';
+    for (let i = 0; i < 4; i++) {
+      const tx = rand(0.05, 0.95) * W;
+      if (avoid && Math.abs(tx - avoid.x) < avoid.rx) continue;
+      const tw = Math.min(W, H) * rand(0.025, 0.045);
+      b.fillRect(tx - tw / 2, H * rand(0.28, 0.4), tw, H);
+    }
+    b.fillStyle = hsl(base.h, clamp(base.s * 0.9, 5, 95), clamp(base.l - 14, 8, 80));
+    b.fillRect(0, H * 0.86, W, H * 0.14);
+    b.globalAlpha = 0.08; b.fillStyle = '#fffbe0';
+    for (let i = 0; i < 3; i++) {
+      const lx = rand(0.1, 0.9) * W;
+      b.beginPath();
+      b.moveTo(lx, 0); b.lineTo(lx + W * 0.06, 0); b.lineTo(lx + W * 0.2, H); b.lineTo(lx + W * 0.1, H);
+      b.closePath(); b.fill();
+    }
+    b.globalAlpha = 1;
+  },
+  farm(b, base, avoid) {
+    const sky = b.createLinearGradient(0, 0, 0, H * 0.45);
+    sky.addColorStop(0, 'hsl(205,65%,74%)');
+    sky.addColorStop(1, 'hsl(200,55%,84%)');
+    b.fillStyle = sky; b.fillRect(0, 0, W, H * 0.45);
+    for (let i = 0; i < 4; i++) {
+      softBlob(b, rand(0, W), H * rand(0.05, 0.22), Math.min(W, H) * rand(0.05, 0.1), 'hsla(0,0%,100%,0.8)');
+    }
+    [-14, 8].forEach((dl, i) => {
+      b.fillStyle = hsl(base.h + (i ? -6 : 6), clamp(base.s * 0.8, 10, 95), clamp(base.l + dl, 12, 88));
+      b.beginPath();
+      b.moveTo(0, H * (0.42 + i * 0.05));
+      for (let x = 0; x <= W; x += W / 6) {
+        b.quadraticCurveTo(x + W / 12, H * (0.36 + i * 0.05 + rand(-0.02, 0.02)), x + W / 6, H * (0.42 + i * 0.05));
       }
-      y += h; row++;
+      b.lineTo(W, H); b.lineTo(0, H); b.closePath(); b.fill();
+    });
+    const fld = b.createLinearGradient(0, H * 0.5, 0, H);
+    fld.addColorStop(0, hsl(base.h, base.s, clamp(base.l + 4, 12, 90)));
+    fld.addColorStop(1, hsl(base.h, base.s, clamp(base.l - 8, 10, 85)));
+    b.fillStyle = fld; b.fillRect(0, H * 0.5, W, H * 0.5);
+    b.strokeStyle = hsl(base.h, base.s, clamp(base.l - 14, 6, 80), 0.5);
+    b.lineWidth = Math.max(2, H * 0.008);
+    for (let i = 1; i <= 7; i++) {
+      const y = H * (0.5 + i * 0.07);
+      b.beginPath();
+      b.moveTo(0, y);
+      b.quadraticCurveTo(W / 2, y + H * 0.03, W, y);
+      b.stroke();
     }
-  } else if (kind === 'stripesV') {
-    let x = 0;
-    while (x < W) {
-      const w = Math.min(W * rand(0.08, 0.16) * cs, W - x);
-      rects.push({ x, y: 0, w: w + 1, h: H });
-      x += w;
-    }
-  } else if (kind === 'stripesH') {
-    let y = 0;
-    while (y < H) {
-      const h = Math.min(H * rand(0.09, 0.17) * cs, H - y);
-      rects.push({ x: 0, y, w: W, h: h + 1 });
-      y += h;
-    }
-  } else if (kind === 'patchwork') {
-    let list = [{ x: 0, y: 0, w: W, h: H }];
-    const target = coarse ? 22 : 40;
-    while (list.length < target) {
-      list.sort((a, b) => b.w * b.h - a.w * a.h);
-      const r = list.shift();
-      if (Math.max(r.w, r.h) < Math.min(W, H) * 0.18) { list.push(r); break; }
-      const t = rand(0.35, 0.65);
-      if (r.w > r.h) {
-        list.push({ x: r.x, y: r.y, w: r.w * t, h: r.h }, { x: r.x + r.w * t, y: r.y, w: r.w * (1 - t), h: r.h });
-      } else {
-        list.push({ x: r.x, y: r.y, w: r.w, h: r.h * t }, { x: r.x, y: r.y + r.h * t, w: r.w, h: r.h * (1 - t) });
+  },
+  room(b, base, avoid) {
+    b.fillStyle = hsl(base.h, base.s, base.l);
+    b.fillRect(0, 0, W, H);
+    softBlob(b, W / 2, H * 0.35, Math.max(W, H) * 0.7, hsl(base.h, base.s, clamp(base.l + 8, 15, 92), 0.5));
+    b.fillStyle = hsl(base.h, base.s, clamp(base.l + 10, 15, 92), 0.5);
+    const step = Math.min(W, H) * 0.09;
+    for (let y = step / 2; y < H * 0.8; y += step) {
+      for (let x = ((y / step) % 2) * step / 2; x < W; x += step) {
+        b.beginPath(); b.arc(x + rand(-2, 2), y + rand(-2, 2), step * 0.08, 0, Math.PI * 2); b.fill();
       }
     }
-    rects.push(...list);
-  } else { // grid
-    const cols = W > H ? randi(6, 8) : randi(4, 6);
-    const rows = W > H ? randi(4, 6) : randi(6, 9);
-    const pw = W / cols, ph = H / rows;
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-      rects.push({ x: c * pw, y: r * ph, w: pw, h: ph });
+    let wx = rand(0.12, 0.8) * W;
+    if (avoid && Math.abs(wx - avoid.x) < avoid.rx + W * 0.12) wx = avoid.x > W / 2 ? W * 0.15 : W * 0.85;
+    const ww = Math.min(W, H) * 0.24, wh = ww * 1.25, wy = H * 0.16;
+    const wsky = b.createLinearGradient(0, wy, 0, wy + wh);
+    wsky.addColorStop(0, 'hsl(205,70%,72%)'); wsky.addColorStop(1, 'hsl(200,60%,84%)');
+    b.fillStyle = wsky; b.fillRect(wx - ww / 2, wy, ww, wh);
+    b.strokeStyle = 'rgba(255,255,255,0.85)';
+    b.lineWidth = Math.max(4, ww * 0.05);
+    b.strokeRect(wx - ww / 2, wy, ww, wh);
+    b.beginPath();
+    b.moveTo(wx, wy); b.lineTo(wx, wy + wh);
+    b.moveTo(wx - ww / 2, wy + wh / 2); b.lineTo(wx + ww / 2, wy + wh / 2);
+    b.stroke();
+    b.fillStyle = 'hsl(28,45%,52%)';
+    b.fillRect(0, H * 0.82, W, H * 0.18);
+    b.fillStyle = 'hsl(28,35%,66%)';
+    b.fillRect(0, H * 0.82, W, H * 0.018);
+    b.strokeStyle = 'rgba(90,55,25,0.35)';
+    b.lineWidth = 2;
+    for (let i = 1; i < 6; i++) {
+      b.beginPath(); b.moveTo(0, H * (0.82 + i * 0.03)); b.lineTo(W, H * (0.82 + i * 0.03)); b.stroke();
+    }
+  },
+  ocean(b, base, avoid) {
+    const wat = b.createLinearGradient(0, 0, 0, H);
+    wat.addColorStop(0, hsl(base.h, base.s, clamp(base.l + 16, 15, 90)));
+    wat.addColorStop(0.6, hsl(base.h, base.s, base.l));
+    wat.addColorStop(1, hsl(base.h, base.s, clamp(base.l - 14, 8, 85)));
+    b.fillStyle = wat; b.fillRect(0, 0, W, H);
+    b.strokeStyle = 'rgba(255,255,255,0.18)';
+    b.lineWidth = Math.max(2, H * 0.006);
+    for (let i = 0; i < 6; i++) {
+      const y = H * rand(0.04, 0.3);
+      b.beginPath();
+      b.moveTo(0, y);
+      for (let x = 0; x <= W; x += W / 8) {
+        b.quadraticCurveTo(x + W / 16, y + rand(-H * 0.02, H * 0.02), x + W / 8, y);
+      }
+      b.stroke();
+    }
+    b.globalAlpha = 0.09; b.fillStyle = '#eaffff';
+    for (let i = 0; i < 3; i++) {
+      const lx = rand(0.05, 0.85) * W;
+      b.beginPath();
+      b.moveTo(lx, 0); b.lineTo(lx + W * 0.08, 0); b.lineTo(lx + W * 0.26, H); b.lineTo(lx + W * 0.14, H);
+      b.closePath(); b.fill();
+    }
+    b.globalAlpha = 1;
+    b.fillStyle = 'hsl(45,40%,62%)';
+    b.beginPath();
+    b.moveTo(0, H * 0.9);
+    b.quadraticCurveTo(W * 0.3, H * 0.86, W * 0.6, H * 0.9);
+    b.quadraticCurveTo(W * 0.85, H * 0.93, W, H * 0.9);
+    b.lineTo(W, H); b.lineTo(0, H); b.closePath(); b.fill();
+    b.fillStyle = hsl(base.h, clamp(base.s * 0.5, 5, 60), clamp(base.l - 18, 6, 60));
+    for (let i = 0; i < 3; i++) {
+      const rx2 = rand(0.05, 0.95) * W;
+      if (avoid && Math.abs(rx2 - avoid.x) < avoid.rx) continue;
+      const rr = Math.min(W, H) * rand(0.04, 0.09);
+      b.beginPath(); b.ellipse(rx2, H * 0.9, rr, rr * 0.6, 0, Math.PI, 0); b.fill();
+    }
+  },
+};
+
+function renderBackground(theme, base, spread, avoid) {
+  bgCv.width = W; bgCv.height = H;
+  const b = bgCv.getContext('2d');
+  SCENES[theme.key](b, base, avoid);
+  // dappled light/dark patches — the shade-matching challenge
+  if (spread > 0) {
+    const n = 14 + spread;
+    const alpha = spread >= 13 ? 0.85 : 0.55;
+    const steps = [-spread, -spread * 0.6, spread * 0.6, spread];
+    for (let i = 0; i < n; i++) {
+      const dl = steps[randi(0, steps.length - 1)];
+      softBlob(b, rand(0, W), H * rand(0.3, 0.85), Math.min(W, H) * rand(0.07, 0.15),
+        hsl(base.h + randi(-5, 5), base.s, clamp(base.l + dl, 10, 92), alpha));
+    }
+    // hide mode: concentrate strong patches around the chameleon so a
+    // flat paint job genuinely fails on the later rounds
+    if (avoid) {
+      for (let i = 0; i < 10 + spread; i++) {
+        const dl = spread * (Math.random() < 0.7 ? 1 : 0.6) * (Math.random() < 0.5 ? -1 : 1);
+        softBlob(b, avoid.x + rand(-avoid.rx * 1.2, avoid.rx * 1.2), H * rand(0.38, 0.78),
+          Math.min(W, H) * rand(0.05, 0.1),
+          hsl(base.h + randi(-5, 5), base.s, clamp(base.l + dl, 10, 92), 0.9));
+      }
     }
   }
-  return rects;
+  // cache a downsampled copy for per-pixel color lookups
+  const sw = Math.max(1, Math.ceil(W / BG_SCALE)), sh = Math.max(1, Math.ceil(H / BG_SCALE));
+  const sc = document.createElement('canvas');
+  sc.width = sw; sc.height = sh;
+  const scx = sc.getContext('2d', { willReadFrequently: true });
+  scx.drawImage(bgCv, 0, 0, sw, sh);
+  bgData = { d: scx.getImageData(0, 0, sw, sh).data, sw, sh };
+}
+
+function bgColorAt(px, py) {
+  if (!bgData) return wallColor;
+  const sx = clamp((px / BG_SCALE) | 0, 0, bgData.sw - 1);
+  const sy = clamp((py / BG_SCALE) | 0, 0, bgData.sh - 1);
+  const i = (sy * bgData.sw + sx) * 4;
+  return rgbToHsl(bgData.d[i], bgData.d[i + 1], bgData.d[i + 2]);
 }
 
 function startSeek() {
@@ -964,16 +1087,7 @@ function startSeek() {
 }
 
 function drawSeek(dt) {
-  // Wall
-  panels.forEach(p => {
-    ctx.fillStyle = hsl(p.h1, p.s1, p.l1);
-    ctx.fillRect(p.x - 0.5, p.y - 0.5, p.w + 1, p.h + 1);
-    // subtle inner shading for a "painted panel" look
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.fillRect(p.x + 3, p.y + 3, p.w - 6, 5);
-    ctx.fillStyle = 'rgba(0,0,0,0.07)';
-    ctx.fillRect(p.x + 3, p.y + p.h - 8, p.w - 6, 5);
-  });
+  ctx.drawImage(bgCv, 0, 0, W, H);
   drawProps(seekProps);
 
   // Timer
@@ -1130,13 +1244,11 @@ let meanPaint = null;      // average applied paint color (hsl), for verdict pos
 let lastSampleAt = 0;
 let painting = false, lastBrush = null, brushScreen = null, warnedEmpty = false;
 let gaugePop = 0, gaugePrevPct = 0, gaugePassed = false;  // the big % popup
-let hidePatternKind = 'grid';   // wall pattern this round
 let hideTheme = THEMES[0];      // scene this round
 let hideProps = [];
 let hidePhase = 'paint';   // paint | approach | scan | verdict | done
 let phaseT = 0;            // seconds in current phase
 let hunter = { x: 0 };
-let hideWallPanels = [];
 let myLz = { x: 0, y: 0, size: 0, blinkAt: 0, blink: 0 };
 
 let paintTime = 10;      // seconds to paint before hunter comes (shrinks per round)
@@ -1149,30 +1261,17 @@ function layoutHide() {
   const sg = silCv.getContext('2d');
   sg.clearRect(0, 0, SIL_W, SIL_H);
   drawChameleon(SIL_CX, SIL_CY, SIL_SIZE, 0, 0, 50, { g: sg, facing: -1 });
-  // wall = randomly patterned tiles in one color family, stepping through
-  // distinct light/dark shades (more shades on later rounds)
-  const base = wallColor;
+  // painterly scene in the wall color's family; dappled patches grow
+  // stronger on later rounds (the shade-matching challenge)
   const spread = HIDE_SHADES[clamp(hideRound, 0, HIDE_SHADES.length - 1)];
-  const steps = [-spread, -spread / 2, 0, spread / 2, spread];
-  hideWallPanels = buildWallRects(hidePatternKind, hideRound < 2).map(r => ({
-    ...r,
-    hue: base.h + randi(-3, 3),
-    l: clamp(base.l + steps[randi(0, steps.length - 1)] + randi(-1, 1), 20, 88),
-    s: clamp(base.s + randi(-5, 3), 12, 95),
-  }));
+  renderBackground(hideTheme, wallColor, spread, { x: myLz.x, rx: myLz.size * 1.5 });
   hideProps = makeProps(hideTheme, { x: myLz.x, y: myLz.y, rx: myLz.size * 1.6, ry: myLz.size * 1.2 });
 }
 
-/* The wall shade behind a given screen point — painting is judged locally,
-   so the body must match the tiles it actually sits in front of. */
+/* The scene color behind a given screen point — painting is judged locally,
+   so the body must match the scenery it actually sits in front of. */
 function wallShadeAt(px, py) {
-  for (let i = 0; i < hideWallPanels.length; i++) {
-    const p = hideWallPanels[i];
-    if (px >= p.x && px < p.x + p.w && py >= p.y && py < p.y + p.h) {
-      return { h: p.hue, s: p.s, l: p.l };
-    }
-  }
-  return wallColor;
+  return bgColorAt(px, py);
 }
 
 function startHide() {
@@ -1386,7 +1485,6 @@ function nextHideRound() {
   wallRecipe = options[randi(0, options.length - 1)].slice();
   wallColor = mixPigments(wallRecipe);
   pigments = [];
-  hidePatternKind = PATTERNS[randi(0, PATTERNS.length - 1)];
   // later rounds need MORE time, not less — shading regions is slow, careful work
   paintTime = Math.min(24 + hideRound * 3, 40);
   strokesCv.getContext('2d').clearRect(0, 0, SIL_W, SIL_H);  // fresh grey skin
@@ -1483,13 +1581,8 @@ function summonHunter() {
 function drawHide(dt) {
   phaseT += dt;
 
-  // Wall
-  hideWallPanels.forEach(p => {
-    ctx.fillStyle = hsl(p.hue, p.s, p.l);
-    ctx.fillRect(p.x - 0.5, p.y - 0.5, p.w + 1, p.h + 1);
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
-    ctx.fillRect(p.x + 3, p.y + 3, p.w - 6, 4);
-  });
+  // Scene
+  ctx.drawImage(bgCv, 0, 0, W, H);
   drawProps(hideProps);
 
   // Branch perch
