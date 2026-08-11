@@ -419,6 +419,200 @@ let state = 'menu';   // menu | seek | hide | result
 let rafId = null;
 let now = 0;
 
+/* ---------------- Environment themes ----------------
+   Each play randomly lands in a scene: its own color family plus
+   sticker-style props drawn behind the chameleons. */
+const THEMES = [
+  { key: 'forest', name: 'Forest', emoji: '🌲', hueRange: [40, 180],
+    hues: [{ h: 125, s: 55, l: 42 }, { h: 100, s: 50, l: 50 }, { h: 75, s: 45, l: 45 }, { h: 150, s: 40, l: 45 }, { h: 28, s: 45, l: 40 }, { h: 170, s: 35, l: 40 }],
+    props: [{ t: 'tree', zone: 'bottom', n: [2, 4] }, { t: 'bush', zone: 'bottom', n: [2, 4] }, { t: 'vine', zone: 'top', n: [2, 4] }, { t: 'mushroom', zone: 'bottom', n: [1, 3] }] },
+  { key: 'farm', name: 'Farm', emoji: '🌾', hueRange: [345, 65],
+    hues: [{ h: 48, s: 80, l: 60 }, { h: 40, s: 85, l: 55 }, { h: 5, s: 70, l: 50 }, { h: 110, s: 45, l: 45 }, { h: 205, s: 60, l: 65 }, { h: 25, s: 85, l: 55 }],
+    props: [{ t: 'barn', zone: 'mid', n: [1, 1] }, { t: 'fence', zone: 'bottom', n: [2, 3] }, { t: 'hay', zone: 'bottom', n: [1, 3] }, { t: 'sun', zone: 'top', n: [1, 1] }] },
+  { key: 'room', name: 'Play Room', emoji: '🛋️', hueRange: [0, 360],
+    hues: [{ h: 45, s: 50, l: 78 }, { h: 340, s: 55, l: 74 }, { h: 270, s: 45, l: 72 }, { h: 210, s: 55, l: 74 }, { h: 150, s: 40, l: 72 }, { h: 20, s: 70, l: 74 }],
+    props: [{ t: 'window', zone: 'mid', n: [1, 2] }, { t: 'frame', zone: 'mid', n: [1, 3] }, { t: 'shelf', zone: 'top', n: [1, 2] }, { t: 'lamp', zone: 'top', n: [1, 2] }] },
+  { key: 'ocean', name: 'Ocean', emoji: '🌊', hueRange: [120, 265],
+    hues: [{ h: 215, s: 70, l: 45 }, { h: 185, s: 60, l: 45 }, { h: 170, s: 55, l: 55 }, { h: 230, s: 55, l: 35 }, { h: 160, s: 45, l: 50 }, { h: 250, s: 45, l: 50 }],
+    props: [{ t: 'seaweed', zone: 'bottom', n: [3, 5] }, { t: 'bubble', zone: 'any', n: [4, 7] }, { t: 'fish', zone: 'any', n: [2, 4] }] },
+];
+
+function hueInRange(h, range) {
+  h = ((h % 360) + 360) % 360;
+  const [a, b] = range;
+  return a <= b ? h >= a && h <= b : (h >= a || h <= b);
+}
+
+function makeProps(theme, avoid) {
+  const out = [];
+  theme.props.forEach(spec => {
+    const n = randi(spec.n[0], spec.n[1]);
+    for (let i = 0; i < n; i++) {
+      const x = rand(0.04, 0.96) * W;
+      const y = spec.zone === 'top' ? rand(0.04, 0.16) * H
+        : spec.zone === 'bottom' ? rand(0.7, 0.92) * H
+        : spec.zone === 'mid' ? rand(0.22, 0.6) * H
+        : rand(0.12, 0.85) * H;
+      // keep the chameleon's painting zone free of props
+      if (avoid && Math.abs(x - avoid.x) < avoid.rx && Math.abs(y - avoid.y) < avoid.ry) continue;
+      out.push({ t: spec.t, x, y, s: rand(0.75, 1.35), f: Math.random() < 0.5 });
+    }
+  });
+  return out;
+}
+
+function drawProps(list) {
+  list.forEach(p => {
+    const u = Math.min(W, H) / 100 * p.s;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    if (p.f) ctx.scale(-1, 1);
+    ctx.lineCap = 'round';
+    switch (p.t) {
+      case 'tree':
+        ctx.fillStyle = 'rgba(80,50,25,0.7)';
+        ctx.fillRect(-1.5 * u, 2 * u, 3 * u, 8 * u);
+        ctx.fillStyle = 'rgba(20,75,35,0.65)';
+        for (let i = 0; i < 3; i++) {
+          const w = (9 - i * 2) * u, ty = 2 * u - i * 5 * u;
+          ctx.beginPath();
+          ctx.moveTo(-w, ty); ctx.lineTo(w, ty); ctx.lineTo(0, ty - 8 * u);
+          ctx.closePath(); ctx.fill();
+        }
+        break;
+      case 'bush':
+        ctx.fillStyle = 'rgba(25,80,35,0.6)';
+        [[-4, 0, 4], [0, -2, 5], [4, 0, 4]].forEach(([cx, cy, r]) => {
+          ctx.beginPath(); ctx.arc(cx * u, cy * u, r * u, 0, Math.PI * 2); ctx.fill();
+        });
+        break;
+      case 'vine':
+        ctx.strokeStyle = 'rgba(25,90,40,0.6)';
+        ctx.lineWidth = u;
+        ctx.beginPath();
+        ctx.moveTo(0, -p.y);
+        ctx.quadraticCurveTo(3 * u, 8 * u, -u, 18 * u);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(30,110,50,0.55)';
+        [[1, 4], [2.5, 9], [0.5, 14], [-1, 18]].forEach(([lx, ly]) => {
+          ctx.beginPath(); ctx.ellipse(lx * u, ly * u, 2 * u, 1.2 * u, 0.6, 0, Math.PI * 2); ctx.fill();
+        });
+        break;
+      case 'mushroom':
+        ctx.fillStyle = 'rgba(245,235,215,0.7)';
+        ctx.fillRect(-u, 0, 2 * u, 3.5 * u);
+        ctx.fillStyle = 'rgba(200,60,50,0.7)';
+        ctx.beginPath(); ctx.arc(0, 0, 3.5 * u, Math.PI, 0); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        [[-1.6, -1.4], [0.8, -2]].forEach(([dx, dy]) => {
+          ctx.beginPath(); ctx.arc(dx * u, dy * u, 0.7 * u, 0, Math.PI * 2); ctx.fill();
+        });
+        break;
+      case 'fence':
+        ctx.strokeStyle = 'rgba(130,90,45,0.55)';
+        ctx.lineWidth = 1.4 * u;
+        [[-8, 0], [0, -0.6], [8, 0]].forEach(([px2, dy]) => {
+          ctx.beginPath(); ctx.moveTo(px2 * u, (dy - 5) * u); ctx.lineTo(px2 * u, (dy + 5) * u); ctx.stroke();
+        });
+        ctx.beginPath(); ctx.moveTo(-10 * u, -2 * u); ctx.lineTo(10 * u, -2 * u); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-10 * u, 2 * u); ctx.lineTo(10 * u, 2 * u); ctx.stroke();
+        break;
+      case 'barn':
+        ctx.fillStyle = 'rgba(150,45,35,0.55)';
+        ctx.fillRect(-8 * u, -4 * u, 16 * u, 10 * u);
+        ctx.fillStyle = 'rgba(100,30,25,0.6)';
+        ctx.beginPath();
+        ctx.moveTo(-9 * u, -4 * u); ctx.lineTo(9 * u, -4 * u); ctx.lineTo(0, -10 * u);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(70,40,25,0.55)';
+        ctx.beginPath(); ctx.arc(0, 6 * u, 3 * u, Math.PI, 0); ctx.closePath(); ctx.fill();
+        break;
+      case 'hay':
+        ctx.fillStyle = 'rgba(210,170,70,0.6)';
+        ctx.beginPath(); ctx.roundRect(-5 * u, -3.5 * u, 10 * u, 7 * u, 2 * u); ctx.fill();
+        ctx.strokeStyle = 'rgba(160,120,40,0.5)';
+        ctx.lineWidth = 0.6 * u;
+        ctx.beginPath(); ctx.moveTo(-5 * u, 0); ctx.lineTo(5 * u, 0); ctx.stroke();
+        break;
+      case 'sun':
+        ctx.fillStyle = 'rgba(255,215,70,0.75)';
+        ctx.beginPath(); ctx.arc(0, 0, 4.5 * u, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,215,70,0.6)';
+        ctx.lineWidth = u;
+        for (let i = 0; i < 8; i++) {
+          const a = i * Math.PI / 4;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * 6 * u, Math.sin(a) * 6 * u);
+          ctx.lineTo(Math.cos(a) * 8.5 * u, Math.sin(a) * 8.5 * u);
+          ctx.stroke();
+        }
+        break;
+      case 'window':
+        ctx.fillStyle = 'rgba(255,250,220,0.2)';
+        ctx.fillRect(-6 * u, -8 * u, 12 * u, 16 * u);
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+        ctx.lineWidth = 1.3 * u;
+        ctx.strokeRect(-6 * u, -8 * u, 12 * u, 16 * u);
+        ctx.beginPath();
+        ctx.moveTo(0, -8 * u); ctx.lineTo(0, 8 * u);
+        ctx.moveTo(-6 * u, 0); ctx.lineTo(6 * u, 0);
+        ctx.stroke();
+        break;
+      case 'frame':
+        ctx.strokeStyle = 'rgba(110,70,35,0.6)';
+        ctx.lineWidth = 1.2 * u;
+        ctx.strokeRect(-4.5 * u, -3.5 * u, 9 * u, 7 * u);
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.fillRect(-4.5 * u, -3.5 * u, 9 * u, 7 * u);
+        break;
+      case 'shelf':
+        ctx.strokeStyle = 'rgba(110,70,35,0.6)';
+        ctx.lineWidth = 1.2 * u;
+        ctx.beginPath(); ctx.moveTo(-9 * u, 2 * u); ctx.lineTo(9 * u, 2 * u); ctx.stroke();
+        ['rgba(220,90,80,0.55)', 'rgba(90,140,220,0.55)', 'rgba(240,200,90,0.55)'].forEach((col, i) => {
+          ctx.fillStyle = col;
+          ctx.fillRect((-6 + i * 4) * u, -3 * u, 2.6 * u, 5 * u);
+        });
+        break;
+      case 'lamp':
+        ctx.strokeStyle = 'rgba(60,60,70,0.5)';
+        ctx.lineWidth = 0.8 * u;
+        ctx.beginPath(); ctx.moveTo(0, -p.y); ctx.lineTo(0, 0); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,240,160,0.28)';
+        ctx.beginPath(); ctx.arc(0, 4 * u, 5 * u, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(230,120,90,0.65)';
+        ctx.beginPath();
+        ctx.moveTo(-4 * u, 2 * u); ctx.lineTo(4 * u, 2 * u); ctx.lineTo(2.4 * u, -3 * u); ctx.lineTo(-2.4 * u, -3 * u);
+        ctx.closePath(); ctx.fill();
+        break;
+      case 'seaweed':
+        ctx.strokeStyle = 'rgba(25,120,85,0.55)';
+        ctx.lineWidth = 1.4 * u;
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * 2.4 * u, 6 * u);
+          ctx.quadraticCurveTo((i * 2.4 + 3) * u, -2 * u, i * 2 * u, -10 * u - i * 3 * u);
+          ctx.stroke();
+        }
+        break;
+      case 'bubble':
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+        ctx.lineWidth = 0.7 * u;
+        ctx.beginPath(); ctx.arc(0, 0, 2.4 * u, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(-0.8 * u, -0.8 * u, 0.7 * u, 0, Math.PI * 2); ctx.stroke();
+        break;
+      case 'fish':
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.beginPath(); ctx.ellipse(0, 0, 3.2 * u, 1.8 * u, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(3 * u, 0); ctx.lineTo(5.4 * u, -1.8 * u); ctx.lineTo(5.4 * u, 1.8 * u);
+        ctx.closePath(); ctx.fill();
+        break;
+    }
+    ctx.restore();
+  });
+}
+
 /* ---------------- Confetti particles ---------------- */
 let particles = [];
 function burstConfetti(x, y, n, big) {
@@ -611,6 +805,8 @@ function saveSeekLevel(lv) {
 }
 let seekLevel = loadSeekLevel();
 let seekCfg = SEEK_LEVELS[0];
+let seekTheme = THEMES[0];
+let seekProps = [];
 let panels = [];        // wall tiles
 let lizards = [];       // hidden chameleons
 let seekTimeLeft = 0, seekTimeTotal = 0, foundCount = 0;
@@ -620,11 +816,13 @@ let seekOver = false;
 
 function buildSeekLevel(li, keepProgress) {
   const cfg = seekCfg = SEEK_LEVELS[Math.min(li, SEEK_LEVELS.length - 1)];
-  // Wall of colored panels in a randomly chosen pattern
+  // Wall of colored panels in a randomly chosen pattern and scene
   const oldLizards = keepProgress ? lizards : null;
-  const wallHues = PALETTE.slice();
+  if (!keepProgress) seekTheme = THEMES[randi(0, THEMES.length - 1)];
+  const wallHues = seekTheme.hues.map(c => ({ ...c }));
   shuffle(wallHues);
-  wallHues.length = clamp(cfg.hues || PALETTE.length, 1, wallHues.length);
+  wallHues.length = clamp(cfg.hues || wallHues.length, 1, wallHues.length);
+  seekProps = makeProps(seekTheme, null);
   panels = buildWallRects(PATTERNS[randi(0, PATTERNS.length - 1)], li < 2).map(r => {
     const base = wallHues[randi(0, wallHues.length - 1)];
     return {
@@ -760,7 +958,7 @@ function startSeek() {
   document.getElementById('hintBtn').classList.remove('hidden');
   hintCooldown = 0;
   updateHUD();
-  banner(`Level ${seekLevel + 1} — find ${lizards.length}! 🔍`);
+  banner(`${seekTheme.emoji} Level ${seekLevel + 1} — find ${lizards.length}! 🔍`);
   sfx.click();
 }
 
@@ -775,6 +973,7 @@ function drawSeek(dt) {
     ctx.fillStyle = 'rgba(0,0,0,0.07)';
     ctx.fillRect(p.x + 3, p.y + p.h - 8, p.w - 6, 5);
   });
+  drawProps(seekProps);
 
   // Timer
   if (!seekOver) {
@@ -930,6 +1129,8 @@ let lastSampleAt = 0;
 let painting = false, lastBrush = null, brushScreen = null, warnedEmpty = false;
 let gaugePop = 0, gaugePrevPct = 0, gaugePassed = false;  // the big % popup
 let hidePatternKind = 'grid';   // wall pattern this round
+let hideTheme = THEMES[0];      // scene this round
+let hideProps = [];
 let hidePhase = 'paint';   // paint | approach | scan | verdict | done
 let phaseT = 0;            // seconds in current phase
 let hunter = { x: 0 };
@@ -957,6 +1158,7 @@ function layoutHide() {
     l: clamp(base.l + steps[randi(0, steps.length - 1)] + randi(-1, 1), 20, 88),
     s: clamp(base.s + randi(-5, 3), 12, 95),
   }));
+  hideProps = makeProps(hideTheme, { x: myLz.x, y: myLz.y, rx: myLz.size * 1.6, ry: myLz.size * 1.2 });
 }
 
 /* The wall shade behind a given screen point — painting is judged locally,
@@ -1173,7 +1375,12 @@ const RECIPES = [
 ];
 
 function nextHideRound() {
-  const options = RECIPES[clamp(hideRound, 0, RECIPES.length - 1)];
+  hideTheme = THEMES[randi(0, THEMES.length - 1)];
+  const tier = RECIPES[clamp(hideRound, 0, RECIPES.length - 1)];
+  // prefer recipes whose mixed color fits the scene (green walls in the
+  // forest, blue walls in the ocean...) — fall back to any if none fit
+  const fitting = tier.filter(r => hueInRange(mixPigments(r).h, hideTheme.hueRange));
+  const options = fitting.length ? fitting : tier;
   wallRecipe = options[randi(0, options.length - 1)].slice();
   wallColor = mixPigments(wallRecipe);
   pigments = [];
@@ -1193,10 +1400,10 @@ function nextHideRound() {
   document.getElementById('palette').classList.remove('hidden');
   document.getElementById('readyBtn').classList.add('hidden');
   updateHUD();
-  banner(hideRound === 0 ? 'Mix a color, then paint yourself! 🖌️'
+  banner(hideTheme.emoji + ' ' + (hideRound === 0 ? 'Mix a color, then paint yourself! 🖌️'
     : HIDE_SHADES[clamp(hideRound, 0, HIDE_SHADES.length - 1)] >= 9
       ? 'Match the light AND dark tiles! 🖌️'
-      : 'Mix and paint — cover ALL of you! 🖌️');
+      : 'Mix and paint — cover ALL of you! 🖌️'));
 }
 
 function updateBowl() {
@@ -1281,6 +1488,7 @@ function drawHide(dt) {
     ctx.fillStyle = 'rgba(255,255,255,0.05)';
     ctx.fillRect(p.x + 3, p.y + 3, p.w - 6, 4);
   });
+  drawProps(hideProps);
 
   // Branch perch
   ctx.strokeStyle = '#6b4326';
