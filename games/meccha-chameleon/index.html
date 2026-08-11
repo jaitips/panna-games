@@ -613,6 +613,301 @@ function drawProps(list) {
   });
 }
 
+/* ---------------- Seek scenes: rooms and places built from objects ----------------
+   Flat-colored furniture and nature shapes the chameleons hide ON —
+   in the tree, on the bed, the lamp, a picture... Each object records
+   a hide spot with its exact color, so matching stays crisp. */
+const bgCv = document.createElement('canvas');
+let bgData = null;
+const BG_SCALE = 8;
+let seekSpots = [];
+
+const PALS = {
+  pastel: [{ h: 340, s: 55, l: 72 }, { h: 210, s: 55, l: 72 }, { h: 270, s: 45, l: 72 }, { h: 150, s: 40, l: 70 }, { h: 20, s: 70, l: 72 }, { h: 48, s: 60, l: 74 }],
+  wood: [{ h: 28, s: 45, l: 46 }, { h: 22, s: 40, l: 38 }, { h: 35, s: 45, l: 56 }],
+  green: [{ h: 125, s: 50, l: 38 }, { h: 100, s: 45, l: 44 }, { h: 150, s: 40, l: 36 }, { h: 78, s: 45, l: 42 }],
+};
+const pickCol = arr => ({ ...arr[randi(0, arr.length - 1)] });
+
+function renderSeekScene(theme) {
+  bgCv.width = W; bgCv.height = H;
+  const b = bgCv.getContext('2d');
+  const u = Math.min(W, H) / 100;
+  seekSpots = [];
+  const spot = (x, y, size, c) => seekSpots.push({ x, y, size, c });
+  const flat = c => hsl(c.h, c.s, c.l);
+  const taken = [];
+  const slotX = w => {
+    for (let t = 0; t < 30; t++) {
+      const x = rand(w / 2 + W * 0.02, W - w / 2 - W * 0.02);
+      if (taken.every(([a2, b2]) => x + w / 2 < a2 || x - w / 2 > b2)) {
+        taken.push([x - w / 2, x + w / 2]);
+        return x;
+      }
+    }
+    return rand(w / 2, W - w / 2);
+  };
+
+  if (theme.key === 'forest') {
+    b.fillStyle = 'hsl(95,38%,80%)'; b.fillRect(0, 0, W, H);
+    b.fillStyle = 'hsl(108,38%,56%)'; b.fillRect(0, H * 0.42, W, H);
+    b.fillStyle = 'hsl(100,34%,35%)'; b.fillRect(0, H * 0.78, W, H * 0.22);
+    for (let i = 0, n = randi(3, 5); i < n; i++) {
+      const cs = rand(9, 14) * u;
+      const x = slotX(cs * 3);
+      const gy = H * rand(0.55, 0.72);
+      const c = pickCol(PALS.green);
+      b.fillStyle = 'rgb(96,64,34)';
+      b.fillRect(x - 1.6 * u, gy - cs * 0.5, 3.2 * u, H * 0.92 - gy + cs * 0.5);
+      b.fillStyle = flat(c);
+      [[0, -cs * 1.15, cs], [-cs * 0.75, -cs * 0.55, cs * 0.75], [cs * 0.75, -cs * 0.55, cs * 0.75]].forEach(([dx, dy, r]) => {
+        b.beginPath(); b.arc(x + dx, gy + dy, r, 0, Math.PI * 2); b.fill();
+      });
+      spot(x, gy - cs * 1.05, cs * 1.5, c);
+    }
+    for (let i = 0, n = randi(2, 3); i < n; i++) {
+      const r = rand(5, 7) * u;
+      const x = slotX(r * 3.4), y = H * rand(0.8, 0.88);
+      const c = pickCol(PALS.green);
+      b.fillStyle = flat(c);
+      [[-r * 0.8, 0], [0, -r * 0.5], [r * 0.8, 0]].forEach(([dx, dy]) => {
+        b.beginPath(); b.arc(x + dx, y + dy, r, 0, Math.PI * 2); b.fill();
+      });
+      spot(x, y - r * 0.3, r * 1.7, c);
+    }
+    const lc = pickCol(PALS.wood);
+    const lx = slotX(26 * u), ly = H * rand(0.84, 0.9);
+    b.fillStyle = flat(lc);
+    b.beginPath(); b.roundRect(lx - 12 * u, ly - 3 * u, 24 * u, 6 * u, 3 * u); b.fill();
+    b.fillStyle = flat({ h: lc.h, s: lc.s, l: Math.min(lc.l + 16, 80) });
+    b.beginPath(); b.ellipse(lx + 12 * u, ly, 2.2 * u, 3 * u, 0, 0, Math.PI * 2); b.fill();
+    spot(lx, ly - u, 10 * u, lc);
+  } else if (theme.key === 'room') {
+    const wallC = pickCol(PALS.pastel), floorC = pickCol(PALS.wood);
+    b.fillStyle = flat(wallC); b.fillRect(0, 0, W, H);
+    b.fillStyle = flat(floorC); b.fillRect(0, H * 0.7, W, H * 0.3);
+    b.fillStyle = flat({ h: floorC.h, s: floorC.s, l: Math.min(floorC.l + 18, 82) });
+    b.fillRect(0, H * 0.7, W, 1.2 * u);
+    const floorY = H * 0.7;
+    // bed — headboard, mattress, blanket, pillow
+    {
+      const bw = 32 * u, x = slotX(bw + 4 * u);
+      const blanket = pickCol(PALS.pastel.filter(c => c.h !== wallC.h));
+      b.fillStyle = flat({ h: floorC.h, s: floorC.s, l: Math.max(floorC.l - 10, 15) });
+      b.beginPath(); b.roundRect(x - bw / 2 - 3 * u, floorY - 14 * u, 5 * u, 14 * u, 1.5 * u); b.fill();
+      b.fillStyle = '#f7f4ec';
+      b.fillRect(x - bw / 2, floorY - 7 * u, bw, 4 * u);
+      b.beginPath(); b.ellipse(x - bw / 2 + 5 * u, floorY - 8 * u, 4 * u, 2 * u, -0.15, 0, Math.PI * 2); b.fill();
+      b.fillStyle = flat(blanket);
+      b.beginPath(); b.roundRect(x - bw / 2 + 9 * u, floorY - 8.5 * u, bw - 9 * u, 8.5 * u, 2 * u); b.fill();
+      spot(x + 4 * u, floorY - 5 * u, 11 * u, blanket);
+    }
+    // sofa
+    {
+      const sw = 24 * u, x = slotX(sw + 4 * u);
+      const c = pickCol(PALS.pastel.filter(c2 => c2.h !== wallC.h));
+      b.fillStyle = flat(c);
+      b.beginPath(); b.roundRect(x - sw / 2, floorY - 12 * u, sw, 8 * u, 3 * u); b.fill();
+      b.beginPath(); b.roundRect(x - sw / 2, floorY - 7 * u, sw, 7 * u, 2.5 * u); b.fill();
+      b.fillStyle = flat({ h: c.h, s: c.s, l: Math.max(c.l - 10, 20) });
+      b.beginPath(); b.roundRect(x - sw / 2 - 2.4 * u, floorY - 9 * u, 3.4 * u, 9 * u, 1.6 * u); b.fill();
+      b.beginPath(); b.roundRect(x + sw / 2 - u, floorY - 9 * u, 3.4 * u, 9 * u, 1.6 * u); b.fill();
+      spot(x, floorY - 9.5 * u, 10 * u, c);
+    }
+    // table
+    {
+      const tw = 18 * u, x = slotX(tw + 3 * u);
+      const c = pickCol(PALS.wood);
+      b.fillStyle = flat(c);
+      b.beginPath(); b.roundRect(x - tw / 2, floorY - 9 * u, tw, 2.6 * u, u); b.fill();
+      b.fillRect(x - tw / 2 + 1.6 * u, floorY - 7 * u, 1.8 * u, 7 * u);
+      b.fillRect(x + tw / 2 - 3.4 * u, floorY - 7 * u, 1.8 * u, 7 * u);
+      spot(x, floorY - 9.5 * u, 8 * u, c);
+    }
+    // floor lamp
+    {
+      const x = slotX(10 * u);
+      const shade = { h: 15, s: 60, l: 58 };
+      b.fillStyle = 'hsl(30,25%,30%)';
+      b.fillRect(x - 0.7 * u, floorY - 18 * u, 1.4 * u, 18 * u);
+      b.beginPath(); b.ellipse(x, floorY, 4 * u, 1.2 * u, 0, 0, Math.PI * 2); b.fill();
+      b.fillStyle = flat(shade);
+      b.beginPath();
+      b.moveTo(x - 5 * u, floorY - 18 * u); b.lineTo(x + 5 * u, floorY - 18 * u);
+      b.lineTo(x + 3 * u, floorY - 25 * u); b.lineTo(x - 3 * u, floorY - 25 * u);
+      b.closePath(); b.fill();
+      spot(x, floorY - 21 * u, 7.5 * u, shade);
+    }
+    // rug
+    {
+      const x = slotX(20 * u);
+      const c = pickCol(PALS.pastel.filter(c2 => c2.h !== wallC.h));
+      b.fillStyle = flat(c);
+      b.beginPath(); b.ellipse(x, H * 0.88, 11 * u, 3.6 * u, 0, 0, Math.PI * 2); b.fill();
+      spot(x, H * 0.875, 9 * u, c);
+    }
+    // pictures + window on the wall
+    const wallTaken = [];
+    const wallSlot = w => {
+      for (let t = 0; t < 25; t++) {
+        const x = rand(w / 2 + W * 0.04, W - w / 2 - W * 0.04);
+        if (wallTaken.every(([a2, b2]) => x + w / 2 < a2 || x - w / 2 > b2)) {
+          wallTaken.push([x - w / 2, x + w / 2]);
+          return x;
+        }
+      }
+      return rand(w / 2, W - w / 2);
+    };
+    for (let i = 0, n = randi(1, 2); i < n; i++) {
+      const pw2 = rand(9, 12) * u, x = wallSlot(pw2 + 3 * u), y = H * rand(0.2, 0.42);
+      const inner = pickCol(PALS.pastel.filter(c2 => c2.h !== wallC.h));
+      b.fillStyle = flat({ h: 30, s: 40, l: 35 });
+      b.fillRect(x - pw2 / 2 - u, y - pw2 * 0.4 - u, pw2 + 2 * u, pw2 * 0.8 + 2 * u);
+      b.fillStyle = flat(inner);
+      b.fillRect(x - pw2 / 2, y - pw2 * 0.4, pw2, pw2 * 0.8);
+      spot(x, y, pw2 * 0.72, inner);
+    }
+    {
+      const ww = 14 * u, x = wallSlot(ww + 4 * u), y = H * 0.3;
+      const skyC = { h: 205, s: 65, l: 76 };
+      b.fillStyle = '#fff';
+      b.fillRect(x - ww / 2 - u, y - 9 * u, ww + 2 * u, 18 * u);
+      b.fillStyle = flat(skyC);
+      b.fillRect(x - ww / 2, y - 8 * u, ww, 16 * u);
+      b.strokeStyle = '#fff'; b.lineWidth = u;
+      b.beginPath();
+      b.moveTo(x, y - 8 * u); b.lineTo(x, y + 8 * u);
+      b.moveTo(x - ww / 2, y); b.lineTo(x + ww / 2, y);
+      b.stroke();
+      spot(x, y, 9 * u, skyC);
+    }
+  } else if (theme.key === 'farm') {
+    b.fillStyle = 'hsl(205,62%,78%)'; b.fillRect(0, 0, W, H);
+    b.fillStyle = 'hsl(48,65%,62%)'; b.fillRect(0, H * 0.5, W, H);
+    b.fillStyle = 'hsl(35,50%,45%)'; b.fillRect(0, H * 0.84, W, H * 0.16);
+    b.fillStyle = 'hsl(48,90%,68%)';
+    b.beginPath(); b.arc(W * rand(0.12, 0.88), H * 0.12, 5 * u, 0, Math.PI * 2); b.fill();
+    b.fillStyle = 'rgba(255,255,255,0.9)';
+    for (let i = 0; i < 3; i++) {
+      const cx = rand(0.1, 0.9) * W, cy = H * rand(0.06, 0.2);
+      [[0, 0, 4], [-3, 1, 3], [3, 1, 3]].forEach(([dx, dy, r]) => {
+        b.beginPath(); b.arc(cx + dx * u, cy + dy * u, r * u, 0, Math.PI * 2); b.fill();
+      });
+    }
+    // barn
+    {
+      const bw = 26 * u, x = slotX(bw + 4 * u);
+      const barnC = { h: 5, s: 60, l: 45 };
+      const gy = H * 0.62;
+      b.fillStyle = flat(barnC);
+      b.fillRect(x - bw / 2, gy - 12 * u, bw, 14 * u);
+      b.fillStyle = flat({ h: 5, s: 55, l: 30 });
+      b.beginPath();
+      b.moveTo(x - bw / 2 - 1.5 * u, gy - 12 * u); b.lineTo(x + bw / 2 + 1.5 * u, gy - 12 * u); b.lineTo(x, gy - 20 * u);
+      b.closePath(); b.fill();
+      b.fillStyle = 'hsl(30,40%,25%)';
+      b.beginPath(); b.arc(x, gy + 2 * u, 4 * u, Math.PI, 0); b.closePath(); b.fill();
+      spot(x - bw * 0.28, gy - 6 * u, 10 * u, barnC);
+    }
+    // hay bales
+    for (let i = 0, n = randi(2, 3); i < n; i++) {
+      const hw = rand(10, 13) * u;
+      const x = slotX(hw + 3 * u), y = H * rand(0.68, 0.8);
+      const c = { h: 42, s: 62, l: 58 };
+      b.fillStyle = flat(c);
+      b.beginPath(); b.roundRect(x - hw / 2, y - hw * 0.35, hw, hw * 0.7, hw * 0.18); b.fill();
+      b.strokeStyle = 'hsla(38,55%,42%,0.8)'; b.lineWidth = 0.7 * u;
+      b.beginPath(); b.moveTo(x - hw / 2, y); b.lineTo(x + hw / 2, y); b.stroke();
+      spot(x, y - u, hw * 0.62, c);
+    }
+    // wheat stacks
+    for (let i = 0, n = randi(1, 2); i < n; i++) {
+      const x = slotX(12 * u), y = H * rand(0.86, 0.92);
+      const c = { h: 45, s: 70, l: 52 };
+      b.fillStyle = flat(c);
+      b.beginPath();
+      b.moveTo(x - 6 * u, y); b.lineTo(x + 6 * u, y); b.lineTo(x, y - 11 * u);
+      b.closePath(); b.fill();
+      spot(x, y - 4 * u, 7.5 * u, c);
+    }
+    // fence
+    {
+      const x = slotX(24 * u), y = H * rand(0.87, 0.92);
+      const c = { h: 28, s: 45, l: 42 };
+      b.strokeStyle = flat(c); b.lineWidth = 1.5 * u; b.lineCap = 'round';
+      [[-9, 0], [0, -0.6], [9, 0]].forEach(([px2, dy]) => {
+        b.beginPath(); b.moveTo(x + px2 * u, y + (dy - 5) * u); b.lineTo(x + px2 * u, y + (dy + 5) * u); b.stroke();
+      });
+      b.beginPath(); b.moveTo(x - 11 * u, y - 2 * u); b.lineTo(x + 11 * u, y - 2 * u); b.stroke();
+      b.beginPath(); b.moveTo(x - 11 * u, y + 2 * u); b.lineTo(x + 11 * u, y + 2 * u); b.stroke();
+      spot(x, y, 8.5 * u, c);
+    }
+  } else { // ocean
+    b.fillStyle = 'hsl(200,65%,66%)'; b.fillRect(0, 0, W, H);
+    b.fillStyle = 'hsl(210,62%,52%)'; b.fillRect(0, H * 0.36, W, H);
+    b.fillStyle = 'hsl(45,42%,64%)'; b.fillRect(0, H * 0.82, W, H * 0.18);
+    // rocks
+    for (let i = 0, n = randi(2, 3); i < n; i++) {
+      const rw = rand(9, 13) * u;
+      const x = slotX(rw * 2.4), y = H * rand(0.8, 0.86);
+      const c = { h: 220, s: 18, l: 42 };
+      b.fillStyle = flat(c);
+      b.beginPath(); b.ellipse(x, y, rw, rw * 0.62, 0, Math.PI, 0); b.fill();
+      spot(x, y - rw * 0.25, rw * 0.9, c);
+    }
+    // coral
+    for (let i = 0, n = randi(1, 2); i < n; i++) {
+      const x = slotX(14 * u), y = H * rand(0.8, 0.88);
+      const c = { h: 355, s: 65, l: 62 };
+      b.fillStyle = flat(c);
+      [[0, -6, 2.6], [-3.4, -3, 2.2], [3.4, -3.4, 2.2], [-1.6, -8.5, 1.9], [1.8, -9, 1.9]].forEach(([dx, dy, r]) => {
+        b.beginPath(); b.arc(x + dx * u, y + dy * u, r * u, 0, Math.PI * 2); b.fill();
+        b.fillRect(x + (dx - r * 0.55) * u, y + dy * u, r * 1.1 * u, -dy * u);
+      });
+      spot(x, y - 5 * u, 8 * u, c);
+    }
+    // seaweed clump
+    for (let i = 0, n = randi(1, 2); i < n; i++) {
+      const x = slotX(10 * u), y = H * rand(0.82, 0.88);
+      const c = { h: 160, s: 50, l: 34 };
+      b.strokeStyle = flat(c); b.lineWidth = 2.2 * u; b.lineCap = 'round';
+      for (let s2 = -1; s2 <= 1; s2++) {
+        b.beginPath();
+        b.moveTo(x + s2 * 2.6 * u, y + 3 * u);
+        b.quadraticCurveTo(x + (s2 * 2.6 + 3) * u, y - 6 * u, x + s2 * 2 * u, y - 13 * u - s2 * 2 * u);
+        b.stroke();
+      }
+      spot(x, y - 6 * u, 8 * u, c);
+    }
+    // shipwreck window / porthole
+    {
+      const x = slotX(10 * u), y = H * rand(0.3, 0.55);
+      const c = { h: 45, s: 55, l: 60 };
+      b.fillStyle = flat(c);
+      b.beginPath(); b.arc(x, y, 5 * u, 0, Math.PI * 2); b.fill();
+      b.fillStyle = 'hsl(210,62%,40%)';
+      b.beginPath(); b.arc(x, y, 3.4 * u, 0, Math.PI * 2); b.fill();
+      spot(x, y, 5.5 * u, { h: 210, s: 62, l: 40 });
+    }
+  }
+
+  // cache a downsampled copy so off-object chameleons can match the backdrop
+  const sw = Math.max(1, Math.ceil(W / BG_SCALE)), sh = Math.max(1, Math.ceil(H / BG_SCALE));
+  const sc = document.createElement('canvas');
+  sc.width = sw; sc.height = sh;
+  const scx = sc.getContext('2d', { willReadFrequently: true });
+  scx.drawImage(bgCv, 0, 0, sw, sh);
+  bgData = { d: scx.getImageData(0, 0, sw, sh).data, sw, sh };
+}
+
+function bgColorAt(px, py) {
+  if (!bgData) return { h: 100, s: 40, l: 50 };
+  const sx = clamp((px / BG_SCALE) | 0, 0, bgData.sw - 1);
+  const sy = clamp((py / BG_SCALE) | 0, 0, bgData.sh - 1);
+  const i = (sy * bgData.sw + sx) * 4;
+  return rgbToHsl(bgData.d[i], bgData.d[i + 1], bgData.d[i + 2]);
+}
+
 /* ---------------- Confetti particles ---------------- */
 let particles = [];
 function burstConfetti(x, y, n, big) {
@@ -807,8 +1102,6 @@ function saveSeekLevel(lv) {
 let seekLevel = loadSeekLevel();
 let seekCfg = SEEK_LEVELS[0];
 let seekTheme = THEMES[0];
-let seekProps = [];
-let panels = [];        // wall tiles
 let lizards = [];       // hidden chameleons
 let seekTimeLeft = 0, seekTimeTotal = 0, foundCount = 0;
 let lastTickSec = -1;
@@ -817,36 +1110,18 @@ let seekOver = false;
 
 function buildSeekLevel(li, keepProgress) {
   const cfg = seekCfg = SEEK_LEVELS[Math.min(li, SEEK_LEVELS.length - 1)];
-  // Wall of colored panels in a randomly chosen pattern and scene
   const oldLizards = keepProgress ? lizards : null;
   if (!keepProgress) seekTheme = THEMES[randi(0, THEMES.length - 1)];
-  const wallHues = seekTheme.hues.map(c => ({ ...c }));
-  shuffle(wallHues);
-  wallHues.length = clamp(cfg.hues || wallHues.length, 1, wallHues.length);
-  seekProps = makeProps(seekTheme, null);
-  panels = buildWallRects(PATTERNS[randi(0, PATTERNS.length - 1)], li < 2).map(r => {
-    const base = wallHues[randi(0, wallHues.length - 1)];
-    return {
-      ...r,
-      h1: base.h + randi(-10, 10),
-      s1: clamp(base.s + randi(-12, 8), 30, 95),
-      l1: clamp(base.l + randi(-10, 10), 30, 75),
-    };
-  });
+  renderSeekScene(seekTheme);
+  const spots = seekSpots.slice();
+  shuffle(spots);
   if (oldLizards && oldLizards.length) {
     // Re-place existing lizards after resize, keep found state
-    oldLizards.forEach(lz => placeLizard(lz, cfg));
+    oldLizards.forEach(lz => placeLizard(lz, cfg, spots));
     lizards = oldLizards;
     return;
   }
   lizards = [];
-  // Pick distinct panels big enough for a lizard, away from the HUD area
-  let usable = panels.filter(p => p.y + p.h > H * 0.2 && Math.min(p.w, p.h) >= 60);
-  if (usable.length < cfg.count) {
-    usable = panels.slice().sort((a, b) => Math.min(b.w, b.h) - Math.min(a.w, a.h))
-      .slice(0, Math.max(cfg.count, 8));
-  }
-  shuffle(usable);
   for (let i = 0; i < cfg.count; i++) {
     const lz = {
       found: false,
@@ -859,7 +1134,7 @@ function buildSeekLevel(li, keepProgress) {
       hintUntil: 0,
       bounce: 0,
     };
-    placeLizard(lz, cfg, usable[i % usable.length]);
+    placeLizard(lz, cfg, spots);
     lizards.push(lz);
   }
   seekTimeTotal = cfg.time;
@@ -870,18 +1145,28 @@ function buildSeekLevel(li, keepProgress) {
   }
 }
 
-function placeLizard(lz, cfg, panel) {
-  const p = panel || panels[randi(0, panels.length - 1)];
-  const size = clamp(Math.min(p.w, p.h) * 0.85 * (cfg.sizeMul || 1), 44, 130);
-  lz.x = p.x + p.w / 2 + rand(-p.w * 0.22, p.w * 0.22);
-  lz.y = clamp(p.y + p.h / 2 + rand(-p.h * 0.18, p.h * 0.18), H * 0.16, H - size * 0.4);
-  lz.size = size;
-  lz.r = size * 0.62; // generous tap radius
-  // Camouflage: panel color shifted slightly (less shift = harder)
+function placeLizard(lz, cfg, spots) {
   const d = cfg.blend;
-  lz.h = p.h1 + randi(-d, d);
-  lz.s = clamp(p.s1 + randi(-d, d) * 0.6, 25, 95);
-  lz.l = clamp(p.l1 + randi(-d, d) * 0.6, 25, 80);
+  let c;
+  if (spots && spots.length) {
+    // hide ON an object: in the tree, on the bed, the lamp, a picture...
+    const sp = spots.pop();
+    lz.size = clamp(sp.size * 0.95 * (cfg.sizeMul || 1), 40, 120);
+    lz.x = clamp(sp.x + rand(-sp.size * 0.15, sp.size * 0.15), lz.size * 0.5, W - lz.size * 0.5);
+    lz.y = clamp(sp.y + rand(-sp.size * 0.1, sp.size * 0.1), H * 0.16, H - lz.size * 0.4);
+    c = sp.c;
+  } else {
+    // extras blend into the backdrop wherever they sit
+    lz.size = clamp(Math.min(W, H) * 0.2 * (cfg.sizeMul || 1), 44, 120);
+    lz.x = rand(0.06, 0.94) * W;
+    lz.y = rand(H * 0.2, H * 0.9);
+    c = bgColorAt(lz.x, lz.y);
+  }
+  lz.r = lz.size * 0.62; // generous tap radius
+  // Camouflage: the object's color shifted slightly (less shift = harder)
+  lz.h = c.h + randi(-d, d);
+  lz.s = clamp(c.s + randi(-d, d) * 0.6, 10, 95);
+  lz.l = clamp(c.l + randi(-d, d) * 0.6, 12, 92);
 }
 
 function shuffle(a) {
@@ -964,17 +1249,7 @@ function startSeek() {
 }
 
 function drawSeek(dt) {
-  // Wall
-  panels.forEach(p => {
-    ctx.fillStyle = hsl(p.h1, p.s1, p.l1);
-    ctx.fillRect(p.x - 0.5, p.y - 0.5, p.w + 1, p.h + 1);
-    // subtle inner shading for a "painted panel" look
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.fillRect(p.x + 3, p.y + 3, p.w - 6, 5);
-    ctx.fillStyle = 'rgba(0,0,0,0.07)';
-    ctx.fillRect(p.x + 3, p.y + p.h - 8, p.w - 6, 5);
-  });
-  drawProps(seekProps);
+  ctx.drawImage(bgCv, 0, 0, W, H);
 
   // Timer
   if (!seekOver) {
