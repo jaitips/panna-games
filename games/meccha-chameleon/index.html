@@ -253,6 +253,30 @@
     box-shadow: 0 0 0 4px rgba(255,255,255,0.35), 0 4px 16px rgba(0,0,0,0.4);
   }
 
+  /* ---------- Ready button (skip the wait once you're hidden) ---------- */
+  #readyBtn {
+    position: fixed;
+    right: 1rem;
+    bottom: max(8rem, calc(env(safe-area-inset-bottom) + 7.5rem));
+    z-index: 7;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 700;
+    font-size: clamp(1rem, 3.5vw, 1.3rem);
+    color: #fff;
+    border: none;
+    border-radius: 1.2rem;
+    padding: 0.9rem 1.2rem;
+    cursor: pointer;
+    background: linear-gradient(160deg, #6ede64, #2e9e4a);
+    box-shadow: 0 6px 0 rgba(0,0,0,0.25), 0 10px 24px rgba(0,0,0,0.35);
+    animation: readyPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes readyPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.07); }
+  }
+  #readyBtn:active { transform: scale(0.93); animation: none; }
+
   /* ---------- Result overlay ---------- */
   #resultScreen {
     background: rgba(10, 25, 15, 0.82);
@@ -291,6 +315,7 @@
 
 <!-- Paint palette for Hide mode -->
 <div id="palette" class="hidden"></div>
+<button id="readyBtn" class="hidden">🤖 Come find me!</button>
 
 <!-- Title screen -->
 <div class="screen" id="titleScreen">
@@ -1154,7 +1179,7 @@ function nextHideRound() {
   pigments = [];
   hidePatternKind = PATTERNS[randi(0, PATTERNS.length - 1)];
   // later rounds need MORE time, not less — shading regions is slow, careful work
-  paintTime = Math.min(30 + hideRound * 4, 48);
+  paintTime = Math.min(24 + hideRound * 3, 40);
   strokesCv.getContext('2d').clearRect(0, 0, SIL_W, SIL_H);  // fresh grey skin
   blendScore = 0;
   meanPaint = null;
@@ -1166,6 +1191,7 @@ function nextHideRound() {
   layoutHide();
   buildPalette();
   document.getElementById('palette').classList.remove('hidden');
+  document.getElementById('readyBtn').classList.add('hidden');
   updateHUD();
   banner(hideRound === 0 ? 'Mix a color, then paint yourself! 🖌️'
     : HIDE_SHADES[clamp(hideRound, 0, HIDE_SHADES.length - 1)] >= 9
@@ -1232,6 +1258,19 @@ function rinse() {
   sfx.pop();
 }
 
+/* End the paint phase — from the timer or the kid pressing "Come find me!" */
+function summonHunter() {
+  if (state !== 'hide' || hidePhase !== 'paint') return;
+  hidePhase = 'approach';
+  phaseT = 0;
+  hunter.x = -180;
+  painting = false;
+  document.getElementById('palette').classList.add('hidden');
+  document.getElementById('readyBtn').classList.add('hidden');
+  sfx.robot();
+  banner('Here he comes! 🤖');
+}
+
 function drawHide(dt) {
   phaseT += dt;
 
@@ -1272,6 +1311,8 @@ function drawHide(dt) {
     } else if (blendScore < HIDE_PASS) {
       gaugePassed = false;
     }
+    // Hidden well enough? Offer to skip the wait and call the hunter now
+    document.getElementById('readyBtn').classList.toggle('hidden', !gaugePassed);
   }
   gaugePop = Math.max(0, gaugePop - dt * 3);
 
@@ -1321,13 +1362,7 @@ function drawHide(dt) {
       const sec = Math.ceil(left);
       if (sec !== lastTickSec) { lastTickSec = sec; sfx.tick(); banner(`Hunter coming in ${sec}... 🤖`); }
     }
-    if (left <= 0) {
-      hidePhase = 'approach';
-      phaseT = 0;
-      hunter.x = -180;
-      document.getElementById('palette').classList.add('hidden');
-      sfx.robot();
-    }
+    if (left <= 0) summonHunter();
   } else if (hidePhase === 'approach') {
     hunter.x = lerp(-180, W * 0.22, Math.min(phaseT / 2, 1));
     if (phaseT >= 2) { hidePhase = 'scan'; phaseT = 0; sfx.scan(); }
@@ -1491,6 +1526,7 @@ function showResult(emoji, title, stars, sub, again) {
   document.getElementById('resultSub').textContent = sub;
   document.getElementById('resultScreen').classList.remove('hidden');
   document.getElementById('palette').classList.add('hidden');
+  document.getElementById('readyBtn').classList.add('hidden');
   showHUD(false);
 }
 function goMenu() {
@@ -1499,6 +1535,7 @@ function goMenu() {
   document.getElementById('resultScreen').classList.add('hidden');
   document.getElementById('titleScreen').classList.remove('hidden');
   document.getElementById('palette').classList.add('hidden');
+  document.getElementById('readyBtn').classList.add('hidden');
   showHUD(false);
 }
 
@@ -1557,6 +1594,7 @@ document.getElementById('hideModeBtn').addEventListener('click', () => {
   startHide();
 });
 document.getElementById('homeBtn').addEventListener('click', () => { sfx.click(); goMenu(); });
+document.getElementById('readyBtn').addEventListener('click', () => { audio(); summonHunter(); });
 document.getElementById('hintBtn').addEventListener('click', useHint);
 document.getElementById('againBtn').addEventListener('click', () => {
   sfx.click();
