@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>🦎 Meccha Chameleon</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#14351f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Chameleon">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Lilita+One&display=swap');
 
@@ -1560,6 +1568,13 @@ document.getElementById('menuBtn').addEventListener('click', () => { sfx.click()
 /* ---------------- Boot ---------------- */
 resize();
 requestAnimationFrame(t => { lastT = t; loop(t); });
+
+// PWA: reuse the site-wide service worker so the game installs and plays offline
+if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>

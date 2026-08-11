@@ -1,4 +1,4 @@
-const CACHE = 'playzone-v3';
+const CACHE = 'playzone-v4';
 const CORE = [
   '/',
   '/index.html',
@@ -6,6 +6,10 @@ const CORE = [
   '/shared/icon-192.png',
   '/shared/icon-512.png',
   '/shared/apple-touch-icon.png',
+  '/games/meccha-chameleon/manifest.json',
+  '/games/meccha-chameleon/icon-192.png',
+  '/games/meccha-chameleon/icon-512.png',
+  '/games/meccha-chameleon/apple-touch-icon.png',
   '/games/angry-birds/index.html',
   '/games/balloon-math/index.html',
   '/games/math-monster/index.html',
@@ -44,6 +48,19 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+
+  // Cache-first for Google Fonts so games keep their look offline
+  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
+    e.respondWith(
+      caches.match(req).then(r => r || fetch(req).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(req, copy));
+        return res;
+      }))
+    );
+    return;
+  }
+
   if (url.origin !== location.origin) return;
 
   // Network-first for HTML, cache fallback
