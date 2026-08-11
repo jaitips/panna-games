@@ -1117,7 +1117,7 @@ let pigments = [];         // what the kid has mixed in the bowl
    the chameleon. Strokes live on an offscreen canvas in chameleon-local
    space, masked by the body silhouette. Unpainted skin stays grey. */
 const SIL_W = 600, SIL_H = 480, SIL_CX = 300, SIL_CY = 240, SIL_SIZE = 300;
-const BRUSH_R = 32;        // brush radius in silhouette pixels — small enough to shade regions
+const BRUSH_R = 26;        // brush radius in silhouette pixels — small enough to shade regions
 const silCv = document.createElement('canvas');
 const strokesCv = document.createElement('canvas');
 const overlayCv = document.createElement('canvas');
@@ -1142,7 +1142,7 @@ let myLz = { x: 0, y: 0, size: 0, blinkAt: 0, blink: 0 };
 let paintTime = 10;      // seconds to paint before hunter comes (shrinks per round)
 
 function layoutHide() {
-  myLz.size = clamp(Math.min(W, H) * 0.3, 110, 200);
+  myLz.size = clamp(Math.min(W, H) * 0.42, 150, 300);
   myLz.x = W * 0.62;
   myLz.y = H * 0.58;
   // body silhouette mask for clipping brush strokes
@@ -1773,18 +1773,25 @@ canvas.addEventListener('pointerdown', e => {
     const { x, y } = tapAt(e);
     seekTap(x, y);
   } else if (state === 'hide' && hidePhase === 'paint') {
-    const { x, y } = tapAt(e);
     painting = true;
     lastBrush = null;
     try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
-    brushAt(x, y);
+    const p = brushPoint(e);
+    brushAt(p.x, p.y);
     if (pigments.length) sfx.paint();
   }
 });
+/* On touch, paint lands a bit ABOVE the fingertip so the finger never
+   hides the paint spot — the dashed ring shows exactly where it goes. */
+function brushPoint(e) {
+  const lift = e.pointerType === 'touch' ? Math.max(34, myLz.size * 0.16) : 0;
+  return { x: e.clientX, y: e.clientY - lift };
+}
 window.addEventListener('pointermove', e => {
   if (state === 'hide' && hidePhase === 'paint') {
-    brushScreen = { x: e.clientX, y: e.clientY };
-    if (painting) brushAt(e.clientX, e.clientY);
+    const p = brushPoint(e);
+    brushScreen = p;
+    if (painting) brushAt(p.x, p.y);
   }
 });
 ['pointerup', 'pointercancel'].forEach(ev => window.addEventListener(ev, () => {
