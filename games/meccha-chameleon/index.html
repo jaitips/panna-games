@@ -656,6 +656,7 @@ function drawChameleon(x, y, size, colH, colS, colL, opts) {
   // camo 0..1: how strongly the markings (crest, belly, eye, spots) fade
   // into the body color. At 1 only a faint silhouette remains.
   const camo = clamp(o.camo || 0, 0, 1);
+  const eyeCamo = o.eyeCamo === undefined ? camo : clamp(o.eyeCamo, 0, 1);
   const body = hsl(colH, colS, colL);
   const dark = hsl(colH, colS, Math.max(colL - lerp(14, 2.5, camo), 8));
   const light = hsl(colH, Math.max(colS - lerp(10, 3, camo), 0), Math.min(colL + lerp(12, 2.5, camo), 92));
@@ -730,17 +731,17 @@ function drawChameleon(x, y, size, colH, colS, colL, opts) {
 
   // Eye (big googly, blinks) — tints toward the body color as camo rises
   const blink = clamp(o.blink || 0, 0, 1); // 1 = closed
-  g.fillStyle = hsl(colH, colS * lerp(0.06, 0.6, camo), lerp(97, Math.min(colL + 14, 88), camo));
+  g.fillStyle = hsl(colH, colS * lerp(0.06, 0.6, eyeCamo), lerp(97, Math.min(colL + 14, 88), eyeCamo));
   g.beginPath();
   g.ellipse(38, -12, 10, 10 * (1 - blink * 0.92), 0, 0, Math.PI * 2);
   g.fill();
   if (blink < 0.7) {
-    g.fillStyle = hsl(colH, colS, lerp(13, Math.max(colL - 20, 10), camo));
+    g.fillStyle = hsl(colH, colS, lerp(13, Math.max(colL - 20, 10), eyeCamo));
     g.beginPath();
     g.arc(40, -12, 4.5, 0, Math.PI * 2);
     g.fill();
     const ga = g.globalAlpha;
-    g.globalAlpha = ga * (1 - camo * 0.85);
+    g.globalAlpha = ga * (1 - eyeCamo * 0.85);
     g.fillStyle = '#fff';
     g.beginPath();
     g.arc(41.5, -13.5, 1.6, 0, Math.PI * 2);
@@ -850,8 +851,8 @@ function buildSeekLevel(li, keepProgress) {
     const lz = {
       found: false,
       foundAt: 0,
-      blinkAt: now + rand(1000, 4000),
-      blink: 0,
+      blinkAt: now + rand(1500, 5000),
+      blink: 1,   // hiding chameleons keep their eyes shut
       wiggleAt: now + rand(cfg.wiggleGap[0], cfg.wiggleGap[1]),
       wigglePhase: 0,
       facing: Math.random() < 0.5 ? 1 : -1,
@@ -987,11 +988,11 @@ function drawSeek(dt) {
 
   // Lizards
   lizards.forEach(lz => {
-    // blink cycle
+    // eyes stay shut while hiding — a brief peek every few seconds is the tell
     if (now >= lz.blinkAt) {
-      const t = (now - lz.blinkAt) / 260;
-      lz.blink = t < 0.5 ? t * 2 : (t < 1 ? (1 - t) * 2 : 0);
-      if (t >= 1) { lz.blink = 0; lz.blinkAt = now + rand(1800, 5000); }
+      const t = (now - lz.blinkAt) / 900;
+      lz.blink = t < 0.18 ? 1 - t / 0.18 : t < 0.82 ? 0 : (t < 1 ? (t - 0.82) / 0.18 : 1);
+      if (t >= 1) { lz.blink = 1; lz.blinkAt = now + rand(2500, 6000) * (1 + seekCfg.camo); }
     }
     // occasional wiggle (a hint!)
     if (!lz.found && now >= lz.wiggleAt) {
@@ -1029,8 +1030,9 @@ function drawSeek(dt) {
       }
       drawChameleon(lz.x, lz.y, lz.size, lz.h, lz.s, lz.l, {
         facing: lz.facing,
-        blink: lz.blink,
+        blink: hinting ? 0 : lz.blink,   // hint: eyes pop open
         camo: hinting ? seekCfg.camo * 0.4 : seekCfg.camo,   // hint makes them stand out more
+        eyeCamo: hinting ? 0 : Math.max(seekCfg.camo, 0.55), // never a bright white beacon
         wigglePhase: hinting ? now / 90 : lz.wigglePhase,
       });
     }
