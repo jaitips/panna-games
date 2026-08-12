@@ -490,6 +490,8 @@ const SFX = {
   whoosh(){ noiseBurst(.2,.24,1500,1); tone(280,.28,'sawtooth',.1,760); },
   fanfare(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.22,'triangle',.2),i*110)); },
   match(){ noiseBurst(.12,.2,2400,1.5); },
+  thud(){ tone(150,.07,'sine',.05); },              // boring little bump for mistakes
+  fizzle(){ noiseBurst(.18,.05,420,1); },           // quiet phfft when the fuse wins
 };
 
 /* ---------------- TTS ---------------- */
@@ -714,26 +716,21 @@ function tapTile(btn, ch){
     markCurrent();
     if(R.pos >= R.order.length) defuse();
   } else {
+    // Mistakes are deliberately BORING — no buzzer, no flames, no show.
+    // (Panna was making mistakes on purpose just to watch the effects.)
     btn.classList.add('shk'); setTimeout(()=>btn.classList.remove('shk'),340);
-    if(R.missesLeft <= 0){          // no hearts left — that miss sets it off!
-      SFX.buzz();
+    if(R.missesLeft <= 0){          // no hearts left — that miss sets it off
       explode(true);
       return;
     }
     R.missesLeft--;
     renderHearts(R.missesLeft);     // the heart at this index just broke
-    SFX.buzz();
-    flashRedTick();
+    SFX.thud();
     const frozen = performance.now() < R.frozenUntil;
     const stepSec = (R.total / CFG.FUSE_SEGMENTS) * S.diff.wrongSteps;
     if(!frozen && stepSec > 0 && R.elapsed < R.total - 0.45){
       const base = R.jumpTarget != null ? R.jumpTarget : R.elapsed;
       R.jumpTarget = Math.min(base + stepSec, R.total - 0.35);
-      SFX.whoosh();
-      const f=$('#flameE');
-      f.classList.remove('hopping'); void f.offsetWidth; f.classList.add('hopping');
-      const wrapRc = $('#fuseWrap').getBoundingClientRect();
-      floaty('🔥💨', wrapRc.left + burnPx(), wrapRc.top - 4);
     }
   }
 }
@@ -806,7 +803,6 @@ function loop(ts){
       if(R.elapsed >= R.jumpTarget - 0.001){
         R.jumpTarget = null;
         $('#flameE').classList.remove('hopping');
-        sparkAt(burnPx()); sparkAt(burnPx()); SFX.crackle(1);
       }
     } else {
       R.elapsed += dt;
@@ -856,32 +852,21 @@ function defuse(){
 function explode(byMiss){
   if(!R.active) return;
   R.active=false;
-  SFX.boom();
-  document.body.classList.add('shake');
-  setTimeout(()=>document.body.classList.remove('shake'), 480);
-  $('#bombBall').classList.add('boomed');
-  $('#bombFace').textContent='😵';
-  $('#flameE').textContent='';
-  const big=$('#boomBig'); big.classList.add('show');
-  setTimeout(()=>big.classList.remove('show'), 700);
-  const bRc = $('#bombBall').getBoundingClientRect();
-  for(let i=0;i<5;i++){
-    const el=document.createElement('span');
-    el.className='smoke'; el.textContent='☁️';
-    el.style.left=(bRc.left+bRc.width/2)+'px';
-    el.style.top=(bRc.top+bRc.height/2)+'px';
-    el.style.setProperty('--dx', rnd(-70,70)+'px');
-    $('#fxLayer').appendChild(el);
-    setTimeout(()=>el.remove(),1650);
-  }
+  // No boom, no shake, no fireworks — losing is a quiet fizzle so the
+  // fun ONLY lives in defusing. (Mistakes were being farmed for effects.)
+  SFX.fizzle();
+  $('#bombFace').textContent='😕';
+  $('#flameE').textContent='💨';
+  $('#bombCard').classList.remove('warn','panic','frozenC');
+  document.body.style.setProperty('--danger',0);
   // reveal the missing letters so Panna learns the word
   for(let k=R.pos; k<R.order.length; k++){
     const slot=document.querySelector(`.slot[data-i="${R.order[k]}"]`);
     slot.classList.remove('blank','cur'); slot.classList.add('missed');
   }
-  floaty((byMiss?'💔 ':'')+'BOOM! It was '+R.word, window.innerWidth/2, window.innerHeight*0.32);
+  floaty('It was '+R.word, window.innerWidth/2, window.innerHeight*0.32);
   speak(R.word.toLowerCase(), true);
-  setTimeout(next, 2400);
+  setTimeout(next, 2200);
 }
 function next(){
   S.idx++;
