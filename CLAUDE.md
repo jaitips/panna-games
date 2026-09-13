@@ -25,7 +25,8 @@ play-zone/
 │   ├── lightsaber-fruit/index.html
 │   ├── jump-ball/index.html           ← webcam ping-pong vs robot AI
 │   ├── pacman-virus/index.html        ← Pac-Chomp with Baby Shark chop controls
-│   └── patan-frog/index.html          ← Patan the Frog mosquito catcher
+│   ├── patan-frog/index.html          ← Patan the Frog mosquito catcher
+│   └── panna-volcano-quiz/index.html  ← Thai อนุบาล 3 exam quiz, lava timer (own CLAUDE.md inside)
 ├── shared/                 ← shared assets (icons, thumbnails)
 ├── _headers                ← Cloudflare Pages headers for camera permissions
 ├── CLAUDE.md               ← this file

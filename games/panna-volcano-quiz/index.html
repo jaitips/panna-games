@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>[hidden]{display:none!important}</style>
+<title>Panna's Volcano Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --sky-top: #7ccdf4;
+    --sky-bottom: #e6f7ff;
+    --ground: #5fc25f;
+    --ground-dark: #3f9a43;
+    --rock: #7a5140;
+    --rock-dark: #4e3226;
+    --cavity: #33201a;
+    --lava: #ff4e1a;
+    --lava-hot: #ffc21a;
+    --star: #ffd23f;
+    --star-dark: #e0a800;
+    --heart: #ff3b5c;
+    --heart-empty: #d9c9c4;
+    --card: #fff9ee;
+    --card-edge: #e6d5bd;
+    --ink: #2a1f17;
+    --ink-soft: #7a685c;
+    --ok: #35b65c;
+    --bad: #e8452c;
+    --btn: #ffffff;
+    --btn-edge: #d9c7ac;
+    --shadow: 0 6px 0 rgba(74, 48, 30, .18);
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: 'Mitr', 'Noto Sans Thai', 'Segoe UI', system-ui, sans-serif;
+    font-weight: 500;
+    color: var(--ink);
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 100%);
+    background-attachment: fixed;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible { outline: 4px solid #2f7bd9; outline-offset: 3px; }
+  .screen { position: fixed; inset: 0; display: none; }
+  .screen.active { display: flex; }
+
+  /* ---------- Menu ---------- */
+  #menu { flex-direction: column; align-items: center; overflow-y: auto; padding: clamp(12px, 3vh, 32px) 16px 32px; }
+  .menu-head { display: flex; align-items: center; gap: 14px; text-align: left; margin-bottom: 6px; }
+  .menu-head svg { width: clamp(72px, 14vw, 120px); height: auto; flex: none; }
+  .menu-head h1 { margin: 0; font-size: clamp(26px, 5.5vw, 44px); line-height: 1.05; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; }
+  .menu-head p { margin: 4px 0 0; color: var(--ink-soft); font-size: clamp(14px, 2.2vw, 18px); font-weight: 400; }
+  .rules {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px;
+    margin: 10px 0 16px; padding: 10px 16px;
+    background: rgba(255,255,255,.55); border-radius: 999px;
+    font-size: clamp(13px, 2vw, 16px); font-weight: 400;
+  }
+  .rules span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .subjects {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 14px; width: min(920px, 100%);
+  }
+  .subject {
+    display: flex; align-items: center; gap: 12px; text-align: left;
+    padding: 14px 16px; min-height: 96px;
+    background: var(--card); border: 3px solid var(--card-edge); border-radius: 22px;
+    box-shadow: var(--shadow);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .subject:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(74,48,30,.18); }
+  .subject .badge {
+    flex: none; width: 58px; height: 58px; border-radius: 16px;
+    display: grid; place-items: center; font-size: 26px; font-weight: 700; color: #fff;
+  }
+  .subject .name { font-size: 20px; font-weight: 700; line-height: 1.1; }
+  .subject .thai { font-size: 13px; color: var(--ink-soft); font-weight: 400; margin-top: 2px; }
+  .subject .best { font-size: 13px; color: var(--star-dark); margin-top: 4px; font-weight: 600; }
+  .subject.mix { background: linear-gradient(135deg, #fff2df, #ffe1c2); border-color: #f0c9a0; }
+  .subject.mix .badge { background: linear-gradient(160deg, var(--lava), var(--lava-hot)); }
+
+  /* ---------- Game ---------- */
+  #game { flex-direction: column; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 14px; flex: none;
+  }
+  .hearts { display: flex; gap: 6px; }
+  .hearts svg { width: 34px; height: 34px; transition: transform .2s; }
+  .hearts svg.empty path { fill: var(--heart-empty); }
+  .hearts svg.pop { animation: pop .45s ease; }
+  .progress { display: flex; gap: 5px; align-items: center; }
+  .progress i { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,.75); border: 2px solid rgba(74,48,30,.25); }
+  .progress i.done { background: var(--star); border-color: var(--star-dark); }
+  .progress i.miss { background: var(--heart-empty); }
+  .progress i.now { transform: scale(1.35); border-color: var(--rock-dark); background: #fff; }
+  .right { display: flex; align-items: center; gap: 10px; }
+  .stars {
+    display: flex; align-items: center; gap: 6px; font-size: 24px; font-weight: 700;
+    background: rgba(255,255,255,.7); padding: 4px 14px 4px 8px; border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+  }
+  .stars svg { width: 30px; height: 30px; }
+  .stars.pop svg { animation: pop .5s ease; }
+  .icon-btn {
+    width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--card-edge);
+    background: var(--card); display: grid; place-items: center; font-size: 20px; box-shadow: var(--shadow);
+  }
+
+  .stage { flex: 1; display: grid; min-height: 0; grid-template-rows: minmax(150px, 34%) 1fr; }
+  .scene { position: relative; min-height: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0 12px; }
+  .scene svg { width: 100%; height: 100%; }
+  .scene.rumble .volcano-body { animation: rumble .18s infinite; }
+  .hurry {
+    position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+    background: var(--lava); color: #fff; font-weight: 700; padding: 4px 16px; border-radius: 999px;
+    opacity: 0; transition: opacity .2s; font-size: 16px; letter-spacing: .04em;
+  }
+  .scene.rumble .hurry { opacity: 1; animation: blink .5s infinite alternate; }
+
+  .quiz { min-height: 0; overflow-y: auto; padding: 8px 14px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .card {
+    background: var(--card); border: 3px solid var(--card-edge); border-radius: 26px;
+    box-shadow: var(--shadow); padding: 16px 18px; flex: none;
+  }
+  .subject-tag { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; }
+  .prompt { font-size: clamp(20px, 3.2vw, 28px); font-weight: 700; line-height: 1.3; margin: 4px 0 0; text-wrap: balance; }
+  .prompt.big { font-size: clamp(30px, 6vw, 46px); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+  .media { display: flex; justify-content: center; align-items: center; margin-top: 10px; }
+  .media .emoji { font-size: clamp(64px, 12vh, 110px); line-height: 1; }
+  .media svg { width: clamp(90px, 16vh, 140px); height: auto; }
+  .story { margin-top: 10px; padding: 12px 14px; background: #fff; border-radius: 14px; font-size: clamp(17px, 2.6vw, 22px); line-height: 1.6; font-weight: 400; border: 2px dashed var(--card-edge); }
+  .options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: none; }
+  .opt {
+    min-height: 74px; padding: 10px 14px; border-radius: 20px;
+    background: var(--btn); border: 3px solid var(--btn-edge); box-shadow: var(--shadow);
+    font-size: clamp(19px, 2.8vw, 26px); font-weight: 600; line-height: 1.25;
+    display: flex; align-items: center; justify-content: center; gap: 10px; text-align: center;
+    transition: transform .1s ease, background .15s, border-color .15s;
+    overflow-wrap: anywhere;
+  }
+  .opt .oe { font-size: clamp(40px, 7vh, 60px); line-height: 1; }
+  .opt svg { width: 64px; height: 64px; }
+  .opt:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(74,48,30,.18); }
+  .opt.ok { background: #d9f7e2; border-color: var(--ok); }
+  .opt.bad { background: #ffe1db; border-color: var(--bad); animation: shake .4s; }
+  .opt.dim { opacity: .45; }
+  .options.locked .opt { pointer-events: none; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 18px; transform: translate(-50%, 30px);
+    background: var(--rock-dark); color: #fff; padding: 12px 22px; border-radius: 999px;
+    font-size: 20px; font-weight: 700; opacity: 0; transition: all .25s; pointer-events: none; white-space: nowrap;
+    z-index: 5;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.good { background: var(--ok); }
+  .toast.bad { background: var(--bad); }
+
+  .fly-star {
+    position: fixed; z-index: 6; width: 44px; height: 44px; pointer-events: none;
+    animation: fly .8s cubic-bezier(.3,.8,.4,1) forwards;
+  }
+
+  /* ---------- End ---------- */
+  #end { align-items: center; justify-content: center; padding: 20px; }
+  .end-card { width: min(520px, 100%); text-align: center; }
+  .end-card h2 { margin: 0; font-size: clamp(28px, 6vw, 40px); font-weight: 700; text-wrap: balance; }
+  .end-card p { margin: 6px 0 0; color: var(--ink-soft); font-weight: 400; font-size: 18px; }
+  .star-row { display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; margin: 18px 0 6px; }
+  .star-row svg { width: 40px; height: 40px; animation: pop .5s ease both; }
+  .big-score { font-size: clamp(44px, 10vw, 72px); font-weight: 700; line-height: 1; color: var(--star-dark); font-variant-numeric: tabular-nums; }
+  .end-actions { display: flex; gap: 12px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+  .cta {
+    padding: 14px 26px; border-radius: 999px; font-size: 20px; font-weight: 700;
+    border: 3px solid var(--rock-dark); background: var(--lava); color: #fff; box-shadow: var(--shadow);
+  }
+  .cta.quiet { background: var(--card); color: var(--ink); border-color: var(--card-edge); }
+  .cta:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(74,48,30,.18); }
+
+  /* ---------- Volcano SVG ---------- */
+  .crater-glow { opacity: 0; transition: opacity .4s; }
+  .scene.hot .crater-glow { opacity: 1; }
+  .blob, .puff { opacity: 0; transform-box: fill-box; transform-origin: center; }
+  .scene.erupting .blob { animation: blob 1.3s ease-out forwards; }
+  .scene.erupting .puff { animation: puff 1.6s ease-out forwards; }
+  .scene.erupting .volcano-body { animation: rumble .12s 8; }
+  .cloud { animation: drift 40s linear infinite; }
+  .cloud.slow { animation-duration: 60s; animation-delay: -25s; }
+
+  @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.45); } 100% { transform: scale(1); } }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+  @keyframes rumble { 0% { transform: translate(-1.5px, 1px); } 50% { transform: translate(1.5px, -1px); } 100% { transform: translate(-1px, 0); } }
+  @keyframes blink { from { opacity: .75; } to { opacity: 1; } }
+  @keyframes blob {
+    0% { opacity: 1; transform: translate(0, 0) scale(.6); }
+    45% { opacity: 1; transform: translate(var(--dx), var(--dy)) scale(1); }
+    100% { opacity: 0; transform: translate(calc(var(--dx) * 1.5), 90px) scale(.8); }
+  }
+  @keyframes puff {
+    0% { opacity: 0; transform: translate(0, 0) scale(.4); }
+    30% { opacity: .9; }
+    100% { opacity: 0; transform: translate(var(--dx), -110px) scale(2.2); }
+  }
+  @keyframes drift { from { transform: translateX(-130px); } to { transform: translateX(380px); } }
+  @keyframes fly {
+    0% { transform: translate(0, 0) scale(1.4); opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(.6); opacity: .2; }
+  }
+
+  @media (min-width: 760px) and (min-aspect-ratio: 1/1) {
+    .stage { grid-template-rows: 1fr; grid-template-columns: minmax(280px, 40%) 1fr; }
+    .scene { align-items: center; padding: 0 12px 24px 20px; }
+    .quiz { padding: 4px 24px 24px 4px; justify-content: center; }
+  }
+  @media (max-height: 560px) and (max-width: 759px) {
+    .stage { grid-template-rows: minmax(110px, 26%) 1fr; }
+    .opt { min-height: 60px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= MENU ================= -->
+<section id="menu" class="screen active">
+  <div class="menu-head">
+    <svg viewBox="0 0 120 100" aria-hidden="true">
+      <path d="M8 92 L44 26 Q60 20 76 26 L112 92 Z" fill="#7a5140" stroke="#4e3226" stroke-width="3" stroke-linejoin="round"/>
+      <ellipse cx="60" cy="27" rx="17" ry="5" fill="#3b2418"/>
+      <path d="M50 30 Q60 42 70 30 Q66 55 60 60 Q54 55 50 30Z" fill="#ff4e1a"/>
+      <circle cx="47" cy="12" r="6" fill="#ff4e1a"/><circle cx="62" cy="4" r="5" fill="#ffc21a"/><circle cx="76" cy="14" r="4" fill="#ff4e1a"/>
+    </svg>
+    <div>
+      <h1>Panna's Volcano Quiz</h1>
+      <p>เกมตอบคำถามเตรียมสอบ อนุบาล 3</p>
+    </div>
+  </div>
+  <div class="rules" aria-label="How to play">
+    <span>🌋 ลาวาสูงขึ้นระหว่างคิด</span>
+    <span>💥 ภูเขาไฟระเบิด = เสียหัวใจ</span>
+    <span>✅ ตอบถูก = ได้ ⭐ และหัวใจคืน</span>
+    <span>❌ ตอบผิด = ไม่ได้ดาว ลาวาไม่ลด</span>
+  </div>
+  <div class="subjects" id="subjects"></div>
+</section>
+
+<!-- ================= GAME ================= -->
+<section id="game" class="screen">
+  <div class="topbar">
+    <div class="hearts" id="hearts" aria-label="Hearts"></div>
+    <div class="progress" id="progress" aria-label="Questions"></div>
+    <div class="right">
+      <div class="stars" id="stars"><svg viewBox="0 0 24 24"><path d="M12 2l3 6.6 7 .8-5.2 4.8 1.4 7L12 17.7 5.8 21.2l1.4-7L2 9.4l7-.8z" fill="#ffd23f" stroke="#e0a800" stroke-width="1.2" stroke-linejoin="round"/></svg><span id="star-count">0</span></div>
+      <button class="icon-btn" id="mute" aria-label="เปิด/ปิดเสียง">🔊</button>
+      <button class="icon-btn" id="quit" aria-label="กลับหน้าเลือกวิชา">🏠</button>
+    </div>
+  </div>
+  <div class="stage">
+    <div class="scene" id="scene">
+      <div class="hurry">เร็วเข้า!</div>
+      <svg viewBox="0 0 320 250" aria-label="Volcano timer">
+        <defs>
+          <clipPath id="cavity-clip"><path d="M62 224 L136 84 Q160 74 184 84 L258 224 Z"/></clipPath>
+          <linearGradient id="lava-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ffc21a"/><stop offset=".55" stop-color="#ff6a1a"/><stop offset="1" stop-color="#e0301c"/>
+          </linearGradient>
+          <radialGradient id="glow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffc21a"/><stop offset="1" stop-color="#ff4e1a" stop-opacity="0"/></radialGradient>
+        </defs>
+        <circle cx="272" cy="42" r="22" fill="#ffe36b"/>
+        <g class="cloud" fill="#fff" opacity=".9"><ellipse cx="40" cy="60" rx="26" ry="12"/><ellipse cx="58" cy="52" rx="18" ry="12"/></g>
+        <g class="cloud slow" fill="#fff" opacity=".75"><ellipse cx="20" cy="110" rx="20" ry="9"/><ellipse cx="34" cy="104" rx="14" ry="9"/></g>
+        <ellipse cx="160" cy="240" rx="175" ry="18" fill="#3f9a43"/>
+        <ellipse cx="160" cy="232" rx="165" ry="16" fill="#5fc25f"/>
+        <g class="volcano-body">
+          <path d="M30 228 L124 66 Q160 52 196 66 L290 228 Z" fill="#7a5140" stroke="#4e3226" stroke-width="3" stroke-linejoin="round"/>
+          <path d="M62 224 L136 84 Q160 74 184 84 L258 224 Z" fill="#33201a"/>
+          <g clip-path="url(#cavity-clip)">
+            <rect id="lava" x="40" y="224" width="240" height="200" fill="url(#lava-grad)"/>
+            <rect id="lava-top" x="40" y="222" width="240" height="6" fill="#ffe08a" opacity=".9"/>
+          </g>
+          <ellipse cx="160" cy="66" rx="40" ry="10" fill="#3b2418"/>
+          <ellipse cx="160" cy="66" rx="30" ry="6" fill="#221410"/>
+          <ellipse class="crater-glow" cx="160" cy="66" rx="30" ry="6" fill="#ff6a1a"/>
+          <ellipse class="crater-glow" cx="160" cy="64" rx="56" ry="26" fill="url(#glow)" opacity=".7"/>
+          <path d="M96 150 l10 -8 l6 12" fill="none" stroke="#4e3226" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M214 176 l8 -10 l7 9" fill="none" stroke="#4e3226" stroke-width="2.5" stroke-linecap="round"/>
+        </g>
+        <g class="eruption">
+          <circle class="puff" cx="160" cy="60" r="16" fill="#9a8f8a" style="--dx:-30px"/>
+          <circle class="puff" cx="160" cy="60" r="20" fill="#b3aaa5" style="--dx:10px; animation-delay:.1s"/>
+          <circle class="puff" cx="160" cy="60" r="14" fill="#857a75" style="--dx:40px; animation-delay:.2s"/>
+          <circle class="blob" cx="160" cy="60" r="12" fill="#ff4e1a" style="--dx:-70px; --dy:-90px"/>
+          <circle class="blob" cx="160" cy="60" r="9" fill="#ffc21a" style="--dx:-30px; --dy:-120px; animation-delay:.05s"/>
+          <circle class="blob" cx="160" cy="60" r="14" fill="#ff6a1a" style="--dx:10px; --dy:-130px; animation-delay:.1s"/>
+          <circle class="blob" cx="160" cy="60" r="10" fill="#ffc21a" style="--dx:50px; --dy:-105px; animation-delay:.15s"/>
+          <circle class="blob" cx="160" cy="60" r="12" fill="#ff4e1a" style="--dx:85px; --dy:-70px; animation-delay:.08s"/>
+          <circle class="blob" cx="160" cy="60" r="7" fill="#ffe08a" style="--dx:-95px; --dy:-50px; animation-delay:.2s"/>
+        </g>
+      </svg>
+    </div>
+    <div class="quiz">
+      <div class="card">
+        <div class="subject-tag" id="q-tag">Math</div>
+        <h2 class="prompt" id="q-prompt"></h2>
+        <div class="media" id="q-media"></div>
+        <div class="story" id="q-story" hidden></div>
+      </div>
+      <div class="options" id="options"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+</section>
+
+<!-- ================= END ================= -->
+<section id="end" class="screen">
+  <div class="card end-card">
+    <h2 id="end-title">จบรอบแล้ว!</h2>
+    <p id="end-sub"></p>
+    <div class="star-row" id="end-stars"></div>
+    <div class="big-score"><span id="end-score">0</span> <span style="font-size:.45em; color:var(--ink-soft)">/ 10</span></div>
+    <p id="end-best"></p>
+    <div class="end-actions">
+      <button class="cta" id="again">เล่นอีกครั้ง</button>
+      <button class="cta quiet" id="to-menu">เลือกวิชา</button>
+    </div>
+  </div>
+</section>
+<script>
+(() => {
+  'use strict';
+
+  // ---------- tiny helpers ----------
+  const rnd = (n) => Math.floor(Math.random() * n);
+  const between = (a, b) => a + rnd(b - a + 1);
+  const pick = (arr) => arr[rnd(arr.length)];
+  const shuffle = (arr) => {
+    const out = arr.slice();
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = rnd(i + 1);
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+  };
+  const sample = (arr, n, exclude = []) => {
+    const pool = shuffle(arr.filter((x) => !exclude.includes(x)));
+    return pool.slice(0, n);
+  };
+  // Build a 4-option question. `correct` and `wrongs` are option objects {t, e, svg}.
+  const mc = (prompt, correct, wrongs, extra = {}) => {
+    const options = shuffle([correct, ...wrongs.slice(0, 3)]);
+    return { prompt, options, answer: options.indexOf(correct), ...extra };
+  };
+  const T = (t) => ({ t });
+  const E = (e, t) => ({ e, t });
+  const uniqueBy = (arr, key) => {
+    const seen = new Set();
+    return arr.filter((x) => (seen.has(key(x)) ? false : (seen.add(key(x)), true)));
+  };
+  const numWrongs = (c, min = 0) => {
+    const cands = shuffle([c + 1, c - 1, c + 10, c - 10, c + 2, c - 2, c + 100, c - 100, c + 11, c - 9])
+      .filter((v) => v !== c && v >= min);
+    return uniqueBy(cands, (v) => v).slice(0, 3).map((v) => T(String(v)));
+  };
+
+  // =====================================================================
+  //  MATH — พื้นฐานการคิดคำนวณ
+  // =====================================================================
+  const twoOrThree = () => (Math.random() < 0.5 ? between(12, 89) : between(100, 899));
+  const addCarry = () => {
+    let a = twoOrThree(); let b = between(12, 89);
+    while ((a % 10) + (b % 10) < 10) { a = twoOrThree(); b = between(12, 89); }
+    const c = a + b;
+    return mc(`${a} + ${b} = ?`, T(String(c)), numWrongs(c), { big: true, time: 30 });
+  };
+  const subBorrow = () => {
+    let a = twoOrThree(); let b = between(12, 89);
+    while (a <= b || (a % 10) >= (b % 10)) { a = twoOrThree(); b = between(12, 89); }
+    const c = a - b;
+    return mc(`${a} − ${b} = ?`, T(String(c)), numWrongs(c), { big: true, time: 30 });
+  };
+  const NAMES = ['ปิติ', 'มานี', 'ชูใจ', 'แม่', 'พ่อ', 'ครู', 'ยาย', 'น้อง'];
+  // [item, classifier, emoji]
+  const ITEMS = [['แอปเปิล', 'ลูก', '🍎'], ['ลูกแก้ว', 'ลูก', '🔮'], ['สติกเกอร์', 'แผ่น', '⭐'], ['ลูกอม', 'เม็ด', '🍬'], ['ลูกโป่ง', 'ลูก', '🎈'], ['รถของเล่น', 'คัน', '🚗'], ['คุกกี้', 'ชิ้น', '🍪'], ['หนังสือ', 'เล่ม', '📚'], ['ดินสอ', 'แท่ง', '✏️'], ['ไข่', 'ฟอง', '🥚']];
+  const wordProblem = () => {
+    const name = pick(NAMES); const [item, cls, emoji] = pick(ITEMS);
+    const a = between(12, 60); const b = between(5, 30);
+    const plus = Math.random() < 0.5;
+    const c = plus ? a + b : Math.max(a, b) - Math.min(a, b);
+    const big = Math.max(a, b); const small = Math.min(a, b);
+    const prompt = plus
+      ? `${name}มี${item} ${a} ${cls} ได้มาอีก ${b} ${cls} ${name}มี${item}ทั้งหมดกี่${cls}`
+      : `${name}มี${item} ${big} ${cls} แบ่งให้เพื่อน ${small} ${cls} เหลือ${item}กี่${cls}`;
+    return mc(prompt, T(String(c)), numWrongs(c), { media: { emoji }, time: 35 });
+  };
+  const middleValue = () => {
+    if (Math.random() < 0.5) {
+      const n = between(1, 98);
+      return mc(`เลขอะไรอยู่ตรงกลาง\n${n}  ,  ___  ,  ${n + 2}`, T(String(n + 1)), numWrongs(n + 1, 1), { big: true });
+    }
+    const base = between(2, 80);
+    const nums = [base, base + between(1, 9), base + between(10, 25)];
+    const shown = shuffle(nums);
+    const mid = nums[1];
+    const wrongs = [nums[0], nums[2], mid + 1].map((v) => T(String(v)));
+    return mc(`จำนวนใดเป็นค่าตรงกลาง\n${shown.join('  ,  ')}`, T(String(mid)), wrongs, { big: true });
+  };
+  const numberSentence = () => {
+    const name = pick(NAMES); const [item, cls, emoji] = pick(ITEMS);
+    const a = between(6, 30); const b = between(2, Math.min(9, a - 1));
+    const plus = Math.random() < 0.5;
+    const prompt = plus
+      ? `${name}มี${item} ${a} ${cls} ได้มาอีก ${b} ${cls} ประโยคสัญลักษณ์ใดถูกต้อง`
+      : `${name}มี${item} ${a} ${cls} หายไป ${b} ${cls} ประโยคสัญลักษณ์ใดถูกต้อง`;
+    const correct = plus ? `${a} + ${b} = ${a + b}` : `${a} − ${b} = ${a - b}`;
+    const wrongs = [
+      plus ? `${a} − ${b} = ${a - b}` : `${a} + ${b} = ${a + b}`,
+      plus ? `${a} + ${b} = ${a + b + 1}` : `${a} − ${b} = ${a - b + 1}`,
+      plus ? `${b} − ${a} = ${a + b}` : `${b} − ${a} = ${a - b}`,
+    ].map(T);
+    return mc(prompt, T(correct), wrongs, { media: { emoji }, time: 35 });
+  };
+
+  // =====================================================================
+  //  THAI — ภาษาไทยพื้นฐาน
+  // =====================================================================
+  const VOWELS = {
+    'สระเอะ': ['เป็น', 'เล็ก', 'เด็ก', 'เก็บ', 'เย็น', 'เห็น', 'เจ็ด', 'เข็ม'],
+    'สระแอะ': ['แข็ง'],
+    'สระโอะ': ['คน', 'ลม', 'จม', 'ผม', 'นก', 'มด', 'รถ', 'หก', 'ตก', 'ฝน'],
+    'สระอะ': ['กัน', 'วัน', 'ฝัน', 'ขัน', 'มัน', 'ฉัน', 'ปัน', 'จัน'],
+    'สระเออ': ['เดิน', 'เกิน', 'เงิน', 'เชิญ', 'เลย', 'เคย'],
+    'สระอัว': ['ควร', 'ขวด', 'สวน', 'สวย', 'กวน', 'ปวด', 'รวม'],
+  };
+  const vowelForm = () => {
+    const names = Object.keys(VOWELS);
+    const v = pick(names.filter((n) => n !== 'สระแอะ' || Math.random() < 0.3));
+    const word = pick(VOWELS[v]);
+    if (Math.random() < 0.5) {
+      return mc(`คำว่า "${word}" ใช้สระอะไร`, T(v), sample(names, 3, [v]).map(T), { time: 25 });
+    }
+    const others = names.filter((n) => n !== v).flatMap((n) => VOWELS[n]);
+    return mc(`คำใดใช้${v}`, T(word), sample(others, 3).map(T), { time: 25 });
+  };
+  const OPP = [['ใหญ่', 'เล็ก'], ['สูง', 'ต่ำ'], ['ร้อน', 'เย็น'], ['ดำ', 'ขาว'], ['เร็ว', 'ช้า'], ['หนัก', 'เบา'], ['ยาว', 'สั้น'], ['อ้วน', 'ผอม'], ['เปิด', 'ปิด'], ['ขึ้น', 'ลง'], ['กลางวัน', 'กลางคืน'], ['สว่าง', 'มืด'], ['ใหม่', 'เก่า'], ['แข็ง', 'นิ่ม'], ['เข้า', 'ออก'], ['หน้า', 'หลัง'], ['ซ้าย', 'ขวา'], ['บน', 'ล่าง'], ['ดี', 'ร้าย'], ['หัวเราะ', 'ร้องไห้'], ['ใกล้', 'ไกล'], ['เต็ม', 'ว่าง'], ['แพง', 'ถูก'], ['สะอาด', 'สกปรก'], ['หิว', 'อิ่ม'], ['ตื่น', 'หลับ'], ['มาก', 'น้อย'], ['แห้ง', 'เปียก']];
+  const opposite = () => {
+    const pair = pick(OPP);
+    const flip = Math.random() < 0.5;
+    const word = flip ? pair[1] : pair[0]; const ans = flip ? pair[0] : pair[1];
+    const others = uniqueBy(OPP.filter((p) => p !== pair).flatMap((p) => p), (w) => w);
+    return mc(`คำตรงข้ามของคำว่า "${word}" คือคำใด`, T(ans), sample(others, 3, [word, ans]).map(T));
+  };
+  const CLS = [['ช้าง', 'เชือก'], ['หนังสือ', 'เล่ม'], ['รถ', 'คัน'], ['บ้าน', 'หลัง'], ['ดินสอ', 'แท่ง'], ['กระดาษ', 'แผ่น'], ['ต้นไม้', 'ต้น'], ['แมว', 'ตัว'], ['พระ', 'รูป'], ['ไข่', 'ฟอง'], ['เสื้อ', 'ตัว'], ['ร่ม', 'คัน'], ['นาฬิกา', 'เรือน'], ['แหวน', 'วง'], ['เรือ', 'ลำ'], ['มีด', 'เล่ม'], ['ดอกไม้', 'ดอก'], ['กล้วย', 'หวี'], ['ปากกา', 'ด้าม'], ['รองเท้า', 'คู่'], ['ช้อน', 'คัน'], ['เก้าอี้', 'ตัว'], ['จาน', 'ใบ'], ['ขนม', 'ชิ้น'], ['บ้าน', 'หลัง'], ['เครื่องบิน', 'ลำ'], ['พัดลม', 'ตัว'], ['ผ้า', 'ผืน'], ['ยา', 'เม็ด']];
+  const classifier = () => {
+    const [noun, cls] = pick(CLS);
+    const others = uniqueBy(CLS.map((p) => p[1]).filter((c) => c !== cls), (c) => c);
+    return mc(`${noun} 1 ___  ควรใช้ลักษณนามคำใด`, T(cls), sample(others, 3).map(T));
+  };
+  const STORIES = [
+    ['น้องปันมีแมวหนึ่งตัวชื่อว่าส้ม แมวส้มชอบกินปลาและชอบนอนกลางวัน', 'แมวของน้องปันชื่ออะไร', 'ส้ม', ['ปลา', 'ปัน', 'แดง']],
+    ['น้องปันมีแมวหนึ่งตัวชื่อว่าส้ม แมวส้มชอบกินปลาและชอบนอนกลางวัน', 'แมวส้มชอบกินอะไร', 'ปลา', ['ข้าว', 'ขนม', 'นม']],
+    ['วันอาทิตย์ พ่อพาฉันไปสวนสัตว์ ฉันเห็นช้าง ยีราฟ และลิง ฉันชอบยีราฟที่สุดเพราะคอยาว', 'ฉันไปสวนสัตว์กับใคร', 'พ่อ', ['แม่', 'ครู', 'เพื่อน']],
+    ['วันอาทิตย์ พ่อพาฉันไปสวนสัตว์ ฉันเห็นช้าง ยีราฟ และลิง ฉันชอบยีราฟที่สุดเพราะคอยาว', 'ฉันชอบสัตว์อะไรที่สุด', 'ยีราฟ', ['ช้าง', 'ลิง', 'เสือ']],
+    ['ตอนเช้าแม่ทำไข่เจียวให้ฉันกิน ฉันกินข้าวกับไข่เจียวแล้วก็ไปโรงเรียน', 'แม่ทำอะไรให้ฉันกิน', 'ไข่เจียว', ['ข้าวผัด', 'ก๋วยเตี๋ยว', 'ขนมปัง']],
+    ['ฝนตกหนักมาก น้องนกลืมเอาร่มมาโรงเรียน น้องนกจึงเปียกฝน', 'ทำไมน้องนกจึงเปียกฝน', 'ลืมเอาร่มมา', ['ไปเล่นน้ำ', 'อาบน้ำ', 'ล้างจาน']],
+    ['ปิติชอบเล่นฟุตบอลกับเพื่อนที่สนามหลังโรงเรียนทุกเย็น', 'ปิติชอบเล่นอะไร', 'ฟุตบอล', ['ว่ายน้ำ', 'ตะกร้อ', 'วิ่งเล่น']],
+    ['ปิติชอบเล่นฟุตบอลกับเพื่อนที่สนามหลังโรงเรียนทุกเย็น', 'ปิติเล่นฟุตบอลที่ไหน', 'สนามหลังโรงเรียน', ['ที่บ้าน', 'ที่สวนสัตว์', 'ที่ตลาด']],
+    ['คุณยายปลูกต้นมะม่วงไว้หน้าบ้าน ตอนนี้ต้นมะม่วงออกผลมากมาย ยายเก็บมะม่วงมาให้หลานกิน', 'คุณยายปลูกต้นอะไร', 'มะม่วง', ['กล้วย', 'ส้ม', 'มะพร้าว']],
+    ['วันนี้เป็นวันเกิดของแดง แม่ซื้อเค้กสีชมพูมาให้ แดงดีใจมาก', 'แม่ซื้ออะไรให้แดง', 'เค้ก', ['ตุ๊กตา', 'ลูกโป่ง', 'ขนมปัง']],
+    ['วันนี้เป็นวันเกิดของแดง แม่ซื้อเค้กสีชมพูมาให้ แดงดีใจมาก', 'เค้กเป็นสีอะไร', 'สีชมพู', ['สีฟ้า', 'สีเขียว', 'สีเหลือง']],
+    ['ตอนเย็นฉันช่วยแม่รดน้ำต้นไม้และให้อาหารปลาในบ่อ แม่บอกว่าฉันเป็นเด็กดี', 'ฉันให้อาหารสัตว์อะไร', 'ปลา', ['แมว', 'หมา', 'นก']],
+    ['ครูให้นักเรียนวาดรูปสัตว์ที่ชอบ ฉันวาดรูปช้างสีเทาตัวใหญ่ เพื่อนวาดรูปกระต่าย', 'ฉันวาดรูปอะไร', 'ช้าง', ['กระต่าย', 'แมว', 'ปลา']],
+    ['ทุกเช้าฉันตื่นนอน แปรงฟัน อาบน้ำ แล้วกินข้าวก่อนไปโรงเรียน', 'ฉันทำอะไรหลังจากอาบน้ำ', 'กินข้าว', ['แปรงฟัน', 'นอน', 'เล่นเกม']],
+  ];
+  const story = () => {
+    const [text, q, ans, wrongs] = pick(STORIES);
+    return mc(q, T(ans), wrongs.map(T), { story: text, time: 45 });
+  };
+  const SENTENCES = [['แม่', 'กิน', 'ข้าว'], ['น้อง', 'วิ่ง', 'เล่น'], ['ฉัน', 'ชอบ', 'กิน', 'ส้ม'], ['พ่อ', 'ขับ', 'รถ'], ['นก', 'บิน', 'บน', 'ฟ้า'], ['ปลา', 'ว่าย', 'น้ำ'], ['ครู', 'สอน', 'หนังสือ'], ['หมา', 'เห่า', 'เสียงดัง'], ['ฉัน', 'ไป', 'โรงเรียน'], ['ยาย', 'ปลูก', 'ต้นไม้'], ['เด็ก', 'เล่น', 'ลูกบอล'], ['แดง', 'อ่าน', 'หนังสือ'], ['แมว', 'นอน', 'บน', 'เก้าอี้'], ['พี่', 'ดื่ม', 'นม'], ['เรา', 'รัก', 'พ่อแม่']];
+  const sentenceOrder = () => {
+    const words = pick(SENTENCES);
+    const correct = words.join('');
+    const wrongs = [];
+    let guard = 0;
+    while (wrongs.length < 3 && guard++ < 60) {
+      const w = shuffle(words).join('');
+      if (w === correct || wrongs.includes(w)) continue;
+      wrongs.push(w);
+    }
+    return mc(`เรียงคำให้เป็นประโยคที่ถูกต้อง\n${shuffle(words).join('  ·  ')}`, T(correct), wrongs.map(T), { time: 30 });
+  };
+  const FILL = [['ฉัน ___ ข้าว', 'กิน', ['นอน', 'บิน', 'วิ่ง']], ['นก ___ บนฟ้า', 'บิน', ['ว่าย', 'นั่ง', 'กิน']], ['ปลา ___ ในน้ำ', 'ว่าย', ['เดิน', 'บิน', 'ร้อง']], ['พ่อ ___ รถ', 'ขับ', ['กิน', 'ดื่ม', 'อ่าน']], ['น้อง ___ หนังสือ', 'อ่าน', ['ดื่ม', 'ขับ', 'ว่าย']], ['แม่ ___ อาหาร', 'ทำ', ['บิน', 'เห่า', 'ว่าย']], ['ฉัน ___ ฟันทุกเช้า', 'แปรง', ['กิน', 'ขับ', 'ปลูก']], ['เด็ก ๆ ___ เพลง', 'ร้อง', ['ปลูก', 'ขับ', 'แปรง']], ['หมา ___ เสียงดัง', 'เห่า', ['บิน', 'ว่าย', 'ปลูก']], ['ฉัน ___ นมทุกวัน', 'ดื่ม', ['เห่า', 'บิน', 'ขับ']], ['ยาย ___ ต้นไม้', 'ปลูก', ['ดื่ม', 'บิน', 'เห่า']], ['ครู ___ หนังสือให้นักเรียน', 'สอน', ['กิน', 'บิน', 'ว่าย']]];
+  const fillBlank = () => {
+    const [s, ans, wrongs] = pick(FILL);
+    return mc(`เติมคำในช่องว่างให้ได้ประโยคที่ถูกต้อง\n${s}`, T(ans), wrongs.map(T));
+  };
+  const HO_NAM = [['หมา', '🐕'], ['หนู', '🐭'], ['หมู', '🐷'], ['หมี', '🐻'], ['หนอน', '🐛'], ['หมวก', '🧢'], ['แหวน', '💍'], ['หงส์', '🦢'], ['หวี', '🪮'], ['หยุด', '🛑'], ['หมอ', '👨‍⚕️'], ['หลับ', '😴'], ['หญิง', '👧'], ['ใหญ่', '🐘'], ['เหลือง', '💛'], ['หวาน', '🍬']];
+  const HO_NAM_WORDS = ['หมา', 'หนู', 'หมู', 'หวาน', 'หลาย', 'หญิง', 'หวี', 'หนัก', 'หมอ', 'หลับ', 'ไหม', 'ใหญ่', 'หยุด', 'หรือ', 'เหลือง', 'หมวก', 'หนา', 'หลัง', 'หงส์', 'หมี', 'หนอน', 'แหวน', 'ให้', 'ไหว'];
+  const NOT_HO_NAM = ['หา', 'หู', 'ห้า', 'หาง', 'หิน', 'เห็น', 'หัว', 'ห้อง', 'หอม', 'ปู', 'ตา', 'มา', 'นา', 'ลิง', 'ยาย', 'วัน', 'แมว', 'นก'];
+  const hoNam = () => {
+    if (Math.random() < 0.5) {
+      return mc('คำใดเป็นคำที่มี ห นำ', T(pick(HO_NAM_WORDS)), sample(NOT_HO_NAM, 3).map(T));
+    }
+    const [word, emoji] = pick(HO_NAM);
+    const rest = word.replace('ห', '');
+    const cands = uniqueBy([rest, 'ฮ' + rest, word.replace('ห', 'ฮ'), rest + '่', word + '้', 'ห' + rest.split('').reverse().join('')].filter((w) => w !== word && w.length > 0), (w) => w);
+    return mc(`คำนี้เขียนอย่างไร`, T(word), sample(cands, 3).map(T), { media: { emoji } });
+  };
+
+  // =====================================================================
+  //  ENGLISH — ภาษาอังกฤษพื้นฐาน
+  // =====================================================================
+  const VOCAB = {
+    food: [['🍚', 'rice'], ['🍞', 'bread'], ['🥚', 'egg'], ['🍗', 'chicken'], ['🍜', 'noodles'], ['🍕', 'pizza'], ['🍔', 'hamburger'], ['🍦', 'ice cream'], ['🍰', 'cake'], ['🍪', 'cookie'], ['🧀', 'cheese'], ['🍩', 'donut'], ['🐟', 'fish'], ['🍟', 'french fries'], ['🥪', 'sandwich'], ['🍿', 'popcorn'], ['🍬', 'candy'], ['🥣', 'soup']],
+    drink: [['🥛', 'milk'], ['🧃', 'juice'], ['💧', 'water'], ['🍵', 'tea'], ['☕', 'coffee'], ['🥤', 'soda'], ['🥥', 'coconut water'], ['🧋', 'milk tea']],
+    object: [['📚', 'book'], ['✏️', 'pencil'], ['🎒', 'bag'], ['🪑', 'chair'], ['🧸', 'teddy bear'], ['⚽', 'ball'], ['🔑', 'key'], ['🕰️', 'clock'], ['🧹', 'broom'], ['🛏️', 'bed'], ['🚪', 'door'], ['💡', 'lamp'], ['📦', 'box'], ['🖍️', 'crayon'], ['📏', 'ruler'], ['✂️', 'scissors'], ['📱', 'phone'], ['☂️', 'umbrella'], ['🧢', 'hat'], ['👟', 'shoes'], ['🪥', 'toothbrush'], ['🚗', 'car'], ['🪟', 'window'], ['🧺', 'basket'], ['🔔', 'bell'], ['📺', 'television'], ['🧼', 'soap'], ['🪞', 'mirror'], ['🎈', 'balloon'], ['🧩', 'puzzle']],
+    feeling: [['😀', 'happy'], ['😢', 'sad'], ['😠', 'angry'], ['😨', 'scared'], ['😴', 'sleepy'], ['😲', 'surprised'], ['🤒', 'sick'], ['🤩', 'excited'], ['🥱', 'tired'], ['😋', 'hungry'], ['🥶', 'cold'], ['🥵', 'hot'], ['😳', 'shy'], ['😑', 'bored'], ['😆', 'laughing'], ['😍', 'in love']],
+    fruit: [['🍎', 'apple'], ['🍌', 'banana'], ['🍇', 'grapes'], ['🍉', 'watermelon'], ['🍓', 'strawberry'], ['🍍', 'pineapple'], ['🥭', 'mango'], ['🍊', 'orange'], ['🍋', 'lemon'], ['🍑', 'peach'], ['🍐', 'pear'], ['🥥', 'coconut'], ['🍒', 'cherry'], ['🥝', 'kiwi'], ['🍈', 'melon']],
+    vegetable: [['🥕', 'carrot'], ['🌽', 'corn'], ['🥦', 'broccoli'], ['🍅', 'tomato'], ['🥒', 'cucumber'], ['🧅', 'onion'], ['🍆', 'eggplant'], ['🥔', 'potato'], ['🍄', 'mushroom'], ['🥬', 'cabbage'], ['🌶️', 'chili'], ['🎃', 'pumpkin'], ['🧄', 'garlic'], ['🫑', 'bell pepper']],
+    family: [['👨', 'father'], ['👩', 'mother'], ['👧', 'sister'], ['👦', 'brother'], ['👴', 'grandfather'], ['👵', 'grandmother'], ['👶', 'baby'], ['👨‍👩‍👧‍👦', 'family']],
+  };
+  const CAT_LABEL = { food: 'food', drink: 'a drink', object: 'a thing you use', feeling: 'a feeling', fruit: 'a fruit', vegetable: 'a vegetable', family: 'a family member' };
+  const catOf = () => pick(Object.keys(VOCAB));
+  const misspell = (w) => {
+    const letters = w.replace(/ /g, '');
+    if (letters.length < 3) return [];
+    const out = new Set();
+    for (let i = 0; i < letters.length - 1; i++) out.add(letters.slice(0, i) + letters[i + 1] + letters[i] + letters.slice(i + 2));
+    for (let i = 1; i < letters.length; i++) out.add(letters.slice(0, i) + letters.slice(i + 1));
+    for (let i = 1; i < letters.length - 1; i++) out.add(letters.slice(0, i) + letters[i] + letters.slice(i));
+    const vowels = 'aeiou';
+    for (let i = 0; i < letters.length; i++) {
+      if (!vowels.includes(letters[i])) continue;
+      const v = pick(vowels.replace(letters[i], '').split(''));
+      out.add(letters.slice(0, i) + v + letters.slice(i + 1));
+    }
+    out.delete(letters);
+    return shuffle([...out]);
+  };
+  const enWhatIsThis = () => {
+    const cat = catOf(); const [emoji, word] = pick(VOCAB[cat]);
+    const wrongs = sample(VOCAB[cat].filter((p) => p[1] !== word), 3).map((p) => T(p[1]));
+    const prompt = cat === 'feeling' ? 'How does this person feel?' : cat === 'family' ? 'Who is this?' : 'What is this?';
+    return mc(prompt, T(word), wrongs, { media: { emoji } });
+  };
+  const enFindIt = () => {
+    const cat = catOf(); const [emoji, word] = pick(VOCAB[cat]);
+    const wrongs = sample(VOCAB[cat].filter((p) => p[1] !== word), 3).map((p) => E(p[0]));
+    const prompt = cat === 'feeling' ? `Who feels ${word}?` : cat === 'family' ? `Which one is the ${word}?` : `Which one is ${/^[aeiou]/.test(word) ? 'an' : 'a'} ${word}?`;
+    return mc(prompt, E(emoji), wrongs, {});
+  };
+  const enCategory = () => {
+    const cat = catOf();
+    const [emoji, word] = pick(VOCAB[cat]);
+    const others = Object.keys(VOCAB).filter((c) => c !== cat && !(cat === 'fruit' && c === 'vegetable') && !(cat === 'vegetable' && c === 'fruit') && !(cat === 'food' && c === 'fruit') && !(cat === 'food' && c === 'drink'));
+    const wrongs = sample(others, 3).map((c) => E(pick(VOCAB[c])[0]));
+    return mc(`Which one is ${CAT_LABEL[cat]}?`, E(emoji, word), wrongs, {});
+  };
+  const enSpelling = () => {
+    const cat = pick(['food', 'drink', 'object', 'fruit', 'vegetable', 'family', 'feeling']);
+    const entries = VOCAB[cat].filter((p) => !p[1].includes(' ') && p[1].length >= 3);
+    const [emoji, word] = pick(entries);
+    const wrongs = misspell(word).slice(0, 3).map(T);
+    if (wrongs.length < 3) return enWhatIsThis();
+    return mc('Which spelling is right?', T(word), wrongs, { media: { emoji }, time: 25 });
+  };
+
+  // =====================================================================
+  //  INTELLIGENCE — เชาวน์ปัญญาพื้นฐาน
+  // =====================================================================
+  const shapeSvg = (name, size = 100) => {
+    const S = { circle: '<circle cx="50" cy="50" r="40"/>', square: '<rect x="12" y="12" width="76" height="76" rx="4"/>', rectangle: '<rect x="6" y="26" width="88" height="48" rx="4"/>', triangle: '<path d="M50 10 L92 86 L8 86 Z"/>', oval: '<ellipse cx="50" cy="50" rx="46" ry="30"/>', star: '<path d="M50 6l12.4 27.3 29.6 3.2-22 20 6.2 29.3L50 70.6 23.8 85.8 30 56.5 8 36.5l29.6-3.2z"/>', heart: '<path d="M50 88 C20 66 6 50 12 32 18 16 40 14 50 30 60 14 82 16 88 32 94 50 80 66 50 88Z"/>', diamond: '<path d="M50 6 L90 50 L50 94 L10 50 Z"/>', pentagon: '<path d="M50 8 L92 39 L76 90 L24 90 L8 39 Z"/>', hexagon: '<path d="M28 12 L72 12 L94 50 L72 88 L28 88 L6 50 Z"/>' };
+    const C = { circle: '#2f7bd9', square: '#e8452c', rectangle: '#35b65c', triangle: '#ffc21a', oval: '#9b59b6', star: '#ff8c1a', heart: '#ff3b5c', diamond: '#1abc9c', pentagon: '#e67e22', hexagon: '#3498db' };
+    return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" aria-label="${name}"><g fill="${C[name]}" stroke="#2a1f17" stroke-width="3" stroke-linejoin="round">${S[name]}</g></svg>`;
+  };
+  const SHAPES = ['circle', 'square', 'rectangle', 'triangle', 'oval', 'star', 'heart', 'diamond', 'pentagon', 'hexagon'];
+  const TH = { circle: 'วงกลม', square: 'สี่เหลี่ยมจัตุรัส', rectangle: 'สี่เหลี่ยมผืนผ้า', triangle: 'สามเหลี่ยม', oval: 'วงรี', star: 'ดาว', heart: 'หัวใจ', diamond: 'สี่เหลี่ยมขนมเปียกปูน', pentagon: 'ห้าเหลี่ยม', hexagon: 'หกเหลี่ยม' };
+  const SIDES = { square: 4, rectangle: 4, triangle: 3, diamond: 4, pentagon: 5, hexagon: 6, star: 10 };
+  const shapeName = () => {
+    const s = pick(SHAPES);
+    return mc('รูปนี้คือรูปอะไร', T(TH[s]), sample(SHAPES, 3, [s]).map((n) => T(TH[n])), { media: { svg: shapeSvg(s, 120) } });
+  };
+  const shapeFind = () => {
+    const s = pick(SHAPES);
+    return mc(`รูปใดคือรูป${TH[s]}`, { svg: shapeSvg(s, 64), t: s }, sample(SHAPES, 3, [s]).map((n) => ({ svg: shapeSvg(n, 64) })), {});
+  };
+  const shapeSides = () => {
+    const s = pick(Object.keys(SIDES));
+    const n = SIDES[s];
+    const wrongs = uniqueBy(shuffle([3, 4, 5, 6, 8, 10, 0, 2]).filter((v) => v !== n), (v) => v).slice(0, 3).map((v) => T(String(v)));
+    return mc(`รูป${TH[s]}มีกี่ด้าน`, T(String(n)), wrongs, { media: { svg: shapeSvg(s, 110) } });
+  };
+  const GROUPS = {
+    fruit: ['🍎', '🍌', '🍇', '🍉', '🍓', '🍍', '🥭', '🍊'],
+    vegetable: ['🥕', '🌽', '🥦', '🍅', '🥒', '🍆', '🥔'],
+    animal: ['🐶', '🐱', '🐭', '🐰', '🐻', '🐼', '🐸', '🐵', '🐔', '🐷', '🐘', '🦒'],
+    vehicle: ['🚗', '🚌', '🚲', '✈️', '🚂', '🚁', '⛵', '🚀', '🚑'],
+    clothes: ['👕', '👖', '👗', '🧢', '👟', '🧦', '🧥', '👒'],
+    school: ['📚', '✏️', '🎒', '📏', '🖍️', '✂️', '📓'],
+    furniture: ['🪑', '🛏️', '🚪', '🛋️', '🪞', '🚽'],
+    sea: ['🐟', '🐙', '🦀', '🐬', '🐳', '🦈', '🐢'],
+    insect: ['🐝', '🐞', '🦋', '🐜', '🐛', '🪲'],
+    sport: ['⚽', '🏀', '🎾', '🏐', '⚾', '🏸'],
+    music: ['🎸', '🎹', '🥁', '🎺', '🎻', '🎷'],
+    weather: ['☀️', '🌧️', '⛈️', '🌈', '❄️', '🌪️'],
+  };
+  const oddOneOut = () => {
+    const keys = Object.keys(GROUPS);
+    const g = pick(keys);
+    const otherKey = pick(keys.filter((k) => k !== g && !((g === 'animal' && k === 'sea') || (g === 'sea' && k === 'animal') || (g === 'animal' && k === 'insect') || (g === 'insect' && k === 'animal'))));
+    const same = sample(GROUPS[g], 3).map((e) => E(e));
+    const odd = E(pick(GROUPS[otherKey]));
+    return mc('สิ่งใดไม่เข้าพวก', odd, same, { time: 25 });
+  };
+  const PAIRS = [['🔑', '🚪'], ['🖌️', '🎨'], ['✏️', '📓'], ['⚽', '🥅'], ['🌧️', '☂️'], ['🛏️', '😴'], ['🍽️', '🍴'], ['🐝', '🍯'], ['🐔', '🥚'], ['🐄', '🥛'], ['🎣', '🐟'], ['👨‍🍳', '🍳'], ['👨‍⚕️', '🏥'], ['👩‍🚒', '🚒'], ['👮', '🚓'], ['🧑‍🏫', '🏫'], ['👨‍✈️', '✈️'], ['🧑‍🌾', '🌾'], ['👣', '👟'], ['☀️', '🕶️'], ['❄️', '🧥'], ['🎂', '🕯️'], ['🐕', '🦴'], ['🧵', '🪡'], ['🔒', '🔓'], ['🪥', '🦷'], ['🧼', '🫧'], ['📬', '✉️'], ['🔨', '🪵'], ['🐝', '🌸'], ['🚗', '⛽'], ['🎧', '🎵'], ['🐛', '🦋'], ['🌱', '🌳'], ['🪣', '💧']];
+  const matching = () => {
+    const pair = pick(PAIRS);
+    const flip = Math.random() < 0.5;
+    const shown = flip ? pair[1] : pair[0]; const ans = flip ? pair[0] : pair[1];
+    const others = PAIRS.filter((p) => p !== pair).flatMap((p) => p).filter((e) => e !== shown && e !== ans);
+    return mc('สิ่งใดสัมพันธ์กับสิ่งนี้', E(ans), sample(uniqueBy(others, (e) => e), 3).map((e) => E(e)), { media: { emoji: shown } });
+  };
+
+  // =====================================================================
+  //  GENERAL KNOWLEDGE — ความรู้ทั่วไป
+  // =====================================================================
+  // [job, emoji, duty, workplace]
+  const JOBS = [['หมอ', '👨‍⚕️', 'รักษาคนป่วย', 'โรงพยาบาล'], ['ครู', '🧑‍🏫', 'สอนหนังสือนักเรียน', 'โรงเรียน'], ['นักดับเพลิง', '👩‍🚒', 'ดับไฟ', 'สถานีดับเพลิง'], ['ตำรวจ', '👮', 'จับคนร้ายและดูแลความปลอดภัย', 'สถานีตำรวจ'], ['พ่อครัว', '👨‍🍳', 'ทำอาหาร', 'ร้านอาหาร'], ['ชาวนา', '🧑‍🌾', 'ปลูกข้าว', 'ทุ่งนา'], ['นักบิน', '👨‍✈️', 'ขับเครื่องบิน', 'สนามบิน'], ['หมอฟัน', '🦷', 'รักษาฟัน', 'คลินิกทำฟัน'], ['บุรุษไปรษณีย์', '📬', 'ส่งจดหมาย', 'ที่ทำการไปรษณีย์'], ['คนขับรถเมล์', '🚌', 'ขับรถเมล์รับส่งผู้โดยสาร', 'ท่ารถเมล์'], ['ช่างตัดผม', '💈', 'ตัดผม', 'ร้านตัดผม'], ['ทหาร', '🪖', 'ปกป้องประเทศ', 'ค่ายทหาร'], ['พยาบาล', '💉', 'ดูแลคนป่วยและฉีดยา', 'โรงพยาบาล'], ['นักวิทยาศาสตร์', '🔬', 'ทำการทดลอง', 'ห้องทดลอง'], ['แม่ค้า', '🧺', 'ขายของ', 'ตลาด'], ['ชาวประมง', '🎣', 'จับปลา', 'ทะเล']];
+  const people = () => {
+    const [job, emoji, does, place] = pick(JOBS);
+    const others = JOBS.filter((j) => j[0] !== job);
+    const r = Math.random();
+    if (r < 0.4) return mc(`ใครมีหน้าที่${does}`, T(job), sample(others, 3).map((j) => T(j[0])), { media: { emoji } });
+    if (r < 0.7) return mc(`${job}มีหน้าที่ทำอะไร`, T(does), sample(others, 3).map((j) => T(j[2])), { media: { emoji } });
+    const placesPool = uniqueBy(others.map((j) => j[3]).filter((p) => p !== place), (p) => p);
+    return mc(`${job}ทำงานที่ไหน`, T(place), sample(placesPool, 3).map(T), { media: { emoji } });
+  };
+  const ROUTINE = [['ตื่นนอน', '🌅'], ['แปรงฟัน', '🪥'], ['อาบน้ำ', '🚿'], ['แต่งตัว', '👕'], ['กินข้าวเช้า', '🍳'], ['ไปโรงเรียน', '🏫'], ['กินข้าวกลางวัน', '🍱'], ['กลับบ้าน', '🏠'], ['ทำการบ้าน', '📝'], ['กินข้าวเย็น', '🍽️'], ['อาบน้ำก่อนนอน', '🛁'], ['เข้านอน', '🛏️']];
+  const TIMES = [['เรากินข้าวเช้าตอนไหน', 'ตอนเช้า'], ['เราไปโรงเรียนตอนไหน', 'ตอนเช้า'], ['พระอาทิตย์ขึ้นตอนไหน', 'ตอนเช้า'], ['เรากินข้าวกลางวันตอนไหน', 'ตอนกลางวัน'], ['เรากินข้าวเย็นตอนไหน', 'ตอนเย็น'], ['พระอาทิตย์ตกตอนไหน', 'ตอนเย็น'], ['เรานอนหลับตอนไหน', 'ตอนกลางคืน'], ['พระจันทร์ขึ้นตอนไหน', 'ตอนกลางคืน'], ['เรามองเห็นดาวบนฟ้าตอนไหน', 'ตอนกลางคืน']];
+  const routine = () => {
+    if (Math.random() < 0.55) {
+      const i = between(1, ROUTINE.length - 2);
+      const after = Math.random() < 0.5;
+      const ans = after ? ROUTINE[i + 1] : ROUTINE[i - 1];
+      const wrongs = sample(ROUTINE.filter((_, k) => Math.abs(k - i) > 1), 3);
+      const prompt = after ? `หลังจาก${ROUTINE[i][0]}แล้ว เราทำอะไรต่อ` : `ก่อน${ROUTINE[i][0]} เราทำอะไร`;
+      return mc(prompt, E(ans[1], ans[0]), wrongs.map((w) => E(w[1], w[0])), { media: { emoji: ROUTINE[i][1] }, time: 25 });
+    }
+    const [question, when] = pick(TIMES);
+    const options = ['ตอนเช้า', 'ตอนกลางวัน', 'ตอนเย็น', 'ตอนกลางคืน'];
+    return mc(question, T(when), options.filter((o) => o !== when).map(T));
+  };
+  const HYGIENE = [
+    ['เราควรแปรงฟันวันละกี่ครั้ง', 'อย่างน้อยวันละ 2 ครั้ง', ['ไม่ต้องแปรง', 'สัปดาห์ละครั้ง', 'เดือนละครั้ง']],
+    ['ก่อนกินข้าว เราควรทำอะไร', 'ล้างมือให้สะอาด', ['กระโดดไปมา', 'นอนหลับ', 'ดูทีวี']],
+    ['เวลาไอหรือจาม เราควรทำอะไร', 'ปิดปากและจมูก', ['ตะโกนดัง ๆ', 'วิ่งออกไปข้างนอก', 'ปรบมือ']],
+    ['เราใช้อะไรล้างมือ', 'สบู่และน้ำ', ['ผ้าเช็ดตัวอย่างเดียว', 'ทราย', 'น้ำผลไม้']],
+    ['หลังเข้าห้องน้ำ เราควรทำอะไร', 'ล้างมือให้สะอาด', ['กินขนม', 'ไปนอน', 'หวีผม']],
+    ['เราอาบน้ำเพื่ออะไร', 'ให้ร่างกายสะอาด', ['ให้ง่วงนอน', 'ให้ตัวสูงขึ้น', 'ให้หิวข้าว']],
+    ['เราใช้อะไรแปรงฟัน', 'แปรงสีฟันและยาสีฟัน', ['ช้อน', 'หวี', 'สบู่']],
+    ['ก่อนเข้านอน เราควรทำอะไร', 'แปรงฟัน', ['กินลูกอม', 'เล่นฟุตบอล', 'ไปโรงเรียน']],
+    ['เราควรดูแลเล็บอย่างไร', 'ตัดเล็บให้สั้นและสะอาด', ['กัดเล็บ', 'ทาสีเล็บ', 'ไม่ต้องตัดเลย']],
+    ['อาบน้ำเสร็จ เราใช้อะไรเช็ดตัว', 'ผ้าเช็ดตัว', ['ผ้าห่ม', 'กระดาษทิชชู', 'เสื้อ']],
+    ['ขยะควรทิ้งที่ไหน', 'ถังขยะ', ['บนพื้น', 'ในแม่น้ำ', 'ใต้เตียง']],
+    ['เวลาจาม เราควรใช้อะไรปิดปาก', 'กระดาษทิชชูหรือข้อศอก', ['จาน', 'หนังสือ', 'หมวก']],
+    ['เด็ก ๆ ควรนอนคืนละกี่ชั่วโมง', 'ประมาณ 10 ชั่วโมง', ['1 ชั่วโมง', '2 ชั่วโมง', 'ไม่ต้องนอน']],
+    ['เราควรดูแลผมอย่างไร', 'สระผมและหวีผมให้เรียบร้อย', ['ไม่ต้องสระเลย', 'ตัดทิ้งทั้งหมด', 'เอาผ้าคลุมไว้']],
+    ['ของว่างใดดีต่อสุขภาพ', E('🍎', 'แอปเปิล'), [E('🍬', 'ลูกอม'), E('🥤', 'น้ำอัดลม'), E('🍟', 'เฟรนช์ฟรายส์')]],
+    ['เราควรดื่มอะไรมาก ๆ ทุกวัน', E('💧', 'น้ำเปล่า'), [E('🥤', 'น้ำอัดลม'), E('☕', 'กาแฟ'), E('🧋', 'ชานม')]],
+    ['ฝนตก เราควรใส่อะไร', E('🧥', 'เสื้อกันฝน'), [E('🩳', 'กางเกงขาสั้น'), E('🕶️', 'แว่นกันแดด'), E('👒', 'หมวกกันแดด')]],
+    ['สิ่งใดควรทำทุกวัน', E('🪥', 'แปรงฟัน'), [E('🍬', 'กินลูกอม'), E('📺', 'ดูทีวีทั้งวัน'), E('🎮', 'เล่นเกมทั้งวัน')]],
+  ];
+  const hygiene = () => {
+    const [q, ans, wrongs] = pick(HYGIENE);
+    const A = typeof ans === 'string' ? T(ans) : ans;
+    const W = wrongs.map((w) => (typeof w === 'string' ? T(w) : w));
+    return mc(q, A, W, { time: 25 });
+  };
+  // [purpose, place, emoji]
+  const PLACES = [['ยืมหนังสือ', 'ห้องสมุด', '📚'], ['ซื้อกับข้าว', 'ตลาด', '🛒'], ['หาหมอเมื่อป่วย', 'โรงพยาบาล', '🏥'], ['เรียนหนังสือ', 'โรงเรียน', '🏫'], ['ดูสิงโตและช้าง', 'สวนสัตว์', '🦁'], ['ส่งจดหมาย', 'ที่ทำการไปรษณีย์', '📮'], ['ขึ้นรถไฟ', 'สถานีรถไฟ', '🚉'], ['ขึ้นเครื่องบิน', 'สนามบิน', '✈️'], ['ทำบุญตักบาตร', 'วัด', '🛕'], ['ซื้อยา', 'ร้านขายยา', '💊'], ['ว่ายน้ำ', 'สระว่ายน้ำ', '🏊'], ['เล่นชิงช้าและกระดานลื่น', 'สนามเด็กเล่น', '🛝'], ['ดูหนัง', 'โรงหนัง', '🎬'], ['ฝากเงิน', 'ธนาคาร', '🏦'], ['กินข้าวนอกบ้านกับครอบครัว', 'ร้านอาหาร', '🍽️'], ['เติมน้ำมันรถ', 'ปั๊มน้ำมัน', '⛽'], ['รอรถเมล์', 'ป้ายรถเมล์', '🚏'], ['เล่นทรายและน้ำทะเล', 'ชายหาด', '🏖️'], ['ซื้อเสื้อผ้าและของเล่น', 'ห้างสรรพสินค้า', '🏬'], ['นอนหลับตอนกลางคืน', 'บ้าน', '🏠']];
+  const places = () => {
+    const [purpose, place, emoji] = pick(PLACES);
+    const others = PLACES.filter((p) => p[1] !== place);
+    if (Math.random() < 0.6) return mc(`เราไป${purpose}ที่ไหน`, E(emoji, place), sample(others, 3).map((p) => E(p[2], p[1])), {});
+    return mc(`ที่${place} เราไปทำอะไร`, T(purpose), sample(others, 3).map((p) => T(p[0])), { media: { emoji } });
+  };
+
+  // =====================================================================
+  //  SUBJECTS
+  // =====================================================================
+  const SUBJECTS = {
+    math: { name: 'คิดคำนวณ', thai: 'พื้นฐานการคิดคำนวณ', icon: '1+2', color: '#2f7bd9', gens: [addCarry, subBorrow, wordProblem, middleValue, numberSentence] },
+    thai: { name: 'ภาษาไทย', thai: 'ภาษาไทยพื้นฐาน', icon: 'ก', color: '#e8452c', gens: [vowelForm, opposite, classifier, story, sentenceOrder, fillBlank, hoNam] },
+    english: { name: 'English', thai: 'ภาษาอังกฤษพื้นฐาน', icon: 'Aa', color: '#35b65c', gens: [enWhatIsThis, enFindIt, enCategory, enSpelling] },
+    brain: { name: 'เชาวน์ปัญญา', thai: 'เชาวน์ปัญญาพื้นฐาน', icon: '🧠', color: '#9b59b6', gens: [shapeName, shapeFind, shapeSides, oddOneOut, matching] },
+    world: { name: 'ความรู้ทั่วไป', thai: 'บุคคล · กิจวัตร · สุขนิสัย · สถานที่', icon: '🌍', color: '#ff8c1a', gens: [people, routine, hygiene, places] },
+  };
+  const MIX = { name: 'รวมทุกวิชา', thai: 'สุ่มทุกวิชา เหมือนสอบจริง', icon: '🌋', color: '#ff4e1a' };
+
+  const ROUND = 10;
+  const MAX_HEARTS = 3;
+  const DEFAULT_TIME = 20;
+
+  // ---------- storage ----------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('volcano.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('volcano.' + k, JSON.stringify(v)); } catch { /* private mode etc. */ } },
+  };
+
+  // ---------- sound ----------
+  let audioCtx = null;
+  let muted = store.get('muted', false);
+  const tone = (freq, dur, type = 'sine', gain = 0.15, when = 0) => {
+    if (muted) return;
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const t = audioCtx.currentTime + when;
+      const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+      o.type = type; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t + dur + 0.05);
+    } catch { /* no audio */ }
+  };
+  const sfx = {
+    correct: () => { tone(660, .12, 'triangle', .18); tone(880, .14, 'triangle', .18, .1); tone(1320, .25, 'triangle', .16, .2); },
+    wrong: () => { tone(200, .25, 'square', .08); tone(150, .3, 'square', .08, .15); },
+    erupt: () => { tone(80, .6, 'sawtooth', .2); tone(60, .8, 'sawtooth', .18, .1); tone(400, .15, 'square', .06, .05); },
+    tick: () => tone(1000, .05, 'square', .04),
+    tap: () => tone(500, .05, 'sine', .06),
+  };
+
+  // ---------- state ----------
+  const $ = (id) => document.getElementById(id);
+  const screens = { menu: $('menu'), game: $('game'), end: $('end') };
+  const show = (name) => Object.entries(screens).forEach(([k, el]) => el.classList.toggle('active', k === name));
+  const state = { subjectKey: null, qIndex: 0, hearts: MAX_HEARTS, stars: 0, results: [], q: null, lava: 0, lavaTime: DEFAULT_TIME, running: false, lastT: 0, raf: 0, lastTick: 0, usedPrompts: new Set(), lastGen: null };
+
+  // ---------- menu ----------
+  const HEART = '<svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8 3.4 4.5 7 4.5c2 0 3.6 1.1 5 2.8 1.4-1.7 3-2.8 5-2.8 3.6 0 6 3.5 4.5 7.3C19.5 16.4 12 21 12 21z" fill="#ff3b5c" stroke="#b7203c" stroke-width="1.3" stroke-linejoin="round"/></svg>';
+  const STAR = '<svg viewBox="0 0 24 24"><path d="M12 2l3 6.6 7 .8-5.2 4.8 1.4 7L12 17.7 5.8 21.2l1.4-7L2 9.4l7-.8z" fill="#ffd23f" stroke="#e0a800" stroke-width="1.2" stroke-linejoin="round"/></svg>';
+  const buildMenu = () => {
+    const wrap = $('subjects');
+    wrap.innerHTML = '';
+    const entries = [...Object.entries(SUBJECTS), ['mix', MIX]];
+    entries.forEach(([key, s]) => {
+      const best = store.get('best.' + key, null);
+      const btn = document.createElement('button');
+      btn.className = 'subject' + (key === 'mix' ? ' mix' : '');
+      btn.innerHTML = `<span class="badge" style="background:${s.color}">${s.icon}</span><span><span class="name">${s.name}</span><div class="thai">${s.thai}</div>${best === null ? '' : `<div class="best">ดีที่สุด: ${best} ⭐</div>`}</span>`;
+      btn.addEventListener('click', () => { sfx.tap(); startRound(key); });
+      wrap.appendChild(btn);
+    });
+  };
+
+  // ---------- game ----------
+  const renderHearts = (popIndex = -1) => {
+    $('hearts').innerHTML = Array.from({ length: MAX_HEARTS }, (_, i) => HEART.replace('<svg', `<svg class="${i < state.hearts ? '' : 'empty'}${i === popIndex ? ' pop' : ''}"`)).join('');
+  };
+  const renderProgress = () => {
+    $('progress').innerHTML = Array.from({ length: ROUND }, (_, i) => `<i class="${state.results[i] === true ? 'done' : state.results[i] === false ? 'miss' : ''}${i === state.qIndex ? ' now' : ''}"></i>`).join('');
+  };
+  const renderStars = () => { $('star-count').textContent = state.stars; };
+
+  const optionHtml = (o) => {
+    if (o.svg) return o.svg;
+    if (o.e && o.t) return `<span class="oe">${o.e}</span><span>${o.t}</span>`;
+    if (o.e) return `<span class="oe">${o.e}</span>`;
+    return `<span>${o.t}</span>`;
+  };
+
+  const pickQuestion = () => {
+    const subj = state.subjectKey === 'mix' ? SUBJECTS[pick(Object.keys(SUBJECTS))] : SUBJECTS[state.subjectKey];
+    let gens = subj.gens.filter((g) => g !== state.lastGen);
+    if (gens.length === 0) gens = subj.gens;
+    for (let tries = 0; tries < 12; tries++) {
+      const gen = pick(gens);
+      const q = gen();
+      if (state.usedPrompts.has(q.prompt + (q.story || '') + (q.media?.emoji || ''))) continue;
+      state.usedPrompts.add(q.prompt + (q.story || '') + (q.media?.emoji || ''));
+      state.lastGen = gen;
+      q.subject = subj.name;
+      return q;
+    }
+    const q = pick(subj.gens)();
+    q.subject = subj.name;
+    return q;
+  };
+
+  const showQuestion = () => {
+    const q = pickQuestion();
+    state.q = q;
+    $('q-tag').textContent = q.subject;
+    const promptEl = $('q-prompt');
+    promptEl.textContent = '';
+    q.prompt.split('\n').forEach((line, i) => {
+      if (i > 0) promptEl.appendChild(document.createElement('br'));
+      promptEl.appendChild(document.createTextNode(line));
+    });
+    promptEl.classList.toggle('big', !!q.big);
+    const media = $('q-media');
+    media.innerHTML = q.media?.emoji ? `<span class="emoji">${q.media.emoji}</span>` : q.media?.svg ? q.media.svg : '';
+    media.hidden = !q.media;
+    const storyEl = $('q-story');
+    storyEl.hidden = !q.story;
+    storyEl.textContent = q.story || '';
+    const opts = $('options');
+    opts.classList.remove('locked');
+    opts.innerHTML = '';
+    q.options.forEach((o, i) => {
+      const b = document.createElement('button');
+      b.className = 'opt';
+      b.innerHTML = optionHtml(o);
+      b.addEventListener('click', () => answer(i, b));
+      opts.appendChild(b);
+    });
+    $('options').parentElement.scrollTop = 0;
+    renderProgress();
+    // reset lava only when the previous answer was right (or a fresh question after eruption)
+    state.lavaTime = q.time || DEFAULT_TIME;
+    state.running = true;
+    state.lastT = performance.now();
+    cancelAnimationFrame(state.raf);
+    state.raf = requestAnimationFrame(tickLava);
+  };
+
+  const setLava = (pct) => {
+    const top = 84; const bottom = 224;
+    const y = bottom - (bottom - top) * pct;
+    $('lava').setAttribute('y', y);
+    $('lava-top').setAttribute('y', pct > 0.03 ? y - 3 : 240);
+    const scene = $('scene');
+    scene.classList.toggle('hot', pct > 0.6);
+    scene.classList.toggle('rumble', pct > 0.72 && state.running);
+  };
+
+  const tickLava = (now) => {
+    if (!state.running) return;
+    const dt = (now - state.lastT) / 1000;
+    state.lastT = now;
+    state.lava = Math.min(1, state.lava + dt / state.lavaTime);
+    setLava(state.lava);
+    if (state.lava > 0.72 && now - state.lastTick > 500) { state.lastTick = now; sfx.tick(); }
+    if (state.lava >= 1) { erupt(); return; }
+    state.raf = requestAnimationFrame(tickLava);
+  };
+
+  const toast = (msg, kind) => {
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + (kind || '');
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => t.classList.remove('show'), 1400);
+  };
+
+  const flyStar = (from) => {
+    const target = $('stars').getBoundingClientRect();
+    const r = from.getBoundingClientRect();
+    const el = document.createElement('div');
+    el.className = 'fly-star';
+    el.innerHTML = STAR;
+    el.style.left = (r.left + r.width / 2 - 22) + 'px';
+    el.style.top = (r.top + r.height / 2 - 22) + 'px';
+    el.style.setProperty('--tx', (target.left + target.width / 2 - (r.left + r.width / 2)) + 'px');
+    el.style.setProperty('--ty', (target.top + target.height / 2 - (r.top + r.height / 2)) + 'px');
+    document.body.appendChild(el);
+    setTimeout(() => { el.remove(); $('stars').classList.add('pop'); setTimeout(() => $('stars').classList.remove('pop'), 500); }, 780);
+  };
+
+  const revealAnswer = (chosen) => {
+    const opts = $('options');
+    opts.classList.add('locked');
+    [...opts.children].forEach((b, i) => {
+      if (i === state.q.answer) b.classList.add('ok');
+      else if (i === chosen) b.classList.add('bad');
+      else b.classList.add('dim');
+    });
+  };
+
+  const nextOrEnd = (delay) => {
+    setTimeout(() => {
+      state.qIndex += 1;
+      if (state.hearts <= 0 || state.qIndex >= ROUND) { endRound(); return; }
+      showQuestion();
+    }, delay);
+  };
+
+  const answer = (i, btn) => {
+    if (!state.running) return;
+    state.running = false;
+    cancelAnimationFrame(state.raf);
+    $('scene').classList.remove('rumble');
+    const right = i === state.q.answer;
+    revealAnswer(i);
+    state.results[state.qIndex] = right;
+    if (right) {
+      sfx.correct();
+      state.stars += 1;
+      flyStar(btn);
+      const healed = state.hearts < MAX_HEARTS;
+      state.hearts = Math.min(MAX_HEARTS, state.hearts + 1);
+      renderHearts(healed ? state.hearts - 1 : -1);
+      state.lava = 0;
+      setLava(0);
+      toast(healed ? 'ถูกต้อง! ⭐ ได้หัวใจคืน ❤️' : 'ถูกต้อง! ⭐', 'good');
+      renderProgress();
+      nextOrEnd(1100);
+      return;
+    }
+    sfx.wrong();
+    toast('ยังไม่ใช่นะ ลาวายังสูงขึ้นอยู่!', 'bad');
+    renderProgress();
+    nextOrEnd(1700);
+  };
+
+  const erupt = () => {
+    state.running = false;
+    cancelAnimationFrame(state.raf);
+    const scene = $('scene');
+    scene.classList.remove('rumble');
+    scene.classList.remove('erupting');
+    void scene.offsetWidth; // restart animation
+    scene.classList.add('erupting');
+    sfx.erupt();
+    if (navigator.vibrate) navigator.vibrate([120, 60, 160]);
+    state.hearts -= 1;
+    renderHearts();
+    revealAnswer(-1);
+    state.results[state.qIndex] = false;
+    renderProgress();
+    toast('ตูม! ภูเขาไฟระเบิด 💔', 'bad');
+    setTimeout(() => { state.lava = 0; setLava(0); scene.classList.remove('erupting'); }, 1400);
+    nextOrEnd(1800);
+  };
+
+  const startRound = (key) => {
+    state.subjectKey = key;
+    state.qIndex = 0; state.hearts = MAX_HEARTS; state.stars = 0; state.results = [];
+    state.lava = 0; state.usedPrompts = new Set(); state.lastGen = null;
+    renderHearts(); renderStars(); setLava(0);
+    $('scene').classList.remove('erupting', 'hot', 'rumble');
+    show('game');
+    showQuestion();
+  };
+
+  const endRound = () => {
+    state.running = false;
+    cancelAnimationFrame(state.raf);
+    const key = state.subjectKey;
+    const best = store.get('best.' + key, 0);
+    const isBest = state.stars > best;
+    if (isBest) store.set('best.' + key, state.stars);
+    const lost = state.hearts <= 0;
+    $('end-title').textContent = lost ? 'รอบนี้ภูเขาไฟชนะ!' : state.stars === ROUND ? 'เต็ม 10 ดาว สุดยอด! 🎉' : state.stars >= 7 ? 'เก่งมาก Panna!' : 'จบรอบแล้ว!';
+    $('end-sub').textContent = lost ? `ตอบไปแล้ว ${state.qIndex} ข้อ ก่อนภูเขาไฟจะระเบิดครั้งสุดท้าย` : `เหลือหัวใจ ${state.hearts} ดวง · ${key === 'mix' ? MIX.name : SUBJECTS[key].name}`;
+    $('end-stars').innerHTML = Array.from({ length: ROUND }, (_, i) => STAR.replace('<svg', `<svg style="animation-delay:${i * 70}ms; opacity:${i < state.stars ? 1 : .18}"`)).join('');
+    $('end-score').textContent = state.stars;
+    $('end-best').textContent = isBest ? 'สถิติใหม่! 🏆' : `สถิติที่ดีที่สุด: ${Math.max(best, state.stars)} ⭐`;
+    show('end');
+    if (!lost) { tone(523, .15, 'triangle', .15); tone(659, .15, 'triangle', .15, .15); tone(784, .15, 'triangle', .15, .3); tone(1047, .4, 'triangle', .15, .45); }
+  };
+
+  // ---------- wiring ----------
+  const setMuteIcon = () => { $('mute').textContent = muted ? '🔇' : '🔊'; };
+  $('mute').addEventListener('click', () => { muted = !muted; store.set('muted', muted); setMuteIcon(); if (!muted) sfx.tap(); });
+  $('quit').addEventListener('click', () => { state.running = false; cancelAnimationFrame(state.raf); buildMenu(); show('menu'); });
+  $('again').addEventListener('click', () => { sfx.tap(); startRound(state.subjectKey); });
+  $('to-menu').addEventListener('click', () => { sfx.tap(); buildMenu(); show('menu'); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { state.paused = state.running; state.running = false; cancelAnimationFrame(state.raf); return; }
+    if (!state.paused) return;
+    state.paused = false; state.running = true; state.lastT = performance.now(); state.raf = requestAnimationFrame(tickLava);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (!screens.game.classList.contains('active')) return;
+    const n = parseInt(e.key, 10);
+    if (!(n >= 1 && n <= 4)) return;
+    const btn = $('options').children[n - 1];
+    if (btn) btn.click();
+  });
+
+  setMuteIcon();
+  buildMenu();
+  setLava(0);
+})();
+</script>
+</body>
+</html>
