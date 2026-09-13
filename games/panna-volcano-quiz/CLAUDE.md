@@ -15,7 +15,7 @@ Designed by Panna (อนุบาล 3, โรงเรียนเด่นห
 Questions and UI are in Thai. Only the **English** subject (`SUBJECTS.english`) has English prompts and options.
 
 ## Exam content the subjects map to
-- คิดคำนวณ: บวก(มีทด)-ลบ(ขอยืม) 2–3 หลัก, โจทย์ปัญหาบวก-ลบ, หาค่าตัวกลาง, ประโยคสัญลักษณ์
+- คิดคำนวณ: บวก(มีทด)-ลบ(ขอยืม) 2–3 หลัก (2 หลัก 80% / 3 หลัก 20% — Panna is a beginner), โจทย์ปัญหาบวก-ลบ, หาค่าตัวกลาง, ประโยคสัญลักษณ์
 - ภาษาไทย: สระลดรูป/เปลี่ยนรูป, คำตรงข้าม / ลักษณนาม, อ่านเรื่องสั้นตอบคำถาม, เรียงประโยค, แต่งประโยค, คำ ห นำ
 - English: food & drink, objects, feelings, vegetables & fruit, family
 - เชาวน์ปัญญา: รูปร่างรูปทรงเรขาคณิต, เข้าพวก/ไม่เข้าพวก, จับคู่สิ่งของ/การกระทำที่สัมพันธ์กัน
@@ -26,6 +26,7 @@ Questions and UI are in Thai. Only the **English** subject (`SUBJECTS.english`) 
    - Options are `T('text')`, `E('🍎', 'label')` (emoji, optional label) or `{ svg }`.
    - `extra` may set `media: { emoji }` / `media: { svg }`, `story: 'ข้อความ'`, `big: true` (large numeric prompt), `time: seconds`.
    - `mc` shuffles the options and records the answer index; keep exactly 3 wrongs, all distinct from the answer.
+   - For a guided, multi-step question use `guided([mc(...), mc(...)])`. Each step is a normal `mc` question and may carry `hint: 'text'` (shown in a soft box under the prompt, HTML allowed). Only the last step earns the star; a right intermediate step resets the lava, a wrong one shows the answer and moves on with the lava still rising. Math uses this: word problems ask บวก/ลบ first, carry/borrow sums ask the units digit first.
 2. Add it to the `gens` array of the right entry in `SUBJECTS`.
 3. Questions are de-duplicated per round by prompt text; generators with random numbers are fine.
 
