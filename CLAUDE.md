@@ -27,7 +27,8 @@ play-zone/
 │   ├── pacman-virus/index.html        ← Pac-Chomp with Baby Shark chop controls
 │   ├── patan-frog/index.html          ← Patan the Frog mosquito catcher
 │   ├── panna-volcano-quiz/index.html  ← Thai อนุบาล 3 exam quiz, lava timer (own CLAUDE.md inside)
-│   └── rocket-lab/index.html          ← 3D rocket builder (three.js r149 global build), custom orbital physics
+│   ├── rocket-lab/index.html          ← 3D rocket builder (three.js r149 global build), custom orbital physics
+│   └── pop-the-daddy/index.html       ← Minesweeper-style balloon hunt with hot/cold radar (hand-dwell or tap)
 ├── shared/                 ← shared assets (icons, thumbnails)
 ├── _headers                ← Cloudflare Pages headers for camera permissions
 ├── CLAUDE.md               ← this file
