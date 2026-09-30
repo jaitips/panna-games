@@ -28,6 +28,7 @@ play-zone/
 │   ├── patan-frog/index.html          ← Patan the Frog mosquito catcher
 │   ├── panna-volcano-quiz/index.html  ← Thai อนุบาล 3 exam quiz, lava timer (own CLAUDE.md inside)
 │   ├── rocket-lab/index.html          ← 3D rocket builder (three.js r149 global build), custom orbital physics
+│   ├── land-the-rocket/index.html     ← Rocket Lab sequel: 2D canvas lander, 5 worlds (pad/ship/volcano/Moon/Mars), touch-follow + keys
 │   └── pop-the-daddy/index.html       ← Minesweeper-style balloon hunt with hot/cold radar (hand-dwell or tap)
 ├── shared/                 ← shared assets (icons, thumbnails)
 ├── _headers                ← Cloudflare Pages headers for camera permissions
